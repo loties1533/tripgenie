@@ -1,43 +1,36 @@
-/* ============================================
-   TRIPGENIE — Main Entry Point
-   js/main.js
-   ============================================ */
+// =============================================
+// TRIPGENIE — js/main.js
+// Point d'entrée — appelle le back Express
+// =============================================
 
-import { generateTrip }    from './api.js';
-import { renderResults }   from './render.js';
+import { generatePack } from './api.js';
+import { renderResults } from './render.js';
 import {
   showToast, switchTab, setTripType, togglePref,
   getSelectedPrefs, printItinerary, scrollToSearch,
   initDates, startLoadingDots, stopLoadingDots
 } from './ui.js';
 
-// ---- ÉTAT GLOBAL ----
 const tripType = { value: 'roundtrip' };
 
-// ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
   initDates();
-  bindEvents();
 
-  // Expose fonctions globales pour les onclick HTML
-  window.showToast      = showToast;
-  window.switchTab      = switchTab;
-  window.setTripType    = (t, btn) => setTripType(t, btn, tripType);
-  window.togglePref     = togglePref;
-  window.printItinerary = printItinerary;
-  window.scrollToSearch = scrollToSearch;
+  // Expose globalement pour les onclick HTML
+  window.showToast       = showToast;
+  window.switchTab       = switchTab;
+  window.setTripType     = (t, btn) => setTripType(t, btn, tripType);
+  window.togglePref      = togglePref;
+  window.printItinerary  = printItinerary;
+  window.scrollToSearch  = scrollToSearch;
   window.generateItinerary = generateItinerary;
+
+  document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
 });
 
-// ---- EVENTS ----
-function bindEvents() {
-  document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
-}
-
-// ---- GENERATE ----
 async function generateItinerary() {
-  const dest   = document.getElementById('fieldDest').value.trim();
-  const origin = document.getElementById('fieldOrigin').value.trim();
+  const dest       = document.getElementById('fieldDest').value.trim();
+  const origin     = document.getElementById('fieldOrigin').value.trim();
 
   if (!dest) { showToast('Veuillez entrer une destination'); return; }
 
@@ -50,17 +43,36 @@ async function generateItinerary() {
     ? Math.round((new Date(returnDate) - new Date(departure)) / 86400000)
     : 7;
 
-  // UI — état chargement
+  // Extraire le nombre de voyageurs
+  const travelersNum = parseInt(travelers) || 2;
+
+  // Extraire le budget en nombre
+  const budgetNum = budget.includes('8 000') ? 10000
+    : budget.includes('4 000') ? 6000
+    : budget.includes('2 000') ? 3000
+    : budget.includes('1 000') ? 1500
+    : 800;
+
   setLoadingState(true);
   const dotTimer = startLoadingDots();
 
   try {
-    const data = await generateTrip({
-      origin, dest, tripType: tripType.value,
-      departure, returnDate, travelers, budget, prefs, days
+    // Appel au BACK — plus d'appel direct à Claude ici
+    const result = await generatePack({
+      destination:  dest,
+      origin:       origin || 'Paris',
+      departure,
+      return_date:  returnDate,
+      travelers:    travelersNum,
+      budget:       budgetNum,
+      mode:         detectMode(prefs),
+      preferences:  prefs
     });
 
     stopLoadingDots(dotTimer);
+
+    // Le back retourne { pack, trip_id, flights_found, events_found }
+    const data = result.pack || result;
     renderResults(data, { origin, dest, departure, returnDate, travelers, budget, days });
 
   } catch (err) {
@@ -72,7 +84,16 @@ async function generateItinerary() {
   setLoadingState(false);
 }
 
-// ---- HELPERS UI ----
+// Détecte le mode selon les préférences sélectionnées
+function detectMode(prefs) {
+  const p = prefs.map(x => x.toLowerCase());
+  if (p.some(x => x.includes('nuit') || x.includes('fête') || x.includes('musique'))) return 'party';
+  if (p.some(x => x.includes('spa') || x.includes('bien') || x.includes('calme')))    return 'relax';
+  if (p.some(x => x.includes('luxe') || x.includes('vip')))                           return 'luxury';
+  if (p.some(x => x.includes('famille')))                                              return 'group';
+  return 'party'; // défaut
+}
+
 function setLoadingState(loading) {
   const btn     = document.getElementById('btnGenerate');
   const btnText = document.getElementById('btnText');
@@ -81,7 +102,7 @@ function setLoadingState(loading) {
   const results = document.getElementById('resultsSection');
 
   btn.disabled          = loading;
-  btnText.style.display = loading ? 'none' : 'inline';
+  btnText.style.display = loading ? 'none'         : 'inline';
   spinner.style.display = loading ? 'inline-block' : 'none';
 
   if (loading) {

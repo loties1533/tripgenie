@@ -1,35 +1,50 @@
-// =============================================
-// TRIPGENIE — server/services/claude.js
-// Proxy sécurisé vers Claude + logique d'assemblage
-// La clé API reste côté serveur, jamais exposée
-// =============================================
+import 'dotenv/config';
 
-const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL      = 'claude-sonnet-4-20250514';
+const GEMINI_KEY   = process.env.GEMINI_API_KEY;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-// ---- Appel Claude générique ----
-async function callClaude(prompt, maxTokens = 4000) {
-  const res = await fetch(CLAUDE_URL, {
-    method:  'POST',
+console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : GEMINI_KEY ? 'Gemini' : '⚠️ AUCUN configuré'}`);
+
+async function callAI(prompt) {
+  if (ANTHROPIC_KEY) return callClaude(prompt);
+  if (GEMINI_KEY)    return callGemini(prompt);
+  throw new Error('Aucune clé API configurée dans .env');
+}
+
+async function callClaude(prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
     headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         process.env.ANTHROPIC_API_KEY,
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model:      MODEL,
-      max_tokens: maxTokens,
-      messages:   [{ role: 'user', content: prompt }]
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
     })
   });
-
   const data = await res.json();
-  if (!res.ok) throw new Error(`Claude API error: ${JSON.stringify(data.error)}`);
-
+  if (!res.ok) throw new Error(`Claude error: ${JSON.stringify(data.error)}`);
   return data.content[0].text;
 }
 
-// ---- Parser JSON sécurisé ----
+async function callGemini(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Gemini error: ${JSON.stringify(data.error)}`);
+  return data.candidates[0].content.parts[0].text;
+}
+
 function parseJSON(raw) {
   let str = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const start = str.indexOf('{');
@@ -38,127 +53,65 @@ function parseJSON(raw) {
   return JSON.parse(str);
 }
 
-// ---- 1. Analyser la requête utilisateur en langage naturel ----
 export async function analyzeRequest(userInput) {
-  const prompt = `Analyse cette demande de voyage et extrais les informations en JSON.
-
+  const raw = await callAI(`Analyse cette demande de voyage en JSON.
 Demande: "${userInput}"
-
-Réponds UNIQUEMENT en JSON valide:
-{
-  "destination": "ville ou null si non précisée",
-  "origin": "ville de départ ou 'Paris' par défaut",
-  "mode": "party|student|luxury|group|relax|surprise",
-  "travelers": nombre (défaut 2),
-  "duration_days": nombre (défaut 3),
-  "budget_total": nombre en euros ou null,
-  "budget_per_person": nombre en euros ou null,
-  "preferences": ["liste", "de", "préférences"],
-  "departure_flexibility": "fixed|flexible",
-  "detected_events": ["si l'user mentionne un festival/événement spécifique"],
-  "confidence": 0.0 à 1.0
-}`;
-
-  const raw = await callClaude(prompt, 500);
-  return parseJSON(raw);
-}
-
-// ---- 2. Suggérer des destinations si non précisée ----
-export async function suggestDestinations({ mode, budget, travelers, duration, origin, preferences }) {
-  const prompt = `Tu es TripGenie. Suggère 5 destinations parfaites pour ce voyage.
-
-Mode: ${mode}
-Budget total: ${budget}€
-Voyageurs: ${travelers}
-Durée: ${duration} jours
-Départ: ${origin}
-Préférences: ${preferences?.join(', ') || 'général'}
-
 Réponds UNIQUEMENT en JSON:
-{
-  "destinations": [
-    {
-      "city": "Nom ville",
-      "country": "Pays",
-      "iata": "Code IATA aéroport",
-      "why": "Raison en 1 phrase pourquoi c'est parfait pour ce mode",
-      "best_for": "${mode}",
-      "estimated_flight_price": nombre,
-      "vibe": "mot qui résume l'ambiance"
-    }
-  ]
-}`;
-
-  const raw = await callClaude(prompt, 1000);
+{ "destination": "ville ou null", "origin": "Paris", "mode": "party|student|luxury|group|relax|surprise", "travelers": 2, "duration_days": 3, "budget_total": null, "preferences": [], "confidence": 0.9 }`);
   return parseJSON(raw);
 }
 
-// ---- 3. Assembler le pack final avec vraies données ----
-export async function assemblePack({ destination, flights, hotels, events, activities, mode, travelers, budget }) {
-  const prompt = `Tu es TripGenie. Assemble le meilleur pack voyage à partir de ces données réelles.
+export async function suggestDestinations({ mode, budget, travelers, duration, origin, preferences }) {
+  const raw = await callAI(`Suggère 5 destinations. Mode:${mode} Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j Départ:${origin}
+Réponds UNIQUEMENT en JSON:
+{ "destinations": [{ "city": "Ville", "country": "Pays", "iata": "XXX", "why": "raison", "vibe": "mot", "estimated_flight_price": 200 }] }`);
+  return parseJSON(raw);
+}
 
-Destination: ${destination}
-Mode: ${mode}
-Voyageurs: ${travelers}
-Budget: ${budget}€
+export async function assemblePack({ destination, flights, events, mode, travelers, budget }) {
+  const raw = await callAI(`Tu es TripGenie. Génère un pack voyage COMPLET pour ${destination}.
+Mode:${mode} | Voyageurs:${travelers} | Budget:${budget}€
+Événements: ${JSON.stringify(events?.slice(0,5) || [])}
 
-Vols disponibles: ${JSON.stringify(flights?.slice(0,3))}
-Hôtels disponibles: ${JSON.stringify(hotels?.slice(0,5))}
-Événements: ${JSON.stringify(events?.slice(0,10))}
-Activités: ${JSON.stringify(activities?.slice(0,10))}
-
-Génère un pack complet en JSON:
+Réponds UNIQUEMENT en JSON valide (pas de texte avant ou après):
 {
+  "destination": "${destination}",
+  "country": "Pays",
   "tagline": "accroche poétique",
-  "overview": "description du voyage en 2-3 phrases",
-  "recommended_flight": { le meilleur vol },
-  "recommended_hotel": { le meilleur hôtel },
-  "top_events": [ les 3 meilleurs événements ],
-  "itinerary": [
-    {
-      "day": 1,
-      "title": "Titre du jour",
-      "subtitle": "Thème",
-      "items": [
-        { "time": "10:00", "type": "activity|food|event|hotel", "title": "...", "description": "...", "price": "XX€" }
-      ]
-    }
+  "overview": "description 2-3 phrases",
+  "weather": { "avg_temp": "20°C", "conditions": "Ensoleillé", "tip": "conseil météo" },
+  "summary": { "total_budget": "1100€", "nights": 3, "activities_count": 5 },
+  "flights": [
+    { "from": "CDG", "from_city": "Paris", "to": "XXX", "to_city": "${destination}", "departure_time": "10:30", "arrival_time": "12:00", "duration": "1h30", "stops": "Direct", "airline": "Air France", "price_per_person": "150€", "type": "outbound" },
+    { "from": "XXX", "from_city": "${destination}", "to": "CDG", "to_city": "Paris", "departure_time": "18:00", "arrival_time": "19:30", "duration": "1h30", "stops": "Direct", "airline": "Air France", "price_per_person": "150€", "type": "return" }
   ],
-  "budget_breakdown": {
-    "vols": "XXX€",
-    "hebergement": "XXX€",
-    "activites": "XXX€",
-    "restauration": "XXX€",
-    "transports": "XXX€",
-    "divers": "XXX€",
-    "total": "XXX€"
-  },
-  "tips": [ { "title": "...", "content": "..." } ],
-  "weather": { "avg_temp": "XX°C", "conditions": "...", "tip": "..." }
-}`;
-
-  const raw = await callClaude(prompt, 4000);
+  "hotels": [
+    { "name": "Nom hôtel", "location": "Quartier, ${destination}", "stars": 4, "price_per_night": "120€", "highlights": "description courte", "emoji": "🏨" },
+    { "name": "Nom hôtel 2", "location": "Quartier 2", "stars": 3, "price_per_night": "80€", "highlights": "description courte", "emoji": "🏩" }
+  ],
+  "itinerary": [
+    { "day": 1, "title": "Titre jour 1", "subtitle": "Thème", "items": [
+      { "time": "14:00", "type": "activity", "title": "Activité", "description": "Description 2 phrases", "price": "20€", "duration": "2h" }
+    ]}
+  ],
+  "activities": [
+    { "name": "Activité", "category": "Culture", "emoji": "🏛", "description": "Description", "duration": "2h", "price": "20€", "best_time": "Matin" }
+  ],
+  "events": [
+    { "name": "Événement", "category": "Festival", "date": "Mai 2026", "venue": "Lieu", "description": "Description" }
+  ],
+  "budget_breakdown": { "vols": "300€", "hebergement": "360€", "activites": "100€", "restauration": "200€", "transports": "80€", "divers": "60€", "total": "1100€" },
+  "tips": [{ "title": "Conseil pratique", "content": "Contenu utile" }],
+  "local_phrases": [{ "phrase": "Merci", "translation": "traduction locale" }]
+}`);
   return parseJSON(raw);
 }
 
-// ---- 4. Chat conversationnel pour modifier un itinéraire ----
 export async function chatModify({ currentPack, userMessage, mode }) {
-  const prompt = `Tu es TripGenie, un assistant de voyage. L'utilisateur veut modifier son itinéraire.
-
-Itinéraire actuel (résumé): ${JSON.stringify(currentPack?.itinerary?.slice(0,2))}
-Mode: ${mode}
-
-Message de l'utilisateur: "${userMessage}"
-
-Réponds en JSON:
-{
-  "response": "ta réponse naturelle en français",
-  "modifications": { "champs à modifier dans le pack" },
-  "needs_full_regen": true|false
-}`;
-
-  const raw = await callClaude(prompt, 1000);
+  const raw = await callAI(`Tu es TripGenie. L'utilisateur veut modifier son voyage pour ${currentPack?.destination}.
+Message: "${userMessage}"
+Réponds en JSON: { "response": "ta réponse en français", "needs_full_regen": false }`);
   return parseJSON(raw);
 }
 
-export { callClaude };
+export { callAI as callClaude };
