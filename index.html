@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TripGenie — Your AI Travel Planner</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/header.css">
+  <link rel="stylesheet" href="css/search.css">
+  <link rel="stylesheet" href="css/results.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<header>
+  <div class="logo">
+    <div class="logo-gem"><div class="logo-gem-inner"></div></div>
+    TripGenie
+  </div>
+  <nav>
+    <a href="#">Destinations</a>
+    <a href="#">Inspiration</a>
+    <a href="#">Mes voyages</a>
+    <a href="#">Tarifs</a>
+  </nav>
+  <button class="cta-header" onclick="scrollToSearch()">Planifier un voyage</button>
+</header>
+
+<!-- ===================== HERO ===================== -->
+<div class="hero">
+  <div class="hero-badge">✦ Powered by AI · Vos voyages de rêve</div>
+  <h1>Votre itinéraire parfait,<br><em>créé en secondes</em></h1>
+  <p>TripGenie analyse vos préférences et génère un voyage sur-mesure : vols, hôtels, activités et événements locaux — tout en un.</p>
+</div>
+
+<!-- ===================== SEARCH CARD ===================== -->
+<div style="padding: 0 2rem;">
+  <div class="search-card" id="searchCard">
+
+    <!-- Trip type tabs -->
+    <div class="search-tabs">
+      <button class="search-tab active" onclick="setTripType('roundtrip', this)">✈ Aller-Retour</button>
+      <button class="search-tab" onclick="setTripType('oneway', this)">→ Aller Simple</button>
+      <button class="search-tab" onclick="setTripType('multileg', this)">◇ Multi-destinations</button>
+    </div>
+
+    <!-- Row 1 : Origin / Destination / Travelers -->
+    <div class="form-grid">
+      <div class="field-group">
+        <label class="field-label">🛫 Départ</label>
+        <input type="text" class="field-input" id="fieldOrigin" placeholder="Paris, Lyon, Marseille..." value="Paris">
+      </div>
+      <div class="field-group">
+        <label class="field-label">🌍 Destination</label>
+        <input type="text" class="field-input" id="fieldDest" placeholder="Tokyo, New York, Rome...">
+      </div>
+      <div class="field-group">
+        <label class="field-label">👥 Voyageurs</label>
+        <select class="field-input" id="fieldTravelers">
+          <option>1 voyageur</option>
+          <option selected>2 voyageurs</option>
+          <option>3 voyageurs</option>
+          <option>4 voyageurs</option>
+          <option>5+ voyageurs</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 2 : Dates / Budget -->
+    <div class="form-grid">
+      <div class="field-group">
+        <label class="field-label">📅 Départ</label>
+        <input type="date" class="field-input" id="fieldDeparture">
+      </div>
+      <div class="field-group">
+        <label class="field-label">📅 Retour</label>
+        <input type="date" class="field-input" id="fieldReturn">
+      </div>
+      <div class="field-group">
+        <label class="field-label">💰 Budget total</label>
+        <select class="field-input" id="fieldBudget">
+          <option>&lt; 1 000 €</option>
+          <option>1 000 – 2 000 €</option>
+          <option selected>2 000 – 4 000 €</option>
+          <option>4 000 – 8 000 €</option>
+          <option>&gt; 8 000 € (Luxe)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Preferences -->
+    <p class="field-label" style="margin-bottom: 10px;">Vos préférences de voyage</p>
+    <div class="preferences-grid" id="prefsGrid">
+      <button class="pref-chip" onclick="togglePref(this)">🏛 Culture & Histoire</button>
+      <button class="pref-chip selected" onclick="togglePref(this)">🍽 Gastronomie</button>
+      <button class="pref-chip" onclick="togglePref(this)">🏖 Plages</button>
+      <button class="pref-chip selected" onclick="togglePref(this)">🎭 Arts & Spectacles</button>
+      <button class="pref-chip" onclick="togglePref(this)">🥾 Aventure & Nature</button>
+      <button class="pref-chip" onclick="togglePref(this)">🛍 Shopping</button>
+      <button class="pref-chip selected" onclick="togglePref(this)">🏙 Vie nocturne</button>
+      <button class="pref-chip" onclick="togglePref(this)">💆 Bien-être & Spa</button>
+      <button class="pref-chip" onclick="togglePref(this)">⛺ Camping</button>
+      <button class="pref-chip" onclick="togglePref(this)">📸 Photographie</button>
+      <button class="pref-chip" onclick="togglePref(this)">🎵 Musique & Festivals</button>
+      <button class="pref-chip" onclick="togglePref(this)">👨‍👩‍👧 Famille</button>
+    </div>
+
+    <!-- Generate button -->
+    <button class="btn-generate" id="btnGenerate">
+      <span id="btnText">✦ Générer mon itinéraire</span>
+      <span id="btnSpinner" style="display:none" class="spinner"></span>
+    </button>
+
+  </div>
+</div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<div class="main-content">
+
+  <!-- Loading -->
+  <div class="loading-state" id="loadingState">
+    <div class="loading-gem"></div>
+    <div class="loading-text">TripGenie prépare votre voyage...</div>
+    <div class="loading-sub">Analyse des vols, hôtels et activités en cours</div>
+    <div class="loading-steps">
+      <div class="loading-step"><div class="step-dot active" id="dot1"></div> Vols</div>
+      <div class="loading-step"><div class="step-dot" id="dot2"></div> Hôtels</div>
+      <div class="loading-step"><div class="step-dot" id="dot3"></div> Activités</div>
+      <div class="loading-step"><div class="step-dot" id="dot4"></div> Événements</div>
+      <div class="loading-step"><div class="step-dot" id="dot5"></div> Itinéraire</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- Header résultats -->
+    <div class="results-header">
+      <div>
+        <div class="trip-title" id="resTitle"></div>
+        <div class="trip-meta" id="resMeta"></div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-export" onclick="printItinerary()">🖨 Imprimer</button>
+        <button class="btn-export" onclick="showToast('Itinéraire sauvegardé !')">💾 Sauvegarder</button>
+        <button class="btn-export" onclick="showToast('Lien copié !')">🔗 Partager</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <!-- Regen bar -->
+    <div class="regen-bar">
+      <div>
+        <div style="font-weight:500; margin-bottom:2px;">Pas satisfait ? Personnalisez davantage</div>
+        <div class="regen-text">TripGenie peut ajuster l'itinéraire selon vos retours</div>
+      </div>
+      <div class="regen-actions">
+        <button class="btn-regen" onclick="generateItinerary()">♻ Régénérer</button>
+        <button class="btn-regen primary" onclick="showToast('Chat avec TripGenie ouvert !')">💬 Modifier via chat</button>
+      </div>
+    </div>
+
+    <!-- Tabs navigation -->
+    <div class="content-tabs">
+      <button class="content-tab active" onclick="switchTab('itinerary', this)">🗓 Itinéraire</button>
+      <button class="content-tab" onclick="switchTab('flights', this)">✈ Vols</button>
+      <button class="content-tab" onclick="switchTab('hotels', this)">🏨 Hôtels</button>
+      <button class="content-tab" onclick="switchTab('activities', this)">🎭 Activités</button>
+      <button class="content-tab" onclick="switchTab('events', this)">🎉 Événements</button>
+      <button class="content-tab" onclick="switchTab('budget', this)">💰 Budget</button>
+      <button class="content-tab" onclick="switchTab('tips', this)">💡 Conseils</button>
+    </div>
+
+    <!-- Tab panels -->
+    <div class="tab-panel active" id="tab-itinerary">
+      <div id="itineraryContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-flights">
+      <div class="section-header">
+        <h3>Vols disponibles</h3>
+        <p>Sélectionnez votre vol aller et retour</p>
+      </div>
+      <div id="flightsContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-hotels">
+      <div class="section-header">
+        <h3>Hébergements recommandés</h3>
+        <p>Sélectionnés selon votre budget et vos préférences</p>
+      </div>
+      <div class="hotels-grid" id="hotelsContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-activities">
+      <div class="section-header">
+        <h3>Activités & Expériences</h3>
+        <p>Personnalisées selon vos intérêts</p>
+      </div>
+      <div class="activity-list" id="activitiesContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-events">
+      <div class="section-header">
+        <h3>Événements locaux</h3>
+        <p>Concerts, festivals et temps forts pendant votre séjour</p>
+      </div>
+      <div class="events-grid" id="eventsContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-budget">
+      <div class="section-header">
+        <h3>Répartition du budget</h3>
+        <p>Estimation détaillée de votre voyage</p>
+      </div>
+      <div class="budget-breakdown" id="budgetContent"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-tips">
+      <div id="tipsContent"></div>
+    </div>
+
+  </div><!-- /results-section -->
+</div><!-- /main-content -->
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts (type=module pour les imports ES6) -->
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
