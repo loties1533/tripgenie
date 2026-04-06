@@ -1,14 +1,14 @@
 import 'dotenv/config';
 
-const GEMINI_KEY   = process.env.GEMINI_API_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
 
-console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : GEMINI_KEY ? 'Gemini' : '⚠️ AUCUN configuré'}`);
+console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
 
 async function callAI(prompt) {
-  if (ANTHROPIC_KEY) return callClaude(prompt);
-  if (GEMINI_KEY)    return callGemini(prompt);
-  throw new Error('Aucune clé API configurée dans .env');
+  if (ANTHROPIC_KEY)  return callClaude(prompt);
+  if (OPENROUTER_KEY) return callOpenRouter(prompt);
+  throw new Error('Aucune clé API configurée');
 }
 
 async function callClaude(prompt) {
@@ -20,7 +20,7 @@ async function callClaude(prompt) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -30,19 +30,24 @@ async function callClaude(prompt) {
   return data.content[0].text;
 }
 
-async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
-  const res = await fetch(url, {
+async function callOpenRouter(prompt) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_KEY}`,
+      'HTTP-Referer': 'http://localhost:3001',
+      'X-Title': 'TripGenie'
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+      model: 'qwen/qwen3.6-plus:free',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 4000
     })
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`Gemini error: ${JSON.stringify(data.error)}`);
-  return data.candidates[0].content.parts[0].text;
+  if (!res.ok) throw new Error(`OpenRouter error: ${JSON.stringify(data.error)}`);
+  return data.choices[0].message.content;
 }
 
 function parseJSON(raw) {
@@ -71,37 +76,32 @@ Réponds UNIQUEMENT en JSON:
 export async function assemblePack({ destination, flights, events, mode, travelers, budget }) {
   const raw = await callAI(`Tu es TripGenie. Génère un pack voyage COMPLET pour ${destination}.
 Mode:${mode} | Voyageurs:${travelers} | Budget:${budget}€
-Événements: ${JSON.stringify(events?.slice(0,5) || [])}
-
-Réponds UNIQUEMENT en JSON valide (pas de texte avant ou après):
+Réponds UNIQUEMENT en JSON valide:
 {
-  "destination": "${destination}",
-  "country": "Pays",
-  "tagline": "accroche poétique",
-  "overview": "description 2-3 phrases",
-  "weather": { "avg_temp": "20°C", "conditions": "Ensoleillé", "tip": "conseil météo" },
+  "destination": "${destination}", "country": "Pays", "tagline": "accroche poétique", "overview": "description 2-3 phrases",
+  "weather": { "avg_temp": "20°C", "conditions": "Ensoleillé", "tip": "conseil" },
   "summary": { "total_budget": "1100€", "nights": 3, "activities_count": 5 },
   "flights": [
     { "from": "CDG", "from_city": "Paris", "to": "XXX", "to_city": "${destination}", "departure_time": "10:30", "arrival_time": "12:00", "duration": "1h30", "stops": "Direct", "airline": "Air France", "price_per_person": "150€", "type": "outbound" },
     { "from": "XXX", "from_city": "${destination}", "to": "CDG", "to_city": "Paris", "departure_time": "18:00", "arrival_time": "19:30", "duration": "1h30", "stops": "Direct", "airline": "Air France", "price_per_person": "150€", "type": "return" }
   ],
   "hotels": [
-    { "name": "Nom hôtel", "location": "Quartier, ${destination}", "stars": 4, "price_per_night": "120€", "highlights": "description courte", "emoji": "🏨" },
-    { "name": "Nom hôtel 2", "location": "Quartier 2", "stars": 3, "price_per_night": "80€", "highlights": "description courte", "emoji": "🏩" }
+    { "name": "Nom hôtel", "location": "Quartier, ${destination}", "stars": 4, "price_per_night": "120€", "highlights": "description", "emoji": "🏨" },
+    { "name": "Nom hôtel 2", "location": "Quartier 2", "stars": 3, "price_per_night": "80€", "highlights": "description", "emoji": "🏩" }
   ],
   "itinerary": [
-    { "day": 1, "title": "Titre jour 1", "subtitle": "Thème", "items": [
-      { "time": "14:00", "type": "activity", "title": "Activité", "description": "Description 2 phrases", "price": "20€", "duration": "2h" }
+    { "day": 1, "title": "Arrivée et découverte", "subtitle": "Premier contact", "items": [
+      { "time": "14:00", "type": "activity", "title": "Visite du centre", "description": "Découverte des incontournables", "price": "gratuit", "duration": "2h" }
     ]}
   ],
   "activities": [
-    { "name": "Activité", "category": "Culture", "emoji": "🏛", "description": "Description", "duration": "2h", "price": "20€", "best_time": "Matin" }
+    { "name": "Activité phare", "category": "Culture", "emoji": "🏛", "description": "Description détaillée", "duration": "2h", "price": "20€", "best_time": "Matin" }
   ],
   "events": [
-    { "name": "Événement", "category": "Festival", "date": "Mai 2026", "venue": "Lieu", "description": "Description" }
+    { "name": "Événement local", "category": "Festival", "date": "Mai 2026", "venue": "Centre ville", "description": "Événement populaire" }
   ],
   "budget_breakdown": { "vols": "300€", "hebergement": "360€", "activites": "100€", "restauration": "200€", "transports": "80€", "divers": "60€", "total": "1100€" },
-  "tips": [{ "title": "Conseil pratique", "content": "Contenu utile" }],
+  "tips": [{ "title": "Conseil pratique", "content": "Réservez à l'avance pour les meilleures offres" }],
   "local_phrases": [{ "phrase": "Merci", "translation": "traduction locale" }]
 }`);
   return parseJSON(raw);
