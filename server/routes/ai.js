@@ -1,9 +1,5 @@
 // =============================================
 // TRIPGENIE — server/routes/ai.js
-// POST /api/ai/analyze     → analyser requête NL
-// POST /api/ai/destinations → suggérer destinations
-// POST /api/ai/generate    → générer pack complet
-// POST /api/ai/chat        → modifier via chat
 // =============================================
 
 import express from 'express';
@@ -11,122 +7,142 @@ import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify } from '../services/claude.js';
 import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
-import { rankPacks } from '../services/scoring.js';
+import { scorepack } from '../services/scoring.js';
 import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
+// Cache IATA en mémoire (évite appels Amadeus redondants)
+// Ex: "Paris" → "CDG", "Tokyo" → "TYO"
+const iataCache = new Map();
+
+async function getIata(city) {
+  if (!city) return null;
+  const key = city.toLowerCase().trim();
+  if (iataCache.has(key)) return iataCache.get(key);
+  const code = await cityToIata(city);
+  if (code) iataCache.set(key, code);
+  return code;
+}
+
 // ---- POST /api/ai/analyze ----
-// Analyse une requête en langage naturel
 router.post('/analyze', optionalAuth, async (req, res) => {
   try {
     const { input } = req.body;
-    if (!input) return res.status(400).json({ error: 'input requis' });
+    if (!input?.trim()) return res.status(400).json({ error: 'input requis' });
 
     const analysis = await analyzeRequest(input);
     res.json({ analysis });
 
   } catch (err) {
-    console.error('AI analyze error:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'analyse' });
+    console.error('AI analyze error:', err.message);
+    res.status(500).json({ error: 'Erreur lors de l\'analyse de votre demande' });
   }
 });
 
 // ---- POST /api/ai/destinations ----
-// Suggère des destinations si non précisée
 router.post('/destinations', optionalAuth, async (req, res) => {
   try {
     const { mode, budget, travelers, duration, origin, preferences } = req.body;
+    if (!mode) return res.status(400).json({ error: 'mode requis' });
 
     const result = await suggestDestinations({ mode, budget, travelers, duration, origin, preferences });
     res.json(result);
 
   } catch (err) {
-    console.error('AI destinations error:', err);
+    console.error('AI destinations error:', err.message);
     res.status(500).json({ error: 'Erreur lors de la suggestion de destinations' });
   }
 });
 
 // ---- POST /api/ai/generate ----
-// Génère un pack complet avec vraies données APIs
 router.post('/generate', optionalAuth, async (req, res) => {
   try {
     const {
-      destination, origin = 'Paris',
-      departure, return_date,
-      travelers = 2, budget,
-      mode = 'party', preferences = []
+      destination,
+      origin      = 'Paris',
+      departure,
+      return_date,
+      travelers   = 2,
+      budget,
+      mode        = 'party',
+      preferences = []
     } = req.body;
 
-    if (!destination || !departure) {
-      return res.status(400).json({ error: 'destination et departure requis' });
-    }
+    if (!destination?.trim()) return res.status(400).json({ error: 'destination requise' });
+    if (!departure)           return res.status(400).json({ error: 'date de départ requise' });
+    if (!budget || budget <= 0) return res.status(400).json({ error: 'budget invalide' });
 
-    // Lancer toutes les recherches en parallèle
+    // Résolution IATA en parallèle (avec cache)
     const [originIata, destIata] = await Promise.all([
-      cityToIata(origin),
-      cityToIata(destination)
+      getIata(origin),
+      getIata(destination)
     ]);
 
+    // Feedback si codes IATA non trouvés
+    const iataWarnings = [];
+    if (!originIata)  iataWarnings.push(`Ville de départ "${origin}" non reconnue, vols réels indisponibles`);
+    if (!destIata)    iataWarnings.push(`Destination "${destination}" non reconnue, vols réels indisponibles`);
+
+    // Recherches en parallèle — chacune fail gracieusement
     const [flights, events] = await Promise.all([
       originIata && destIata
-        ? searchFlights({
-            origin:        originIata,
-            destination:   destIata,
-            departureDate: departure,
-            returnDate:    return_date,
-            adults:        travelers
-          })
+        ? searchFlights({ origin: originIata, destination: destIata, departureDate: departure, returnDate: return_date, adults: travelers })
         : Promise.resolve([]),
-      searchEvents({
-        location: destination,
-        dateFrom: departure,
-        dateTo:   return_date || departure,
-        mode
-      })
+      searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
     ]);
 
-    // Assembler le pack via Claude avec les vraies données
+    // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
       destination,
       flights,
-      hotels:     [],   // TODO: brancher Booking.com
       events,
-      activities: [],   // TODO: brancher Google Places
       mode,
       travelers,
       budget
     });
 
-    // Scorer le pack
+    // ---- Scoring réel via scoring.js ----
+    const bestFlight = flights[0] ?? null;
+    const scoreResult = scorepack(
+      {
+        vol:        bestFlight ? { price: bestFlight.price, duration_min: bestFlight.outbound?.duration_min, stops: bestFlight.outbound?.stops } : { price: budget * 0.3, duration_min: 120, stops: 0 },
+        hotel:      pack.hotels?.[0] ? { stars: pack.hotels[0].stars, price_per_night: parseInt(pack.hotels[0].price_per_night) || 100, rating: 7.5 } : { stars: 3, price_per_night: 100, rating: 7 },
+        events,
+        activities: pack.activities ?? [],
+        totalPrice: budget
+      },
+      mode,
+      travelers,
+      destination
+    );
+
     const scoredPack = {
       ...pack,
       flights_data: flights,
       events_data:  events,
-      score: {
-        total: 0.85,    // Score calculé par scoring.js
-        mode
-      }
+      score: scoreResult,
+      warnings: iataWarnings.length ? iataWarnings : undefined
     };
 
-    // Sauvegarder si user connecté
+    // Sauvegarde si user connecté
     let tripId = null;
-    if (req.user) {
+    if (req.user && supabase) {
       const { data: trip } = await supabase
         .from('trips')
         .insert({
-          user_id:     req.user.id,
-          title:       `Voyage à ${destination}`,
+          user_id:    req.user.id,
+          title:      `Voyage à ${destination}`,
           destination,
           origin,
           departure,
           return_date,
           travelers,
-          budget:      String(budget),
+          budget:     String(budget),
           mode,
-          pack_data:   scoredPack,
-          score:       scoredPack.score.total,
-          status:      'draft'
+          pack_data:  scoredPack,
+          score:      scoreResult.total,
+          status:     'draft'
         })
         .select('id')
         .single();
@@ -135,32 +151,33 @@ router.post('/generate', optionalAuth, async (req, res) => {
     }
 
     res.json({
-      pack: scoredPack,
-      trip_id: tripId,
+      pack:          scoredPack,
+      trip_id:       tripId,
       flights_found: flights.length,
-      events_found:  events.length
+      events_found:  events.length,
+      score:         scoreResult.total,
+      warnings:      iataWarnings.length ? iataWarnings : undefined
     });
 
   } catch (err) {
-    console.error('AI generate error:', err);
-    res.status(500).json({ error: 'Erreur lors de la génération du pack' });
+    console.error('AI generate error:', err.message);
+    res.status(500).json({ error: 'Erreur lors de la génération du pack. Réessayez.' });
   }
 });
 
 // ---- POST /api/ai/chat ----
-// Modifier un itinéraire via conversation
 router.post('/chat', optionalAuth, async (req, res) => {
   try {
     const { message, current_pack, mode, trip_id } = req.body;
-    if (!message) return res.status(400).json({ error: 'message requis' });
+    if (!message?.trim()) return res.status(400).json({ error: 'message requis' });
 
     const result = await chatModify({
-      currentPack:  current_pack,
-      userMessage:  message,
+      currentPack: current_pack,
+      userMessage: message,
       mode
     });
 
-    // Si l'user est connecté et qu'il y a un trip_id, MAJ en DB
+    // MAJ DB si user connecté et trip existant
     if (req.user && trip_id && result.modifications) {
       await supabase
         .from('trips')
@@ -172,7 +189,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
     res.json(result);
 
   } catch (err) {
-    console.error('AI chat error:', err);
+    console.error('AI chat error:', err.message);
     res.status(500).json({ error: 'Erreur lors de la conversation' });
   }
 });

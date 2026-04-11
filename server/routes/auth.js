@@ -1,8 +1,5 @@
 // =============================================
 // TRIPGENIE — server/routes/auth.js
-// POST /api/auth/signup
-// POST /api/auth/login
-// GET  /api/auth/me
 // =============================================
 
 import express from 'express';
@@ -12,6 +9,13 @@ import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// ---- Validation email ----
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function isValidEmail(email) {
+  return typeof email === 'string' && EMAIL_REGEX.test(email) && email.length <= 254;
+}
 
 // ---- Helpers ----
 function generateToken(user) {
@@ -35,12 +39,16 @@ router.post('/signup', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email et mot de passe requis' });
     }
-
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Format d\'email invalide' });
+    }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min)' });
     }
+    if (password.length > 128) {
+      return res.status(400).json({ error: 'Mot de passe trop long' });
+    }
 
-    // Vérifie si l'email existe déjà
     const { data: existing } = await supabase
       .from('users')
       .select('id')
@@ -51,23 +59,20 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: 'Un compte existe déjà avec cet email' });
     }
 
-    // Hash le password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Crée l'utilisateur
     const { data: user, error } = await supabase
       .from('users')
       .insert({
-        email: email.toLowerCase(),
+        email:    email.toLowerCase(),
         password: hashedPassword,
-        name: name || email.split('@')[0]
+        name:     name?.slice(0, 100) || email.split('@')[0]
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Crée les préférences par défaut
     await supabase.from('user_preferences').insert({ user_id: user.id });
 
     const token = generateToken(user);
@@ -92,8 +97,10 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email et mot de passe requis' });
     }
+    if (!isValidEmail(email)) {
+      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    }
 
-    // Cherche l'utilisateur
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -104,7 +111,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    // Vérifie le password
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
@@ -150,9 +156,14 @@ router.put('/me', requireAuth, async (req, res) => {
   try {
     const { name, avatar_url } = req.body;
 
+    const updates = {};
+    if (name)       updates.name       = name.slice(0, 100);
+    if (avatar_url) updates.avatar_url = avatar_url.slice(0, 500);
+    updates.updated_at = new Date();
+
     const { data: user, error } = await supabase
       .from('users')
-      .update({ name, avatar_url, updated_at: new Date() })
+      .update(updates)
       .eq('id', req.user.id)
       .select()
       .single();

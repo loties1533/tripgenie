@@ -1,10 +1,5 @@
 // =============================================
 // TRIPGENIE — server/routes/trips.js
-// GET    /api/trips          → mes voyages
-// POST   /api/trips          → créer un voyage
-// GET    /api/trips/:id      → détail
-// PUT    /api/trips/:id      → modifier
-// DELETE /api/trips/:id      → supprimer
 // =============================================
 
 import express from 'express';
@@ -13,13 +8,16 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Toutes les routes trips nécessitent auth
 router.use(requireAuth);
 
 // ---- GET /api/trips ----
 router.get('/', async (req, res) => {
   try {
-    const { mode, status, limit = 20, offset = 0 } = req.query;
+    const { mode, status } = req.query;
+
+    // Cap à 50 max, défaut 20, minimum 1
+    const limit  = Math.min(Math.max(parseInt(req.query.limit)  || 20, 1), 50);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
     let query = supabase
       .from('trips')
@@ -34,7 +32,7 @@ router.get('/', async (req, res) => {
     const { data: trips, error } = await query;
     if (error) throw error;
 
-    res.json({ trips, count: trips.length });
+    res.json({ trips, count: trips.length, limit, offset });
 
   } catch (err) {
     console.error('GET trips error:', err);
@@ -58,11 +56,11 @@ router.post('/', async (req, res) => {
     const { data: trip, error } = await supabase
       .from('trips')
       .insert({
-        user_id: req.user.id,
-        title: title || `Voyage à ${destination}`,
+        user_id:    req.user.id,
+        title:      title || `Voyage à ${destination}`,
         destination, country, origin,
         departure, return_date,
-        travelers: travelers || 1,
+        travelers:  travelers || 1,
         budget, mode, pack_data, score,
         status: 'draft'
       })

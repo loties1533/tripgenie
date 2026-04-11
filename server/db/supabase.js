@@ -1,6 +1,5 @@
 // =============================================
 // TRIPGENIE — server/db/supabase.js
-// Client Supabase partagé dans tout le serveur
 // =============================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -8,10 +7,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis dans .env');
-}
+// Supabase optionnel — le serveur fonctionne sans DB
+// (les voyages ne seront pas sauvegardés)
+let supabase = null;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (supabaseUrl && supabaseKey && supabaseKey.startsWith('eyJ')) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('✅ Supabase connecté');
+} else {
+  console.warn('⚠️  Supabase non configuré — sauvegarde désactivée');
+}
 
 export default supabase;

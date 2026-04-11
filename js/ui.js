@@ -1,6 +1,5 @@
 /* ============================================
-   TRIPGENIE — UI Utilities
-   js/ui.js
+   TRIPGENIE — js/ui.js
    ============================================ */
 
 // ---- TOAST ----
@@ -56,7 +55,7 @@ export function initDates() {
   const ret = new Date(dep);
   ret.setDate(ret.getDate() + 7);
   document.getElementById('fieldDeparture').value = dep.toISOString().split('T')[0];
-  document.getElementById('fieldReturn').value = ret.toISOString().split('T')[0];
+  document.getElementById('fieldReturn').value     = ret.toISOString().split('T')[0];
 }
 
 // ---- FORMAT DATE ----
@@ -66,22 +65,30 @@ export function formatDate(d) {
   return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// ---- LOADING DOTS ANIMATION ----
+// ---- LOADING DOTS ----
 export function startLoadingDots() {
   const dotKeys = ['dot1', 'dot2', 'dot3', 'dot4', 'dot5'];
   let dotIdx = 0;
-  return setInterval(() => {
-    if (dotIdx > 0) document.getElementById(dotKeys[dotIdx - 1]).className = 'step-dot done';
+  const timer = setInterval(() => {
+    if (dotIdx > 0) {
+      const prev = document.getElementById(dotKeys[dotIdx - 1]);
+      if (prev) prev.className = 'step-dot done';
+    }
     if (dotIdx < dotKeys.length) {
-      document.getElementById(dotKeys[dotIdx]).className = 'step-dot active';
+      const cur = document.getElementById(dotKeys[dotIdx]);
+      if (cur) cur.className = 'step-dot active';
       dotIdx++;
     }
   }, 1200);
+  return timer;
 }
 
+// ---- STOP LOADING DOTS (manquait dans la version précédente) ----
 export function stopLoadingDots(timer) {
-  clearInterval(timer);
-  ['dot1', 'dot2', 'dot3', 'dot4', 'dot5'].forEach(k => {
-    document.getElementById(k).className = 'step-dot done';
+  if (timer) clearInterval(timer);
+  // Marque tous les dots comme "done" pour feedback visuel
+  ['dot1', 'dot2', 'dot3', 'dot4', 'dot5'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'step-dot done';
   });
 }
