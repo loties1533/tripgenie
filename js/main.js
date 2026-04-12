@@ -113,3 +113,63 @@ function setLoadingState(loading) {
     loader.classList.remove('active');
   }
 }
+
+async function analyzeNLP() {
+  const input = document.getElementById('nlpInput').value.trim();
+  if (!input) return;
+
+  const btn = document.getElementById('nlpBtn');
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('http://localhost:3000/api/ai/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input })
+    });
+    const data = await res.json();
+    const a = data.analysis;
+
+    if (a.origin)      document.getElementById('fieldOrigin').value = a.origin;
+    if (a.destination) document.getElementById('fieldDest').value = a.destination;
+
+    if (a.travelers) {
+      const sel = document.getElementById('fieldTravelers');
+      [...sel.options].forEach(o => {
+        if (o.value.includes(a.travelers)) o.selected = true;
+      });
+    }
+
+    if (a.budget_total) {
+      const sel = document.getElementById('fieldBudget');
+      const b = a.budget_total;
+      [...sel.options].forEach(o => {
+        const t = o.textContent;
+        if (b <= 1000 && t.includes('800'))     o.selected = true;
+        else if (b <= 2000 && t.includes('1 000')) o.selected = true;
+        else if (b <= 4000 && t.includes('2 000')) o.selected = true;
+        else if (b <= 8000 && t.includes('4 000')) o.selected = true;
+        else if (b > 8000 && t.includes('8 000'))  o.selected = true;
+      });
+    }
+
+    if (a.destination) {
+      showToast(`✨ ${a.travelers} voyageurs · ${a.mode} · ${a.budget_total}€ — Génération en cours...`);
+      btn.textContent = 'Analyser';
+      btn.disabled = false;
+      setTimeout(() => generateItinerary(), 500);
+    } else {
+      showToast('✨ Compris ! Ajoute une destination 🌍');
+      btn.textContent = 'Analyser';
+      btn.disabled = false;
+    }
+
+  } catch (err) {
+    showToast('Erreur analyse, réessaie');
+    btn.textContent = 'Analyser';
+    btn.disabled = false;
+  }
+}
+
+window.analyzeNLP = analyzeNLP;

@@ -43,6 +43,17 @@
 
 <!-- ===================== SEARCH CARD ===================== -->
 <div style="padding: 0 2rem;">
+  <!-- NLP Input -->
+<div class="nlp-bar" id="nlpBar">
+  <input 
+    type="text" 
+    class="nlp-input" 
+    id="nlpInput" 
+    placeholder='✨ Décris ton voyage... "4 amis, week-end fête, 1000€ depuis Lyon"'
+  >
+  <button class="nlp-btn" id="nlpBtn" onclick="analyzeNLP()">Analyser</button>
+</div>
+<p class="nlp-hint">ou remplis le formulaire ci-dessous</p>
   <div class="search-card" id="searchCard">
 
     <!-- Trip type tabs -->
