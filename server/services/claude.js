@@ -64,7 +64,7 @@ async function callClaude(systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model:      'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 4000,
       system:     systemPrompt,
       messages:   [{ role: 'user', content: userPrompt }]
     })
@@ -74,33 +74,47 @@ async function callClaude(systemPrompt, userPrompt) {
   return data.content[0].text;
 }
 
-async function callOpenRouter(systemPrompt, userPrompt) {
-  const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${OPENROUTER_KEY}`,
-      'HTTP-Referer':  'http://localhost:3001',
-      'X-Title':       'TripGenie'
-    },
-    body: JSON.stringify({
-      model:      'meta-llama/llama-3.3-70b-instruct:free',
-      max_tokens: 2000,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user',   content: userPrompt }
-      ]
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`OpenRouter error: ${JSON.stringify(data.error)}`);
-  return data.choices[0].message.content;
-}
+const FREE_MODELS = [
+  'google/gemma-3-27b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'z-ai/glm-4.5-air:free',
+  'liquid/lfm-2.5-1.2b-instruct:free',
+];
 
-async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
-  if (ANTHROPIC_KEY)  return callClaude(systemPrompt, userPrompt);
-  if (OPENROUTER_KEY) return callOpenRouter(systemPrompt, userPrompt);
-  throw new Error('Aucune clé API configurée');
+async function callOpenRouter(systemPrompt, userPrompt) {
+  for (const model of FREE_MODELS) {
+    try {
+      const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${OPENROUTER_KEY}`,
+          'HTTP-Referer':  'http://localhost:3001',
+          'X-Title':       'TripGenie'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4000,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user',   content: userPrompt }
+          ]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error?.code === 429) {
+        console.warn(`Model ${model} unavailable, trying next...`);
+        continue;
+      }
+      console.log(`✅ Using model: ${model}`);
+      return data.choices[0].message.content;
+    } catch (err) {
+      console.warn(`Model ${model} failed: ${err.message}`);
+      continue;
+    }
+  }
+  throw new Error('Tous les modèles gratuits sont indisponibles. Réessaie dans 1 minute.');
 }
 
 // =============================================
@@ -123,13 +137,20 @@ JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"rais
   return parseJSON(raw);
 }
 
+async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
+  if (ANTHROPIC_KEY)  return callClaude(systemPrompt, userPrompt);
+  if (OPENROUTER_KEY) return callOpenRouter(systemPrompt, userPrompt);
+  throw new Error('Aucune clé API configurée');
+}
+
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, travelers, budget }) {
+export async function assemblePack({ destination, flights, events, mode, travelers, budget, departure, return_date }) {
   const dest   = sanitizeInput(destination);
-  const nights = Math.max(Math.round(budget / 250), 2);
-
+  const nights = departure && return_date
+    ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
+    : Math.max(Math.round(budget / 250), 2);
   // Appel IA — uniquement les textes créatifs, format plat et court
   const textRaw = await callAI(
     `Voyage à ${dest}. Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
