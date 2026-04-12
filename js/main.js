@@ -1,6 +1,5 @@
 // =============================================
 // TRIPGENIE — js/main.js
-// Point d'entrée — appelle le back Express
 // =============================================
 
 import { generatePack } from './api.js';
@@ -16,21 +15,51 @@ const tripType = { value: 'roundtrip' };
 document.addEventListener('DOMContentLoaded', () => {
   initDates();
 
-  // Expose globalement pour les onclick HTML
-  window.showToast       = showToast;
-  window.switchTab       = switchTab;
-  window.setTripType     = (t, btn) => setTripType(t, btn, tripType);
-  window.togglePref      = togglePref;
-  window.printItinerary  = printItinerary;
-  window.scrollToSearch  = scrollToSearch;
+  window.showToast         = showToast;
+  window.switchTab         = switchTab;
+  window.setTripType       = (t, btn) => setTripType(t, btn, tripType);
+  window.togglePref        = togglePref;
+  window.printItinerary    = printItinerary;
+  window.scrollToSearch    = scrollToSearch;
   window.generateItinerary = generateItinerary;
+  window.chatSend          = chatSend;
+  window.handleChip        = handleChip;
+  window.analyzeNLP        = () => {};
 
   document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
+
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.addEventListener('keypress', e => {
+      if (e.key === 'Enter') chatSend();
+    });
+  }
+
+  setTimeout(() => {
+    addMessage(STEPS[0].question, 'bot', STEPS[0].chips);
+  }, 500);
+
+
+// Compteur animé hero  ← AJOUTE ICI
+  document.querySelectorAll('.hero-stat-num').forEach(el => {
+    const target = parseInt(el.dataset.target);
+    const step = target / (2000 / 16);
+    let current = 0;
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= target) { current = target; clearInterval(timer); }
+      el.textContent = Math.floor(current).toLocaleString();
+    }, 16);
+  });
 });
 
+// =============================================
+// GÉNÉRATION MANUELLE (formulaire)
+// =============================================
+
 async function generateItinerary() {
-  const dest       = document.getElementById('fieldDest').value.trim();
-  const origin     = document.getElementById('fieldOrigin').value.trim();
+  const dest   = document.getElementById('fieldDest').value.trim();
+  const origin = document.getElementById('fieldOrigin').value.trim();
 
   if (!dest) { showToast('Veuillez entrer une destination'); return; }
 
@@ -43,10 +72,7 @@ async function generateItinerary() {
     ? Math.round((new Date(returnDate) - new Date(departure)) / 86400000)
     : 7;
 
-  // Extraire le nombre de voyageurs
   const travelersNum = parseInt(travelers) || 2;
-
-  // Extraire le budget en nombre
   const budgetNum = budget.includes('8 000') ? 10000
     : budget.includes('4 000') ? 6000
     : budget.includes('2 000') ? 3000
@@ -57,7 +83,6 @@ async function generateItinerary() {
   const dotTimer = startLoadingDots();
 
   try {
-    // Appel au BACK — plus d'appel direct à Claude ici
     const result = await generatePack({
       destination:  dest,
       origin:       origin || 'Paris',
@@ -70,8 +95,6 @@ async function generateItinerary() {
     });
 
     stopLoadingDots(dotTimer);
-
-    // Le back retourne { pack, trip_id, flights_found, events_found }
     const data = result.pack || result;
     renderResults(data, { origin, dest, departure, returnDate, travelers, budget, days });
 
@@ -84,14 +107,13 @@ async function generateItinerary() {
   setLoadingState(false);
 }
 
-// Détecte le mode selon les préférences sélectionnées
 function detectMode(prefs) {
   const p = prefs.map(x => x.toLowerCase());
   if (p.some(x => x.includes('nuit') || x.includes('fête') || x.includes('musique'))) return 'party';
   if (p.some(x => x.includes('spa') || x.includes('bien') || x.includes('calme')))    return 'relax';
   if (p.some(x => x.includes('luxe') || x.includes('vip')))                           return 'luxury';
   if (p.some(x => x.includes('famille')))                                              return 'group';
-  return 'party'; // défaut
+  return 'party';
 }
 
 function setLoadingState(loading) {
@@ -102,7 +124,7 @@ function setLoadingState(loading) {
   const results = document.getElementById('resultsSection');
 
   btn.disabled          = loading;
-  btnText.style.display = loading ? 'none'         : 'inline';
+  btnText.style.display = loading ? 'none'        : 'inline';
   spinner.style.display = loading ? 'inline-block' : 'none';
 
   if (loading) {
@@ -114,62 +136,212 @@ function setLoadingState(loading) {
   }
 }
 
-async function analyzeNLP() {
-  const input = document.getElementById('nlpInput').value.trim();
-  if (!input) return;
+// =============================================
+// CHAT CONVERSATIONNEL IA
+// =============================================
 
-  const btn = document.getElementById('nlpBtn');
-  btn.textContent = '...';
-  btn.disabled = true;
+const chatState = {
+  step: 0,
+  data: { travelers: 2, mode: 'party', budget: 1500, origin: 'Paris', destination: null, duration: 7 }
+};
 
-  try {
-    const res = await fetch('http://localhost:3000/api/ai/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input })
+const STEPS = [
+  { key: 'travelers', question: "Salut ! Vous partez à combien ? 👥",    chips: ['Solo', '2 personnes', '3-4 amis', '5+ personnes'] },
+  { key: 'mode',      question: "Quelle ambiance vous cherchez ? ✨",     chips: ['🎉 Fête', '🧘 Détente', '🏛 Culture', '🌴 Plage', '😮 Surprise'] },
+  { key: 'budget',    question: "Budget total pour le groupe ? 💰",       chips: ['< 500€', '500-1000€', '1000-2000€', '2000-5000€', '5000€+'] },
+  { key: 'duration',  question: "Combien de temps ? 📅",                  chips: ['Week-end (2j)', 'Semaine (7j)', '10 jours', '2 semaines'] },
+  { key: 'origin',    question: "Vous partez d'où ? ✈️",                  chips: ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Autre'] },
+];
+
+function addMessage(text, type = 'bot', chips = []) {
+  const messages = document.getElementById('chatMessages');
+  if (!messages) return;
+
+  const div = document.createElement('div');
+  div.className = `chat-msg ${type}`;
+  div.innerHTML = `<div class="chat-bubble">${text}</div>`;
+
+  if (chips.length) {
+    const chipsDiv = document.createElement('div');
+    chipsDiv.className = 'chat-chips';
+    chips.forEach(chip => {
+      const btn = document.createElement('button');
+      btn.className = 'chat-chip';
+      btn.textContent = chip;
+      btn.onclick = () => handleChip(chip);
+      chipsDiv.appendChild(btn);
     });
-    const data = await res.json();
-    const a = data.analysis;
-
-    if (a.origin)      document.getElementById('fieldOrigin').value = a.origin;
-    if (a.destination) document.getElementById('fieldDest').value = a.destination;
-
-    if (a.travelers) {
-      const sel = document.getElementById('fieldTravelers');
-      [...sel.options].forEach(o => {
-        if (o.value.includes(a.travelers)) o.selected = true;
-      });
-    }
-
-    if (a.budget_total) {
-      const sel = document.getElementById('fieldBudget');
-      const b = a.budget_total;
-      [...sel.options].forEach(o => {
-        const t = o.textContent;
-        if (b <= 1000 && t.includes('800'))     o.selected = true;
-        else if (b <= 2000 && t.includes('1 000')) o.selected = true;
-        else if (b <= 4000 && t.includes('2 000')) o.selected = true;
-        else if (b <= 8000 && t.includes('4 000')) o.selected = true;
-        else if (b > 8000 && t.includes('8 000'))  o.selected = true;
-      });
-    }
-
-    if (a.destination) {
-      showToast(`✨ ${a.travelers} voyageurs · ${a.mode} · ${a.budget_total}€ — Génération en cours...`);
-      btn.textContent = 'Analyser';
-      btn.disabled = false;
-      setTimeout(() => generateItinerary(), 500);
-    } else {
-      showToast('✨ Compris ! Ajoute une destination 🌍');
-      btn.textContent = 'Analyser';
-      btn.disabled = false;
-    }
-
-  } catch (err) {
-    showToast('Erreur analyse, réessaie');
-    btn.textContent = 'Analyser';
-    btn.disabled = false;
+    div.appendChild(chipsDiv);
   }
+
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
 }
 
-window.analyzeNLP = analyzeNLP;
+function showTyping() {
+  const messages = document.getElementById('chatMessages');
+  if (!messages) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg bot';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function handleChip(value) {
+  addMessage(value, 'user');
+
+function quickGenerate(destination, mode) {
+  document.getElementById('fieldDest').value = destination;
+  chatState.data.mode = mode;
+  chatState.data.destination = destination;
+  scrollToSearch();
+  setTimeout(() => generateItinerary(), 300);
+}
+window.quickGenerate = quickGenerate;
+
+  // Mode sélection destination
+  if (window._suggestedDestinations) {
+    const dest = window._suggestedDestinations.find(d => value.includes(d.city));
+    if (dest) {
+      window._suggestedDestinations = null;
+      addMessage(`Excellent choix ! 🚀 Je génère ton pack pour ${dest.city}...`, 'bot');
+      launchGeneration(dest.city);
+      return;
+    }
+  }
+
+  processAnswer(value);
+}
+
+function chatSend() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const value = input.value.trim();
+  if (!value) return;
+  input.value = '';
+  addMessage(value, 'user');
+
+  if (window._suggestedDestinations) {
+    const dest = window._suggestedDestinations.find(d => value.toLowerCase().includes(d.city.toLowerCase()));
+    if (dest) {
+      window._suggestedDestinations = null;
+      addMessage(`Excellent choix ! 🚀 Je génère ton pack pour ${dest.city}...`, 'bot');
+      launchGeneration(dest.city);
+      return;
+    }
+  }
+
+  processAnswer(value);
+}
+
+function processAnswer(value) {
+  const step = STEPS[chatState.step];
+  if (!step) return;
+  const v = value.toLowerCase();
+
+  if (step.key === 'travelers') {
+    chatState.data.travelers = v.includes('solo') ? 1 : v.includes('5') ? 5 : v.includes('3') || v.includes('4') ? 4 : 2;
+  } else if (step.key === 'mode') {
+    chatState.data.mode = v.includes('fête') || v.includes('fete') ? 'party'
+      : v.includes('détente') || v.includes('detente') ? 'relax'
+      : v.includes('culture') ? 'culture'
+      : v.includes('surprise') ? 'surprise'
+      : v.includes('plage') ? 'beach'
+: v.includes('luxe') || v.includes('vip') ? 'luxury'
+      : 'party';
+  } else if (step.key === 'budget') {
+    chatState.data.budget = v.includes('5000') ? 8000
+      : v.includes('2000') ? 4000
+      : v.includes('1000') ? 2000
+      : v.includes('500') ? 800
+      : 1500;
+  } else if (step.key === 'duration') {
+    chatState.data.duration = v.includes('week') ? 2 : v.includes('10') ? 10 : v.includes('2 sem') ? 14 : 7;
+  } else if (step.key === 'origin') {
+    chatState.data.origin = value.includes('Autre') ? 'Paris' : value;
+  }
+
+  chatState.step++;
+
+  showTyping();
+  setTimeout(() => {
+    removeTyping();
+    if (chatState.step < STEPS.length) {
+      addMessage(STEPS[chatState.step].question, 'bot', STEPS[chatState.step].chips);
+    } else {
+      addMessage(`Super ! 🎯 Je cherche les meilleures destinations pour ${chatState.data.travelers} personne(s), mode ${chatState.data.mode}, budget ${chatState.data.budget}€...`, 'bot');
+      suggestAndGenerate();
+    }
+  }, 800);
+}
+
+async function suggestAndGenerate() {
+  // Destinations suggérées par l'IA en local — pas d'appel API
+  const suggestions = {
+    party:   ['Barcelona', 'Ibiza', 'Amsterdam'],
+    relax:   ['Lisbonne', 'Séville', 'Porto'],
+    culture: ['Rome', 'Prague', 'Vienne'],
+    surprise: ['Budapest', 'Tallinn', 'Bucarest'],
+    luxury:  ['Monaco', 'Cannes', 'Mykonos']
+  };
+
+  const mode = chatState.data.mode;
+  const cities = suggestions[mode] || suggestions.party;
+
+  removeTyping();
+  addMessage('Voici mes 3 meilleures suggestions 🌍', 'bot');
+
+  const chips = cities.map(c => c);
+  addMessage('Choisis ta destination :', 'bot', chips);
+
+  window._suggestedDestinations = cities.map(city => ({ city, vibe: '' }));
+}
+
+function launchGeneration(destination) {
+  const d = chatState.data;
+
+  const departure = new Date();
+  departure.setDate(departure.getDate() + 14);
+  const returnDate = new Date(departure);
+  returnDate.setDate(returnDate.getDate() + d.duration);
+
+  const fmt = date => date.toISOString().split('T')[0];
+
+  document.getElementById('fieldDest').value   = destination;
+  document.getElementById('fieldOrigin').value = d.origin;
+
+  setLoadingState(true);
+  const dotTimer = startLoadingDots();
+
+  generatePack({
+    destination,
+    origin:      d.origin,
+    departure:   fmt(departure),
+    return_date: fmt(returnDate),
+    travelers:   d.travelers,
+    budget:      d.budget,
+    mode:        d.mode,
+    preferences: []
+  }).then(result => {
+    stopLoadingDots(dotTimer);
+    const data = result.pack || result;
+    renderResults(data, {
+      origin: d.origin, dest: destination,
+      departure: fmt(departure), returnDate: fmt(returnDate),
+      travelers: d.travelers, budget: d.budget + '€',
+      days: d.duration
+    });
+    setLoadingState(false);
+  }).catch(err => {
+    stopLoadingDots(dotTimer);
+    showToast('Erreur génération, réessaie');
+    setLoadingState(false);
+  });
+}

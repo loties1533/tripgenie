@@ -26,32 +26,64 @@
     TripGenie
   </div>
   <nav>
-    <a href="#">Destinations</a>
-    <a href="#">Inspiration</a>
-    <a href="#">Mes voyages</a>
-    <a href="#">Tarifs</a>
+    <a href="#destinations" onclick="document.getElementById('destinations').scrollIntoView({behavior:'smooth'})">Destinations</a>
+    <a href="#inspiration" onclick="scrollToSearch()">Inspiration</a>
+    <a href="#mes-voyages">Mes voyages</a>
+    <a href="#tarifs">Tarifs</a>
   </nav>
   <button class="cta-header" onclick="scrollToSearch()">Planifier un voyage</button>
 </header>
 
 <!-- ===================== HERO ===================== -->
 <div class="hero">
-  <div class="hero-badge">✦ Powered by AI · Vos voyages de rêve</div>
-  <h1>Votre itinéraire parfait,<br><em>créé en secondes</em></h1>
-  <p>TripGenie analyse vos préférences et génère un voyage sur-mesure : vols, hôtels, activités et événements locaux — tout en un.</p>
+  <div class="hero-bg-destinations">
+    <span>Barcelone</span><span>Tokyo</span><span>Ibiza</span>
+    <span>Mykonos</span><span>New York</span><span>Bali</span>
+    <span>Paris</span><span>Dubaï</span><span>Rome</span>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-badge">✦ Powered by AI · Vos voyages de rêve</div>
+    <h1>Votre itinéraire parfait,<br><em>créé en secondes</em></h1>
+    <p>Décris ton voyage en une phrase. TripGenie trouve la destination, les vols, l'hôtel et les activités — tout optimisé pour toi.</p>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num" data-target="12847">0</span>
+        <span class="hero-stat-label">Voyages générés</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num" data-target="94">0</span>
+        <span class="hero-stat-label">% de satisfaction</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num" data-target="180">0</span>
+        <span class="hero-stat-label">Destinations</span>
+      </div>
+    </div>
+
+    <button class="hero-cta" onclick="scrollToSearch()">
+      ✦ Planifier mon voyage
+      <span class="hero-cta-sub">Gratuit · 30 secondes</span>
+    </button>
+  </div>
 </div>
 
 <!-- ===================== SEARCH CARD ===================== -->
 <div style="padding: 0 2rem;">
   <!-- NLP Input -->
-<div class="nlp-bar" id="nlpBar">
-  <input 
-    type="text" 
-    class="nlp-input" 
-    id="nlpInput" 
-    placeholder='✨ Décris ton voyage... "4 amis, week-end fête, 1000€ depuis Lyon"'
-  >
-  <button class="nlp-btn" id="nlpBtn" onclick="analyzeNLP()">Analyser</button>
+<!-- Chat IA -->
+<div class="ai-chat" id="aiChat">
+  <div class="chat-header">
+    <span class="chat-avatar">✦</span>
+    <span class="chat-title">TripGenie AI</span>
+    <span class="chat-status">en ligne</span>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" class="chat-input" placeholder="Réponds ici...">
+    <button class="chat-send" id="chatSend" onclick="chatSend()">→</button>
+  </div>
 </div>
 <p class="nlp-hint">ou remplis le formulaire ci-dessous</p>
   <div class="search-card" id="searchCard">
@@ -149,6 +181,56 @@
       <div class="loading-step"><div class="step-dot" id="dot5"></div> Itinéraire</div>
     </div>
   </div>
+
+  <!-- ===================== DESTINATIONS ===================== -->
+<section class="destinations-section" id="destinations">
+  <h2>Inspirations voyage</h2>
+  <p>Clique sur une destination pour générer ton pack instantanément</p>
+  <div class="dest-grid">
+    <div class="dest-card" onclick="quickGenerate('Barcelone', 'party')">
+      <img src="https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800&q=80" alt="Barcelone">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">Barcelone</div>
+        <div class="dest-card-tag">🎉 Fête & Nightlife</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="quickGenerate('Mykonos', 'beach')">
+      <img src="https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a?w=800&q=80" alt="Mykonos">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">Mykonos</div>
+        <div class="dest-card-tag">🏖 Plage & Détente</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="quickGenerate('Tokyo', 'culture')">
+      <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80" alt="Tokyo">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">Tokyo</div>
+        <div class="dest-card-tag">🏛 Culture & Découverte</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="quickGenerate('Ibiza', 'party')">
+      <img src="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&q=80" alt="Ibiza">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">Ibiza</div>
+        <div class="dest-card-tag">🎵 Musique & Clubs</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="quickGenerate('Maldives', 'luxury')">
+      <img src="https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&q=80" alt="Maldives">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">Maldives</div>
+        <div class="dest-card-tag">💎 Luxe & Romance</div>
+      </div>
+    </div>
+    <div class="dest-card" onclick="quickGenerate('New York', 'group')">
+      <img src="https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800&q=80" alt="New York">
+      <div class="dest-card-overlay">
+        <div class="dest-card-name">New York</div>
+        <div class="dest-card-tag">👥 Groupe & City Trip</div>
+      </div>
+    </div>
+  </div>
+</section>
 
   <!-- Results -->
   <div class="results-section" id="resultsSection">

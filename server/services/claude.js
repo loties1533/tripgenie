@@ -4,11 +4,11 @@
 
 import 'dotenv/config';
 
-const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY;
-const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
 const AI_TIMEOUT_MS  = 45_000;
 
-console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
+console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_API_KEY ? 'Gemini' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
@@ -77,9 +77,13 @@ async function callClaude(systemPrompt, userPrompt) {
 const FREE_MODELS = [
   'google/gemma-3-27b-it:free',
   'google/gemma-4-26b-a4b-it:free',
+  'google/gemma-3-12b-it:free',
+  'google/gemma-3-4b-it:free',
   'meta-llama/llama-3.2-3b-instruct:free',
   'z-ai/glm-4.5-air:free',
   'liquid/lfm-2.5-1.2b-instruct:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'openai/gpt-oss-20b:free',
 ];
 
 async function callOpenRouter(systemPrompt, userPrompt) {
@@ -117,6 +121,25 @@ async function callOpenRouter(systemPrompt, userPrompt) {
   throw new Error('Tous les modèles gratuits sont indisponibles. Réessaie dans 1 minute.');
 }
 
+async function callGemini(systemPrompt, userPrompt) {
+  const res = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
+        }],
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+      })
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Gemini error: ${JSON.stringify(data.error)}`);
+  return data.candidates[0].content.parts[0].text;
+}
+
 // =============================================
 // EXPORTS
 // =============================================
@@ -138,8 +161,9 @@ JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"rais
 }
 
 async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
-  if (ANTHROPIC_KEY)  return callClaude(systemPrompt, userPrompt);
-  if (OPENROUTER_KEY) return callOpenRouter(systemPrompt, userPrompt);
+  if (ANTHROPIC_KEY)               return callClaude(systemPrompt, userPrompt);
+  if (process.env.GEMINI_API_KEY)  return callGemini(systemPrompt, userPrompt);
+  if (OPENROUTER_KEY)              return callOpenRouter(systemPrompt, userPrompt);
   throw new Error('Aucune clé API configurée');
 }
 
@@ -208,12 +232,23 @@ Génère UNIQUEMENT ce JSON avec des valeurs courtes (max 15 mots par champ):
     : [{ name:`Soirée à ${dest}`, category:'Nightlife', date:'Pendant votre séjour', venue:'Centre ville', description:'Animation locale garantie' }];
 
   // Budget
-  const vols      = Math.round(budget * 0.28);
-  const heberg    = Math.round(budget * 0.32);
-  const activites = Math.round(budget * 0.15);
-  const resto     = Math.round(budget * 0.15);
-  const trans     = Math.round(budget * 0.06);
-  const divers    = budget - vols - heberg - activites - resto - trans;
+   // Répartition intelligente selon le mode
+const BUDGET_RATIOS = {
+  party:   { vols: 0.25, heberg: 0.25, activites: 0.25, resto: 0.12, trans: 0.08 },
+  student: { vols: 0.35, heberg: 0.30, activites: 0.10, resto: 0.15, trans: 0.05 },
+  luxury:  { vols: 0.20, heberg: 0.45, activites: 0.20, resto: 0.10, trans: 0.03 },
+  group:   { vols: 0.30, heberg: 0.35, activites: 0.15, resto: 0.12, trans: 0.05 },
+  relax:   { vols: 0.22, heberg: 0.40, activites: 0.15, resto: 0.13, trans: 0.07 },
+  surprise:{ vols: 0.28, heberg: 0.32, activites: 0.18, resto: 0.13, trans: 0.06 },
+};
+
+const ratio  = BUDGET_RATIOS[mode] || BUDGET_RATIOS.party;
+const vols      = Math.round(budget * ratio.vols);
+const heberg    = Math.round(budget * ratio.heberg);
+const activites = Math.round(budget * ratio.activites);
+const resto     = Math.round(budget * ratio.resto);
+const trans     = Math.round(budget * ratio.trans);
+const divers    = budget - vols - heberg - activites - resto - trans;
 
   // Structure finale construite côté serveur
   return {
