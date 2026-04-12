@@ -99,8 +99,10 @@ router.post('/generate', optionalAuth, async (req, res) => {
       events,
       mode,
       travelers,
-      budget
-    });
+      budget,
+      departure,
+      return_date
+  });
 
     // ---- Scoring réel via scoring.js ----
     const bestFlight = flights[0] ?? null;
