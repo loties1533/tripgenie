@@ -165,26 +165,73 @@ function renderItinerary(d) {
 
   document.getElementById('itineraryContent').innerHTML = html;
 
-  setTimeout(() => initMap(d.destination), 200);
+  // On passe tout l'objet d pour avoir accès aux hôtels et activités
+  setTimeout(() => initMap(d), 300);
 }
 
 /* ---- MAP INIT ---- */
-async function initMap(destination) {
+async function initMap(d) {
   const mapEl = document.getElementById('tripMap');
   if (!mapEl) return;
   if (window.currentMap) { window.currentMap.remove(); }
+  
   try {
+    const destination = d.destination;
+    // 1. Centrer sur la destination
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
     const data = await res.json();
-    if (data && data.length > 0) {
-      const lat = parseFloat(data[0].lat);
-      const lon = parseFloat(data[0].lon);
-      window.currentMap = L.map('tripMap').setView([lat, lon], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(window.currentMap);
-      L.marker([lat, lon]).addTo(window.currentMap).bindPopup(`<b>${esc(destination)}</b>`).openPopup();
-    } else {
-      mapEl.style.display = 'none';
+    if (!data || !data.length) { mapEl.style.display = 'none'; return; }
+
+    const cityLat = parseFloat(data[0].lat);
+    const cityLon = parseFloat(data[0].lon);
+    
+    window.currentMap = L.map('tripMap').setView([cityLat, cityLon], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+      attribution: '© OpenStreetMap' 
+    }).addTo(window.currentMap);
+
+    // Marqueur ville
+    L.marker([cityLat, cityLon]).addTo(window.currentMap)
+      .bindPopup(`<b>${esc(destination)}</b>`)
+      .openPopup();
+
+    const markers = [];
+
+    // 2. Ajouter les hôtels
+    for (const h of (d.hotels || [])) {
+      try {
+        const hRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(h.name + ' ' + destination)}&limit=1`);
+        const hData = await hRes.json();
+        if (hData?.[0]) {
+          const m = L.marker([hData[0].lat, hData[0].lon], {
+            icon: L.divIcon({ className: 'custom-div-icon', html: "<div style='background:var(--gold);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.2)'>🏨</div>", iconSize: [30, 30], iconAnchor: [15, 15] })
+          }).addTo(window.currentMap).bindPopup(`<b>Hébergement :</b><br>${esc(h.name)}`);
+          markers.push(m);
+        }
+      } catch(e) {}
     }
+
+    // 3. Ajouter les activités
+    for (const a of (d.activities || [])) {
+      try {
+        // On cherche l'activité dans la ville
+        const aRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a.name + ' ' + destination)}&limit=1`);
+        const aData = await aRes.json();
+        if (aData?.[0]) {
+          const m = L.marker([aData[0].lat, aData[0].lon], {
+            icon: L.divIcon({ className: 'custom-div-icon', html: `<div style='background:var(--ink);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.2)'>${a.emoji||'📍'}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] })
+          }).addTo(window.currentMap).bindPopup(`<b>Activité :</b><br>${esc(a.name)}`);
+          markers.push(m);
+        }
+      } catch(e) {}
+    }
+
+    // Ajuster la vue si on a des marqueurs
+    if (markers.length > 0) {
+      const group = new L.featureGroup(markers);
+      window.currentMap.fitBounds(group.getBounds().pad(0.2));
+    }
+
   } catch (err) {
     console.error("Map error:", err);
   }

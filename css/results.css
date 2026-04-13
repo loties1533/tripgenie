@@ -232,3 +232,17 @@
 .btn-regen:hover { border-color: var(--gold); background: var(--gold-light); }
 .btn-regen.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
 .btn-regen.primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+
+/* --- PRINT RULES --- */
+@media print {
+  header, .hero, .search-card, .nlp-hint, .ai-chat, 
+  .destinations-section, .regen-bar, .toast, 
+  .results-header button, .content-tabs, #tripMap,
+  .activity-price-col button {
+    display: none !important;
+  }
+  body { background: #fff !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+  .tab-panel { display: block !important; opacity: 1 !important; page-break-after: always; }
+  .glass-card { border: 1px solid #eee !important; background: #fff !important; box-shadow: none !important; }
+}

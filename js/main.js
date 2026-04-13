@@ -2,7 +2,7 @@
 // TRIPGENIE — js/main.js
 // =============================================
 
-import { generatePack, getDestinations, login, signup, logout, getCurrentUser } from './api.js';
+import { generatePack, getDestinations, login, signup, logout, getCurrentUser, getPublicTrip, chatModify } from './api.js';
 import { renderResults } from './render.js';
 import {
   showToast, switchTab, setTripType, togglePref,
@@ -30,8 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.switchAuthTab     = switchAuthTab;
   window.handleLogin       = handleLogin;
   window.handleSignup      = handleSignup;
+  window.shareTrip         = shareTrip;
 
   checkAuthBlock();
+  checkDeepLink();
 
   document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
 
@@ -103,7 +105,10 @@ async function generateItinerary() {
 
     stopLoadingDots(dotTimer);
     const data = result.pack || result;
-    renderResults(data, { origin, dest, departure, returnDate, travelers, budget, days });
+    window.currentTripId = result.trip_id;
+    window.currentPackData = data;
+    window.currentRenderParams = { origin, dest, departure, returnDate, travelers, budget, days };
+    renderResults(data, window.currentRenderParams);
 
   } catch (err) {
     stopLoadingDots(dotTimer);
@@ -271,6 +276,13 @@ function chatSend() {
   input.value = '';
   addMessage(value, 'user');
 
+  // SI UN VOYAGE EST DÉJÀ AFFICHÉ -> MODE RAFFINEMENT
+  if (window.currentPackData) {
+    handleRefinement(value);
+    return;
+  }
+
+  // SINON -> MODE QUESTIONNAIRE / SUGGESTION
   if (window._suggestedDestinations) {
     const dest = window._suggestedDestinations.find(d => value.toLowerCase().includes(d.city.toLowerCase()));
     if (dest) {
@@ -357,8 +369,8 @@ async function suggestAndGenerate() {
 
   } catch (err) {
     removeTyping();
-    console.error(err);
-    addMessage("Oups, mon moteur de recherche a eu un petit hoquet. Peux-tu réessayer ?", 'bot', ['On recommence']);
+    console.error('Destinations suggest error:', err);
+    addMessage("Je n'arrive pas à joindre mes experts pour le moment, mais ne t'inquiète pas, on peut quand même continuer !", 'bot', ['On recommence']);
   }
 }
 
@@ -390,12 +402,15 @@ function launchGeneration(destination) {
   }).then(result => {
     stopLoadingDots(dotTimer);
     const data = result.pack || result;
-    renderResults(data, {
+    window.currentTripId = result.trip_id;
+    window.currentPackData = data;
+    window.currentRenderParams = {
       origin: d.origin, dest: destination,
       departure: fmt(departure), returnDate: fmt(returnDate),
       travelers: d.travelers, budget: d.budget + '€',
       days: d.duration
-    });
+    };
+    renderResults(data, window.currentRenderParams);
     setLoadingState(false);
   }).catch(err => {
     stopLoadingDots(dotTimer);
@@ -479,4 +494,87 @@ function handleLogout() {
   logout();
   showToast('Déconnexion réussie');
   checkAuthBlock();
+}
+
+// ---- DEEP LINK (Partage) ----
+async function checkDeepLink() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tripId = urlParams.get('tripId');
+  if (tripId) {
+    try {
+      showToast('Chargement du voyage partagé...');
+      const { trip } = await getPublicTrip(tripId);
+      if (trip && trip.pack_data) {
+        // Mock des params manquants pour le rendu
+        const params = {
+          departure: trip.departure,
+          returnDate: trip.return_date,
+          days: (trip.pack_data.summary?.nights || 6) + 1,
+          travelers: trip.travelers,
+          budget: trip.budget
+        };
+        renderResults(trip.pack_data, params);
+      }
+    } catch (err) {
+      console.error('DeepLink error:', err);
+      showToast('Impossible de charger ce voyage.');
+    }
+  }
+}
+
+// ---- SHARE TRIP ----
+async function shareTrip() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let tripId = urlParams.get('tripId');
+  
+  if (!tripId && window.currentTripId) {
+    tripId = window.currentTripId;
+  }
+
+  if (tripId) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?tripId=${tripId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('Lien de partage copié dans le presse-papier !');
+    } catch (err) {
+      showToast(`Lien : ${shareUrl}`);
+    }
+  } else {
+    showToast('Sauvegardez d\'abord votre voyage pour le partager.');
+  }
+}
+
+async function handleRefinement(message) {
+  try {
+    showTyping();
+    const res = await chatModify(message, window.currentPackData, chatState.data.mode, window.currentTripId);
+    removeTyping();
+
+    if (res.response) {
+      addMessage(res.response, 'bot');
+    }
+
+    if (res.needs_full_regen) {
+      addMessage("D'accord, je vais générer une nouvelle proposition complète...", 'bot');
+      generateItinerary();
+      return;
+    }
+
+    if (res.modifications) {
+      // Fusionner les modifications dans le pack actuel
+      Object.keys(res.modifications).forEach(key => {
+        if (res.modifications[key]) {
+          window.currentPackData[key] = res.modifications[key];
+        }
+      });
+      
+      showToast('Itinéraire mis à jour ! 🚀');
+      renderResults(window.currentPackData, window.currentRenderParams);
+    }
+
+  } catch (err) {
+    removeTyping();
+    console.error(err);
+    addMessage("Pardon, j'ai eu un problème pour modifier ton voyage. On réessaie ?", 'bot');
+  }
 }

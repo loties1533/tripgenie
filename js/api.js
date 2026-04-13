@@ -131,6 +131,10 @@ export async function getTrip(id) {
   return request(`/trips/${id}`);
 }
 
+export async function getPublicTrip(id) {
+  return request(`/trips/share/${id}`);
+}
+
 export async function saveTrip(tripData) {
   return request('/trips', {
     method: 'POST',

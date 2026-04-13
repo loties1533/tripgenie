@@ -9,9 +9,13 @@ export async function searchWeb(query) {
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8 sec max pour la recherche
+
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         api_key: TAVILY_API_KEY,
         query: query,

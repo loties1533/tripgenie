@@ -8,6 +8,26 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// ---- GET /api/trips/share/:id (Public) ----
+router.get('/share/:id', async (req, res) => {
+  try {
+    const { data: trip, error } = await supabase
+      .from('trips')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (error || !trip) {
+      return res.status(404).json({ error: 'Voyage introuvable' });
+    }
+
+    res.json({ trip });
+  } catch (err) {
+    console.error('Public share error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.use(requireAuth);
 
 // ---- GET /api/trips ----

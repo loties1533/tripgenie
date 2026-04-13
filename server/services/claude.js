@@ -13,6 +13,14 @@ console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_A
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
+const SURVIVAL_DESTINATIONS = {
+  destinations: [
+    { city: "Funchal", country: "Portugal", iata: "FNC", why: "Perle de l'Atlantique, climat parfait et paysages sauvages.", vibe: "Nature & Relax" },
+    { city: "Séville", country: "Espagne", iata: "SVQ", why: "Culture vibrante, tapas incroyables et architecture magnifique.", vibe: "Culture & Fête" },
+    { city: "Ljubljana", country: "Slovénie", iat: "LJU", why: "Capitale verte, ambiance conviviale et joyau caché de l'Europe.", vibe: "Calme & Découverte" }
+  ]
+};
+
 // =============================================
 // HELPERS
 // =============================================
@@ -161,36 +169,58 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
 }
 
 export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, preferences }) {
-  // RAG: Récupération de contexte Web réel — maintenant avec profil
-  const intStr = interests?.join(', ') || 'voyage';
-  const query  = `Meilleures destinations pépites cachées (hidden gems) pour ${profile} cherchant ${mode} et ${intStr} budget ${budget}€ Europe`;
-  const webContext = await searchWeb(query);
+  try {
+    const intStr = interests?.join(', ') || 'voyage';
+    const query  = `Meilleures destinations pépites cachées (hidden gems) pour ${profile} cherchant ${mode} et ${intStr} budget ${budget}€ Europe`;
+    const webContext = await searchWeb(query);
 
-  const raw = await callAI(
-    `${webContext}
-    En t'inspirant FORCEMENT du contexte web, suggère 3 destinations RÉELLES (vérifie l'existence) et originales pour un profil de type "${profile}" cherchant une ambiance "${mode}" avec des intérêts pour "${intStr}".
-    Évite les clichés (Barcelone, Londres). Vérifie que la destination est bien RÉELLE.
-    Profil:${profile} Intérêts:${intStr} Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j
-    JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"Pourquoi c'est parfait pour ce profil","vibe":"vibe"}]}`
-  );
-  return parseJSON(raw);
+    const raw = await callAI(
+      `${webContext}
+      En t'inspirant FORCEMENT du contexte web, suggère 3 destinations RÉELLES (vérifie l'existence) et originales pour un profil de type "${profile}" cherchant une ambiance "${mode}" avec des intérêts pour "${intStr}".
+      Profil:${profile} Intérêts:${intStr} Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j
+      JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"Pourquoi c'est parfait pour ce profil","vibe":"vibe"}]}`
+    );
+    return parseJSON(raw);
+  } catch (err) {
+    console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', err.message);
+    return SURVIVAL_DESTINATIONS;
+  }
 }
 
 async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
-  let lastErr;
+  let errors = [];
+  
+  // 1. Priorité Gemini (Gratuit & Rapide)
   if (process.env.GEMINI_API_KEY) {
-    try { return await callGemini(systemPrompt, userPrompt); }
-    catch (e) { console.warn('Gemini failed:', e.message); lastErr = e; }
+    try { 
+      return await callGemini(systemPrompt, userPrompt); 
+    } catch (e) { 
+      console.warn('Gemini failed:', e.message); 
+      errors.push(`Gemini: ${e.message}`); 
+    }
   }
+
+  // 2. OpenRouter (Large choix de modèles gratuits)
   if (OPENROUTER_KEY) {
-    try { return await callOpenRouter(systemPrompt, userPrompt); }
-    catch (e) { console.warn('OpenRouter failed:', e.message); lastErr = e; }
+    try { 
+      return await callOpenRouter(systemPrompt, userPrompt); 
+    } catch (e) { 
+      console.warn('OpenRouter failed:', e.message); 
+      errors.push(`OpenRouter: ${e.message}`); 
+    }
   }
+
+  // 3. Claude (Dernier recours car payant/limité)
   if (ANTHROPIC_KEY) {
-    try { return await callClaude(systemPrompt, userPrompt); }
-    catch (e) { console.warn('Claude failed:', e.message); lastErr = e; }
+    try { 
+      return await callClaude(systemPrompt, userPrompt); 
+    } catch (e) { 
+      console.warn('Claude failed:', e.message); 
+      errors.push(`Claude: ${e.message}`); 
+    }
   }
-  throw new Error(lastErr ? `Tous les fournisseurs IA ont échoué. Dernier: ${lastErr.message}` : 'Aucune clé API configurée');
+
+  throw new Error(`Tous les services IA ont échoué. Détails : ${errors.join(' | ')}`);
 }
 
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
@@ -362,10 +392,34 @@ const divers    = budget - vols - heberg - activites - resto - trans;
 }
 
 export async function chatModify({ currentPack, userMessage, mode }) {
+  const systemPrompt = `Tu es l'expert voyage TripGenie. L'utilisateur veut modifier son voyage à ${currentPack?.destination}.
+  
+  CONTEXTE ACTUEL :
+  - Destination : ${currentPack?.destination}
+  - Budget : ${currentPack?.summary?.total_budget}
+  - Pack actuel : ${JSON.stringify(currentPack)}
+
+  CONSIGNES :
+  1. Réponds de manière amicale et concise (champ "response").
+  2. Si l'utilisateur demande une modification majeure (ex: changer de ville), mets "needs_full_regen" à true.
+  3. Pour des modifications précises (ex: "enlève l'activité 2", "trouve un hôtel moins cher", "ajoute un jour"), suggère les changements dans "modifications".
+  4. Le champ "modifications" peut contenir n'importe quelle clé du pack (hotels, activities, itinerary, budget_breakdown, tips).
+
+  FORMAT RÉPONSE (JSON UNIQUEMENT) :
+  {
+    "response": "Ma réponse à l'utilisateur",
+    "needs_full_regen": false,
+    "modifications": {
+      "hotels": [...], 
+      "activities": [...],
+      "itinerary": [...]
+    }
+  }`;
+
   const raw = await callAI(
-    `Voyage à ${sanitizeInput(currentPack?.destination??'inconnue')} (mode:${mode}). Message: "${sanitizeInput(userMessage)}"
-JSON: {"response":"réponse amicale en français","needs_full_regen":false,"modifications":null}`
+    `${systemPrompt}\n\nMessage de l'utilisateur : "${sanitizeInput(userMessage)}"`
   );
+  
   return parseJSON(raw);
 }
 
