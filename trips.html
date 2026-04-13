@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes Voyages — TripGenie</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/header.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .trips-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+    .trips-header { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--ink); margin-bottom: 24px; }
+    .trips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .trip-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .trip-card h3 { font-size: 20px; margin-bottom: 8px; }
+    .trip-card p { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo"><a href="index.html" style="color:inherit; text-decoration:none;">TripGenie</a></div>
+  <nav>
+    <a href="index.html">Accueil</a>
+  </nav>
+</header>
+<div class="trips-container">
+  <h1 class="trips-header">Mes Voyages Sauvegardés</h1>
+  <div class="trips-grid" id="tripsGrid">
+    <p>Chargement de vos voyages...</p>
+  </div>
+</div>
+<script type="module" src="js/trips.js"></script>
+</body>
+</html>
