@@ -16,6 +16,9 @@
   <link rel="stylesheet" href="css/results.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -28,10 +31,13 @@
   <nav>
     <a href="#destinations" onclick="document.getElementById('destinations').scrollIntoView({behavior:'smooth'})">Destinations</a>
     <a href="#inspiration" onclick="scrollToSearch()">Inspiration</a>
-    <a href="#mes-voyages">Mes voyages</a>
+    <a href="trips.html">Mes voyages</a>
     <a href="#tarifs">Tarifs</a>
   </nav>
-  <button class="cta-header" onclick="scrollToSearch()">Planifier un voyage</button>
+  <div style="display:flex; gap:15px; align-items:center;">
+    <button class="btn-export" id="authBtn" onclick="openAuthModal('login')">Se connecter</button>
+    <button class="cta-header" onclick="scrollToSearch()">Planifier un voyage</button>
+  </div>
 </header>
 
 <!-- ===================== HERO ===================== -->
@@ -328,6 +334,45 @@
 
 <!-- Toast notification -->
 <div class="toast" id="toast"></div>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="authModal" style="display:none;">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tabLogin" onclick="switchAuthTab('login')">Connexion</button>
+      <button class="modal-tab" id="tabSignup" onclick="switchAuthTab('signup')">Inscription</button>
+    </div>
+    
+    <div id="loginForm" class="auth-form active">
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        <input type="email" class="field-input" id="loginEmail" placeholder="votre@email.com">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Mot de passe</label>
+        <input type="password" class="field-input" id="loginPass" placeholder="••••••••">
+      </div>
+      <button class="btn-generate" onclick="handleLogin()">Se connecter</button>
+    </div>
+
+    <div id="signupForm" class="auth-form" style="display:none;">
+      <div class="field-group">
+        <label class="field-label">Nom</label>
+        <input type="text" class="field-input" id="signupName" placeholder="Prénom Nom">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        <input type="email" class="field-input" id="signupEmail" placeholder="votre@email.com">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Mot de passe</label>
+        <input type="password" class="field-input" id="signupPass" placeholder="••••••••">
+      </div>
+      <button class="btn-generate" onclick="handleSignup()">Créer un compte</button>
+    </div>
+  </div>
+</div>
 
 <!-- Scripts (type=module pour les imports ES6) -->
 <script type="module" src="js/main.js"></script>
