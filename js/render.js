@@ -120,7 +120,33 @@ function renderItinerary(d) {
       </div>`;
   });
 
+  html += `<div id="tripMap" style="height: 350px; border-radius: var(--radius); margin-top: 32px; z-index: 1;"></div>`;
+
   document.getElementById('itineraryContent').innerHTML = html;
+
+  setTimeout(() => initMap(d.destination), 200);
+}
+
+/* ---- MAP INIT ---- */
+async function initMap(destination) {
+  const mapEl = document.getElementById('tripMap');
+  if (!mapEl) return;
+  if (window.currentMap) { window.currentMap.remove(); }
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+      window.currentMap = L.map('tripMap').setView([lat, lon], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(window.currentMap);
+      L.marker([lat, lon]).addTo(window.currentMap).bindPopup(`<b>${esc(destination)}</b>`).openPopup();
+    } else {
+      mapEl.style.display = 'none';
+    }
+  } catch (err) {
+    console.error("Map error:", err);
+  }
 }
 
 /* ---- FLIGHTS ---- */
@@ -156,7 +182,7 @@ function renderFlights(d) {
         <div class="flight-airline">${esc(f.airline)}</div>
         <div class="flight-price">${esc(f.price_per_person)}</div>
         <div style="font-size:11px;color:var(--muted)">par personne</div>
-        <button class="btn-book" onclick="window.showToast('Redirection vers la compagnie...')">Réserver</button>
+        <a href="https://www.skyscanner.fr/transport/vols/${esc(f.from)}/${esc(f.to)}/" target="_blank" style="text-decoration:none;"><button class="btn-book">Sur Skyscanner</button></a>
       </div>
     </div>`;
 
@@ -194,7 +220,7 @@ function renderHotels(d) {
           <div class="hotel-price-night">par nuit</div>
           <div class="hotel-price-val">${esc(h.price_per_night)}</div>
         </div>
-        <button class="btn-book" onclick="window.showToast('Redirection vers la réservation...')">Choisir</button>
+        <a href="https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.name + ' ' + d.destination)}" target="_blank" style="text-decoration:none;"><button class="btn-book">Sur Booking</button></a>
       </div>
     </div>`).join('');
 }

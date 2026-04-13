@@ -2,7 +2,7 @@
 // TRIPGENIE — js/main.js
 // =============================================
 
-import { generatePack } from './api.js';
+import { generatePack, login, signup, logout, getCurrentUser } from './api.js';
 import { renderResults } from './render.js';
 import {
   showToast, switchTab, setTripType, togglePref,
@@ -25,6 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.chatSend          = chatSend;
   window.handleChip        = handleChip;
   window.analyzeNLP        = () => {};
+  window.openAuthModal     = openAuthModal;
+  window.closeAuthModal    = closeAuthModal;
+  window.switchAuthTab     = switchAuthTab;
+  window.handleLogin       = handleLogin;
+  window.handleSignup      = handleSignup;
+
+  checkAuthBlock();
 
   document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
 
@@ -344,4 +351,81 @@ function launchGeneration(destination) {
     showToast('Erreur génération, réessaie');
     setLoadingState(false);
   });
+}
+
+// =============================================
+// AUTH MODAL & LOGIC
+// =============================================
+
+function checkAuthBlock() {
+  const user = getCurrentUser();
+  const authBtn = document.getElementById('authBtn');
+  if (authBtn) {
+    if (user) {
+      authBtn.textContent = user.name || user.email;
+      authBtn.onclick = handleLogout;
+    } else {
+      authBtn.textContent = 'Se connecter';
+      authBtn.onclick = () => openAuthModal('login');
+    }
+  }
+}
+
+function openAuthModal(tab) {
+  document.getElementById('authModal').style.display = 'flex';
+  switchAuthTab(tab);
+}
+
+function closeAuthModal() {
+  document.getElementById('authModal').style.display = 'none';
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+  const lf = document.getElementById('loginForm');
+  const sf = document.getElementById('signupForm');
+  if (lf) {
+    lf.classList.toggle('active', tab === 'login');
+    lf.style.display = tab === 'login' ? 'flex' : 'none';
+  }
+  if (sf) {
+    sf.classList.toggle('active', tab === 'signup');
+    sf.style.display = tab === 'signup' ? 'flex' : 'none';
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) return showToast('Remplissez tous les champs');
+  try {
+    await login(email, pass);
+    closeAuthModal();
+    showToast('Bienvenue !');
+    checkAuthBlock();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleSignup() {
+  const email = document.getElementById('signupEmail').value;
+  const pass = document.getElementById('signupPass').value;
+  const name = document.getElementById('signupName').value;
+  if (!email || !pass) return showToast('Remplissez tous les champs');
+  try {
+    await signup(email, pass, name);
+    closeAuthModal();
+    showToast('Compte créé avec succès !');
+    checkAuthBlock();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function handleLogout() {
+  logout();
+  showToast('Déconnexion réussie');
+  checkAuthBlock();
 }
