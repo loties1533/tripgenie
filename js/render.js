@@ -161,7 +161,11 @@ function renderFlights(d) {
   const outbound = allFlights.filter(f => f.type !== 'return');
   const ret      = allFlights.filter(f => f.type === 'return');
 
-  const flightCard = f => `
+  const flightCard = f => {
+    const skyscannerUrl = (f.from === 'XXX' || f.to === 'XXX')
+      ? 'https://www.skyscanner.fr/'
+      : `https://www.skyscanner.fr/transport/vols/${esc(f.from)}/${esc(f.to)}/`;
+    return `
     <div class="flight-card">
       <div>
         <div class="flight-airport">${esc(f.from)}</div>
@@ -182,9 +186,10 @@ function renderFlights(d) {
         <div class="flight-airline">${esc(f.airline)}</div>
         <div class="flight-price">${esc(f.price_per_person)}</div>
         <div style="font-size:11px;color:var(--muted)">par personne</div>
-        <a href="https://www.skyscanner.fr/transport/vols/${esc(f.from)}/${esc(f.to)}/" target="_blank" style="text-decoration:none;"><button class="btn-book">Sur Skyscanner</button></a>
+        <a href="${skyscannerUrl}" target="_blank" style="text-decoration:none;"><button class="btn-book">Sur Skyscanner</button></a>
       </div>
     </div>`;
+  };
 
   const section = (flights, label) => `
     <h4 style="font-size:14px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px;">${esc(label)}</h4>

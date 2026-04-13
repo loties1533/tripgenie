@@ -192,7 +192,27 @@ Génère UNIQUEMENT ce JSON avec des valeurs courtes (max 15 mots par champ):
 {"tagline":"accroche poétique","overview":"2 phrases sur le voyage","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil météo","hotel1_name":"nom hôtel","hotel1_loc":"quartier ville","hotel1_hl":"point fort","hotel2_name":"nom hôtel budget","hotel2_loc":"quartier","hotel2_hl":"point fort","activity1":"nom activité","activity1_desc":"description courte","activity2":"nom activité","activity2_desc":"description courte","activity3":"nom activité","activity3_desc":"description courte","day1_title":"titre jour 1","day1_am":"activité matin","day1_pm":"activité soir","day2_title":"titre jour 2","day2_am":"activité matin","day2_pm":"activité soir","tip1_title":"titre conseil","tip1":"conseil pratique","tip2_title":"titre conseil","tip2":"conseil pratique","phrase":"mot local","phrase_tr":"traduction"}`
   );
 
-  const t = parseJSON(textRaw);
+  let t;
+  try {
+    t = parseJSON(textRaw);
+  } catch (err) {
+    console.warn('Fallback IA activé suite à un JSON malformé (ex: Modèle OpenRouter).', err.message);
+    t = {
+      tagline: `Découverte magique de ${dest}`,
+      overview: "Profitez d'un programme sur-mesure créé par TripGenie pour vous faire découvrir les moindres secrets de cette ville.",
+      weather_temp: "22°C", weather_cond: "Agréable", weather_tip: "Climat parfait pour explorer",
+      hotel1_name: `Grand Hôtel ${dest}`, hotel1_loc: "Centre-ville", hotel1_hl: "Idéalement situé",
+      hotel2_name: "Auberge Voyageurs", hotel2_loc: "Quartier animé", hotel2_hl: "Super rapport qualité-prix",
+      activity1: "Visite des incontournables", activity1_desc: "Explorez les monuments principaux.",
+      activity2: "Saveurs locales", activity2_desc: "Dégustation des spécialités culinaires.",
+      activity3: "Balade nocturne", activity3_desc: "Découvrez la ville sous ses plus belles lumières.",
+      day1_title: "Arrivée et immersion", day1_am: "Installation & visites", day1_pm: "Dîner local",
+      day2_title: "Exploration", day2_am: "Visite guidée", day2_pm: "Repos ou achats souvenirs",
+      tip1_title: "Transports locaux", tip1: "Utilisez les pass jours pour économiser.",
+      tip2_title: "Culture", tip2: "Imprégnez-vous de l'ambiance des petits quartiers.",
+      phrase: "Bonjour", phrase_tr: "Hello"
+    };
+  }
 
   // Vols — données réelles si Amadeus a répondu, sinon estimées
   const volPriceEst = Math.round(budget * 0.15);
