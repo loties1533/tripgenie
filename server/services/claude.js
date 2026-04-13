@@ -131,7 +131,7 @@ async function callGemini(systemPrompt, userPrompt) {
         contents: [{
           parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
         }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.7, responseMimeType: "application/json" }
       })
     }
   );
@@ -161,10 +161,20 @@ JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"rais
 }
 
 async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
-  if (ANTHROPIC_KEY)               return callClaude(systemPrompt, userPrompt);
-  if (process.env.GEMINI_API_KEY)  return callGemini(systemPrompt, userPrompt);
-  if (OPENROUTER_KEY)              return callOpenRouter(systemPrompt, userPrompt);
-  throw new Error('Aucune clé API configurée');
+  let lastErr;
+  if (process.env.GEMINI_API_KEY) {
+    try { return await callGemini(systemPrompt, userPrompt); }
+    catch (e) { console.warn('Gemini failed:', e.message); lastErr = e; }
+  }
+  if (OPENROUTER_KEY) {
+    try { return await callOpenRouter(systemPrompt, userPrompt); }
+    catch (e) { console.warn('OpenRouter failed:', e.message); lastErr = e; }
+  }
+  if (ANTHROPIC_KEY) {
+    try { return await callClaude(systemPrompt, userPrompt); }
+    catch (e) { console.warn('Claude failed:', e.message); lastErr = e; }
+  }
+  throw new Error(lastErr ? `Tous les fournisseurs IA ont échoué. Dernier: ${lastErr.message}` : 'Aucune clé API configurée');
 }
 
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----

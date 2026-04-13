@@ -20,9 +20,14 @@ async function getIata(city) {
   if (!city) return null;
   const key = city.toLowerCase().trim();
   if (iataCache.has(key)) return iataCache.get(key);
-  const code = await cityToIata(city);
-  if (code) iataCache.set(key, code);
-  return code;
+  try {
+    const code = await cityToIata(city);
+    if (code) iataCache.set(key, code);
+    return code;
+  } catch (err) {
+    console.warn(`[Amadeus IATA] Ignoré pour ${city}: ${err.message}`);
+    return null;
+  }
 }
 
 // ---- POST /api/ai/analyze ----
@@ -85,12 +90,18 @@ router.post('/generate', optionalAuth, async (req, res) => {
     if (!destIata)    iataWarnings.push(`Destination "${destination}" non reconnue, vols réels indisponibles`);
 
     // Recherches en parallèle — chacune fail gracieusement
-    const [flights, events] = await Promise.all([
+    const results = await Promise.allSettled([
       originIata && destIata
         ? searchFlights({ origin: originIata, destination: destIata, departureDate: departure, returnDate: return_date, adults: travelers })
         : Promise.resolve([]),
       searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
     ]);
+
+    const flights = results[0].status === 'fulfilled' ? results[0].value : [];
+    if (results[0].status === 'rejected') console.warn('Flights API fallback:', results[0].reason);
+
+    const events = results[1].status === 'fulfilled' ? results[1].value : [];
+    if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
 
     // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
