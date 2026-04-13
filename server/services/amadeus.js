@@ -12,13 +12,20 @@ let tokenExpiry  = 0;
 async function getToken() {
   if (accessToken && Date.now() < tokenExpiry) return accessToken;
 
+  const clientId = process.env.AMADEUS_CLIENT_ID;
+  const clientSecret = process.env.AMADEUS_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Amadeus credentials missing in .env');
+  }
+
   const res = await fetch(`${BASE_URL}/v1/security/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type:    'client_credentials',
-      client_id:     process.env.AMADEUS_CLIENT_ID,
-      client_secret: process.env.AMADEUS_CLIENT_SECRET
+      client_id:     clientId,
+      client_secret: clientSecret
     })
   });
 
@@ -41,6 +48,23 @@ async function getToken() {
  */
 export async function searchFlights({ origin, destination, departureDate, returnDate, adults = 1 }) {
   try {
+    // ---- [DÉBUT SECTION TEMPORAIRE MOCK] ----
+    // Si tu n'as pas encore de clés Amadeus, on renvoie un vol fictif 
+    // pour que l'interface reste jolie et fonctionnelle.
+    // Supprime cette condition dès que tu as configuré tes clés dans .env !
+    if (!process.env.AMADEUS_CLIENT_ID || !process.env.AMADEUS_CLIENT_SECRET) {
+      console.log('💡 Amadeus: Clés absentes, utilisation d\'un vol démo.');
+      return [{
+        id: 'DEMO-123',
+        price: 185,
+        currency: 'EUR',
+        price_per_person: 185,
+        outbound: { from: origin || 'PAR', to: destination || 'DEST', departure_time: departureDate, arrival_time: departureDate, duration_min: 120, stops: 0, airline: 'GenieAir' },
+        return: returnDate ? { from: destination || 'DEST', to: origin || 'PAR', departure_time: returnDate, arrival_time: returnDate, duration_min: 120, stops: 0, airline: 'GenieAir' } : null
+      }];
+    }
+    // ---- [FIN SECTION TEMPORAIRE MOCK] ----
+
     const token = await getToken();
 
     const params = new URLSearchParams({
@@ -73,6 +97,12 @@ export async function searchFlights({ origin, destination, departureDate, return
 // ---- Recherche IATA code depuis ville ----
 export async function cityToIata(cityName) {
   try {
+    // ---- [DÉBUT SECTION TEMPORAIRE MOCK] ----
+    if (!process.env.AMADEUS_CLIENT_ID || !process.env.AMADEUS_CLIENT_SECRET) {
+      return cityName.slice(0, 3).toUpperCase(); // Mock code IATA (ex: Paris -> PAR)
+    }
+    // ---- [FIN SECTION TEMPORAIRE MOCK] ----
+
     const token = await getToken();
     const res = await fetch(
       `${BASE_URL}/v1/reference-data/locations?keyword=${encodeURIComponent(cityName)}&subType=AIRPORT,CITY&view=LIGHT&page[limit]=3`,
@@ -81,6 +111,10 @@ export async function cityToIata(cityName) {
     const data = await res.json();
     return data.data?.[0]?.iataCode || null;
   } catch (err) {
+    if (err.message.includes('missing in .env')) {
+       // Silencieux si clés absentes pour éviter de polluer les logs
+       return null;
+    }
     console.error('cityToIata error:', err.message);
     return null;
   }

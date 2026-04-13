@@ -2,7 +2,7 @@
 // TRIPGENIE — js/main.js
 // =============================================
 
-import { generatePack, login, signup, logout, getCurrentUser } from './api.js';
+import { generatePack, getDestinations, login, signup, logout, getCurrentUser } from './api.js';
 import { renderResults } from './render.js';
 import {
   showToast, switchTab, setTripType, togglePref,
@@ -129,6 +129,8 @@ function setLoadingState(loading) {
   const spinner = document.getElementById('btnSpinner');
   const loader  = document.getElementById('loadingState');
   const results = document.getElementById('resultsSection');
+  const statusText = document.getElementById('statusText');
+  const statusSub  = document.getElementById('statusSub');
 
   btn.disabled          = loading;
   btnText.style.display = loading ? 'none'        : 'inline';
@@ -138,8 +140,28 @@ function setLoadingState(loading) {
     loader.classList.add('active');
     results.classList.remove('active');
     loader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Rotation des messages de statut pour un effet "Premium"
+    const steps = [
+      { t: "Analyse du profil...", s: "Nous déchiffrons vos envies de voyage" },
+      { t: "Recherche Web en cours...", s: "Nous piochons les meilleures pépites sur internet" },
+      { t: "Comparaison des prix...", s: "Optimisation de votre budget vol et hôtel" },
+      { t: "Création de l'itinéraire...", s: "Nos experts digitaux rédigent vos journées" }
+    ];
+    let i = 0;
+    window._loaderInterval = setInterval(() => {
+      i = (i + 1) % steps.length;
+      statusText.style.opacity = 0;
+      setTimeout(() => {
+        statusText.textContent = steps[i].t;
+        statusSub.textContent = steps[i].s;
+        statusText.style.opacity = 1;
+      }, 300);
+    }, 2500);
+
   } else {
     loader.classList.remove('active');
+    if (window._loaderInterval) clearInterval(window._loaderInterval);
   }
 }
 
@@ -149,14 +171,24 @@ function setLoadingState(loading) {
 
 const chatState = {
   step: 0,
-  data: { travelers: 2, mode: 'party', budget: 1500, origin: 'Paris', destination: null, duration: 7 }
+  data: { 
+    travelers: 2, 
+    profile: 'couple', 
+    mode: 'relax', 
+    interests: [],
+    budget: 1500, 
+    origin: 'Paris', 
+    destination: null, 
+    duration: 7 
+  }
 };
 
 const STEPS = [
-  { key: 'travelers', question: "Salut ! Vous partez à combien ? 👥",    chips: ['Solo', '2 personnes', '3-4 amis', '5+ personnes'] },
-  { key: 'mode',      question: "Quelle ambiance vous cherchez ? ✨",     chips: ['🎉 Fête', '🧘 Détente', '🏛 Culture', '🌴 Plage', '😮 Surprise'] },
-  { key: 'budget',    question: "Budget total pour le groupe ? 💰",       chips: ['< 500€', '500-1000€', '1000-2000€', '2000-5000€', '5000€+'] },
-  { key: 'duration',  question: "Combien de temps ? 📅",                  chips: ['Week-end (2j)', 'Semaine (7j)', '10 jours', '2 semaines'] },
+  { key: 'profile',   question: "Salut ! Avec qui partez-vous ? 👥",      chips: ['Solo', 'En couple ❤️', 'Entre amis 🍻', 'En famille 👨‍👩‍👧'] },
+  { key: 'mode',      question: "Quelle ambiance recherchez-vous ? ✨",   chips: ['🎉 Fête', '🧘 Détente', '🏛 Culture', '🌴 Plage', '😮 Surprise'] },
+  { key: 'interests', question: "Un centre d'intérêt particulier ? 🎨",   chips: ['Gastronomie', 'Nature', 'Histoire', 'Shopping', 'Vie nocturne'] },
+  { key: 'budget',    question: "Budget total pour le voyage ? 💰",       chips: ['< 1000€', '1000-2500€', '2500-5000€', '5000€+'] },
+  { key: 'duration',  question: "Combien de temps partez-vous ? 📅",      chips: ['Week-end (2j)', 'Semaine (7j)', '10 jours', '2 semaines'] },
   { key: 'origin',    question: "Vous partez d'où ? ✈️",                  chips: ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Autre'] },
 ];
 
@@ -182,7 +214,11 @@ function addMessage(text, type = 'bot', chips = []) {
   }
 
   messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
+  
+  // Petit délai pour scroller après l'animation CSS
+  setTimeout(() => {
+    messages.scrollTop = messages.scrollHeight;
+  }, 100);
 }
 
 function showTyping() {
@@ -191,7 +227,7 @@ function showTyping() {
   const div = document.createElement('div');
   div.className = 'chat-msg bot';
   div.id = 'typingIndicator';
-  div.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+  div.innerHTML = `<div class="chat-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -203,15 +239,6 @@ function removeTyping() {
 
 function handleChip(value) {
   addMessage(value, 'user');
-
-function quickGenerate(destination, mode) {
-  document.getElementById('fieldDest').value = destination;
-  chatState.data.mode = mode;
-  chatState.data.destination = destination;
-  scrollToSearch();
-  setTimeout(() => generateItinerary(), 300);
-}
-window.quickGenerate = quickGenerate;
 
   // Mode sélection destination
   if (window._suggestedDestinations) {
@@ -226,6 +253,15 @@ window.quickGenerate = quickGenerate;
 
   processAnswer(value);
 }
+
+function quickGenerate(destination, mode) {
+  document.getElementById('fieldDest').value = destination;
+  chatState.data.mode = mode;
+  chatState.data.destination = destination;
+  scrollToSearch();
+  setTimeout(() => generateItinerary(), 300);
+}
+window.quickGenerate = quickGenerate;
 
 function chatSend() {
   const input = document.getElementById('chatInput');
@@ -253,22 +289,24 @@ function processAnswer(value) {
   if (!step) return;
   const v = value.toLowerCase();
 
-  if (step.key === 'travelers') {
-    chatState.data.travelers = v.includes('solo') ? 1 : v.includes('5') ? 5 : v.includes('3') || v.includes('4') ? 4 : 2;
+  if (step.key === 'profile') {
+    chatState.data.profile = v.includes('couple') ? 'couple' : v.includes('amis') ? 'friends' : v.includes('famille') ? 'family' : 'solo';
+    chatState.data.travelers = chatState.data.profile === 'solo' ? 1 : chatState.data.profile === 'couple' ? 2 : 4;
   } else if (step.key === 'mode') {
     chatState.data.mode = v.includes('fête') || v.includes('fete') ? 'party'
       : v.includes('détente') || v.includes('detente') ? 'relax'
       : v.includes('culture') ? 'culture'
       : v.includes('surprise') ? 'surprise'
       : v.includes('plage') ? 'beach'
-: v.includes('luxe') || v.includes('vip') ? 'luxury'
       : 'party';
+  } else if (step.key === 'interests') {
+    chatState.data.interests = [value];
   } else if (step.key === 'budget') {
-    chatState.data.budget = v.includes('5000') ? 8000
-      : v.includes('2000') ? 4000
-      : v.includes('1000') ? 2000
-      : v.includes('500') ? 800
-      : 1500;
+    // Tranches : '< 1000€', '1000-2500€', '2500-5000€', '5000€+'
+    chatState.data.budget = v.includes('5000') ? 6000
+      : v.includes('2500') ? 3500
+      : v.includes('1000') ? 1500
+      : 800;
   } else if (step.key === 'duration') {
     chatState.data.duration = v.includes('week') ? 2 : v.includes('10') ? 10 : v.includes('2 sem') ? 14 : 7;
   } else if (step.key === 'origin') {
@@ -283,32 +321,45 @@ function processAnswer(value) {
     if (chatState.step < STEPS.length) {
       addMessage(STEPS[chatState.step].question, 'bot', STEPS[chatState.step].chips);
     } else {
-      addMessage(`Super ! 🎯 Je cherche les meilleures destinations pour ${chatState.data.travelers} personne(s), mode ${chatState.data.mode}, budget ${chatState.data.budget}€...`, 'bot');
+      addMessage(`Super ! 🎯 Je cherche les meilleures pépites pour votre profil (${chatState.data.profile}), mode ${chatState.data.mode}, budget total ${chatState.data.budget}€...`, 'bot');
       suggestAndGenerate();
     }
   }, 800);
 }
 
 async function suggestAndGenerate() {
-  // Destinations suggérées par l'IA en local — pas d'appel API
-  const suggestions = {
-    party:   ['Barcelona', 'Ibiza', 'Amsterdam'],
-    relax:   ['Lisbonne', 'Séville', 'Porto'],
-    culture: ['Rome', 'Prague', 'Vienne'],
-    surprise: ['Budapest', 'Tallinn', 'Bucarest'],
-    luxury:  ['Monaco', 'Cannes', 'Mykonos']
-  };
+  showTyping();
+  try {
+    const res = await getDestinations({
+      mode:        chatState.data.mode,
+      profile:     chatState.data.profile,
+      interests:   chatState.data.interests,
+      budget:      chatState.data.budget,
+      travelers:   chatState.data.travelers,
+      duration:    chatState.data.duration,
+      origin:      chatState.data.origin,
+      preferences: []
+    });
 
-  const mode = chatState.data.mode;
-  const cities = suggestions[mode] || suggestions.party;
+    removeTyping();
+    addMessage(`Compte tenu de votre profil (${chatState.data.profile}) et de vos intérêts, voici mes 3 meilleures pépites 🌍`, 'bot');
+    
+    const cities = res.destinations || [];
+    if (!cities.length) {
+      addMessage("Désolé, je n'ai pas trouvé de destinations insolites correspondant exactement à tes critères. On réessaie ?", 'bot', ['On recommence']);
+      return;
+    }
 
-  removeTyping();
-  addMessage('Voici mes 3 meilleures suggestions 🌍', 'bot');
+    const chips = cities.map(d => d.city);
+    addMessage('Laquelle de ces pépites te tente le plus ?', 'bot', chips);
 
-  const chips = cities.map(c => c);
-  addMessage('Choisis ta destination :', 'bot', chips);
+    window._suggestedDestinations = cities;
 
-  window._suggestedDestinations = cities.map(city => ({ city, vibe: '' }));
+  } catch (err) {
+    removeTyping();
+    console.error(err);
+    addMessage("Oups, mon moteur de recherche a eu un petit hoquet. Peux-tu réessayer ?", 'bot', ['On recommence']);
+  }
 }
 
 function launchGeneration(destination) {

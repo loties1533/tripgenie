@@ -177,8 +177,19 @@
   <!-- Loading -->
   <div class="loading-state" id="loadingState">
     <div class="loading-gem"></div>
-    <div class="loading-text">TripGenie prépare votre voyage...</div>
-    <div class="loading-sub">Analyse des vols, hôtels et activités en cours</div>
+    <div class="loading-text" id="statusText">TripGenie prépare votre voyage...</div>
+    <div class="loading-sub" id="statusSub">Analyse des vols, hôtels et activités en cours</div>
+    
+    <div class="loader-grid">
+      <div class="skeleton-card skeleton"></div>
+      <div>
+        <div class="skeleton-title skeleton"></div>
+        <div class="skeleton-text skeleton"></div>
+        <div class="skeleton-text skeleton"></div>
+        <div class="skeleton-text skeleton" style="width:60%"></div>
+      </div>
+    </div>
+
     <div class="loading-steps">
       <div class="loading-step"><div class="step-dot active" id="dot1"></div> Vols</div>
       <div class="loading-step"><div class="step-dot" id="dot2"></div> Hôtels</div>

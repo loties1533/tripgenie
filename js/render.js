@@ -18,6 +18,10 @@ function esc(str) {
 
 // ---- Point d'entrée principal ----
 export function renderResults(d, params) {
+  // Reset scroll
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  renderHero(d);
   renderHeader(d, params);
   renderSummary(d, params);
   renderItinerary(d);
@@ -30,7 +34,44 @@ export function renderResults(d, params) {
 
   const section = document.getElementById('resultsSection');
   section.classList.add('active');
-  section.scrollIntoView({ behavior: 'smooth' });
+  
+  // Petit délai pour laisser l'animation de la bannière se faire
+  setTimeout(() => {
+    document.getElementById('resHero').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+/* ---- HERO BANNER ---- */
+function renderHero(d) {
+  const existing = document.getElementById('resHero');
+  if (existing) existing.remove();
+
+  const hero = document.createElement('div');
+  hero.id = 'resHero';
+  hero.className = 'res-hero';
+  
+  // Image dynamique Unsplash basée sur la destination
+  // On utilise un mot clé de destination pour avoir une image pertinente
+  // Fallback neutre (paysage de voyage) au lieu de Paris
+  const fallbackImg = `https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1600&q=80&fit=crop`; 
+  
+  // Utilisation de l'API Unsplash standard (Source est déprécié, on utilise l'URL images directe avec filtrage)
+  const dynamicImg = `https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1600&q=80&fit=crop`; // Paris par défaut si tout échoue
+  
+  // On construit une requête robuste avec un cache-buster (sig) pour éviter les doublons
+  const rand = Math.floor(Math.random() * 1000);
+  const searchUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(d.destination)},${encodeURIComponent(d.country || 'travel')},city&sig=${rand}`;
+  
+  hero.innerHTML = `
+    <img src="${searchUrl}" class="res-hero-img" alt="${esc(d.destination)}" onerror="this.src='${fallbackImg}'">
+    <div class="res-hero-content">
+      <div class="res-hero-h1">${esc(d.destination)}</div>
+      <div style="font-size:18px; opacity:0.9;">${esc(d.country || '')}</div>
+    </div>
+  `;
+
+  const results = document.getElementById('resultsSection');
+  results.prepend(hero);
 }
 
 /* ---- HEADER ---- */
@@ -47,22 +88,22 @@ function renderHeader(d, params) {
 /* ---- SUMMARY CARDS ---- */
 function renderSummary(d, params) {
   document.getElementById('summaryGrid').innerHTML = `
-    <div class="summary-card">
+    <div class="summary-card glass-card">
       <span class="summary-icon">✈</span>
       <div class="summary-label">Budget total estimé</div>
       <div class="summary-value">${esc(d.summary?.total_budget || d.budget_breakdown?.total || '—')}</div>
     </div>
-    <div class="summary-card">
+    <div class="summary-card glass-card">
       <span class="summary-icon">🌙</span>
       <div class="summary-label">Nuits d'hôtel</div>
       <div class="summary-value">${esc(d.summary?.nights || params.days - 1)}</div>
     </div>
-    <div class="summary-card">
+    <div class="summary-card glass-card">
       <span class="summary-icon">🎭</span>
       <div class="summary-label">Activités planifiées</div>
       <div class="summary-value">${esc(d.activities?.length || d.summary?.activities_count || 0)}</div>
     </div>
-    <div class="summary-card">
+    <div class="summary-card glass-card">
       <span class="summary-icon">🌡</span>
       <div class="summary-label">Météo prévue</div>
       <div class="summary-value">${esc(d.weather?.avg_temp || '—')}</div>
@@ -98,7 +139,7 @@ function renderItinerary(d) {
       return `
         <div class="timeline-item">
           <div class="timeline-time">${esc(item.time || '')}</div>
-          <div class="timeline-content">
+          <div class="timeline-content glass-card">
             <span class="timeline-type-badge ${badge.css}">${badge.label}</span>
             <div class="timeline-title">${esc(item.title)}</div>
             <div class="timeline-desc">${esc(item.description || '')}</div>
@@ -166,7 +207,7 @@ function renderFlights(d) {
       ? 'https://www.skyscanner.fr/'
       : `https://www.skyscanner.fr/transport/vols/${esc(f.from)}/${esc(f.to)}/`;
     return `
-    <div class="flight-card">
+    <div class="flight-card glass-card">
       <div>
         <div class="flight-airport">${esc(f.from)}</div>
         <div class="flight-city">${esc(f.from_city)}</div>
@@ -210,7 +251,7 @@ function renderHotels(d) {
   }
 
   document.getElementById('hotelsContent').innerHTML = hotels.map(h => `
-    <div class="hotel-card">
+    <div class="hotel-card glass-card">
       <div class="hotel-img">
         <div class="hotel-img-placeholder" style="font-size:64px;">${esc(h.emoji || '🏨')}</div>
       </div>

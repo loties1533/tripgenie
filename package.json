@@ -8,7 +8,7 @@
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "setup-db": "node scripts/setup-db.js",
-    "client": "npx serve client -p 3001"
+    "client": "npx serve . -p 3001"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

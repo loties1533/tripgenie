@@ -3,6 +3,7 @@
 // =============================================
 
 import 'dotenv/config';
+import { searchWeb } from './tools/webSearch.js';
 
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
@@ -114,11 +115,15 @@ async function callOpenRouter(systemPrompt, userPrompt) {
       console.log(`✅ Using model: ${model}`);
       return data.choices[0].message.content;
     } catch (err) {
-      console.warn(`Model ${model} failed: ${err.message}`);
+      if (err.message.includes('429')) {
+        console.warn(`Model ${model} quota exceeded, trying next...`);
+      } else {
+        console.warn(`Model ${model} failed: ${err.message}`);
+      }
       continue;
     }
   }
-  throw new Error('Tous les modèles gratuits sont indisponibles. Réessaie dans 1 minute.');
+  throw new Error('QUOTA_EXCEEDED: Tous les modèles gratuits sont épuisés. Attends 1 minute avant de réessayer.');
 }
 
 async function callGemini(systemPrompt, userPrompt) {
@@ -136,6 +141,9 @@ async function callGemini(systemPrompt, userPrompt) {
     }
   );
   const data = await res.json();
+  if (res.status === 429) {
+    throw new Error('QUOTA_EXCEEDED: Limite gratuite Gemini atteinte. Attends 1 minute.');
+  }
   if (!res.ok) throw new Error(`Gemini error: ${JSON.stringify(data.error)}`);
   return data.candidates[0].content.parts[0].text;
 }
@@ -152,10 +160,18 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
   return parseJSON(raw);
 }
 
-export async function suggestDestinations({ mode, budget, travelers, duration, origin, preferences }) {
+export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, preferences }) {
+  // RAG: Récupération de contexte Web réel — maintenant avec profil
+  const intStr = interests?.join(', ') || 'voyage';
+  const query  = `Meilleures destinations pépites cachées (hidden gems) pour ${profile} cherchant ${mode} et ${intStr} budget ${budget}€ Europe`;
+  const webContext = await searchWeb(query);
+
   const raw = await callAI(
-    `Suggère 3 destinations. mode=${mode} budget=${budget}€ voyageurs=${travelers} durée=${duration}j départ=${sanitizeInput(origin)}
-JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"raison","vibe":"mot","estimated_flight_price":200}]}`
+    `${webContext}
+    En t'inspirant FORCEMENT du contexte web, suggère 3 destinations RÉELLES (vérifie l'existence) et originales pour un profil de type "${profile}" cherchant une ambiance "${mode}" avec des intérêts pour "${intStr}".
+    Évite les clichés (Barcelone, Londres). Vérifie que la destination est bien RÉELLE.
+    Profil:${profile} Intérêts:${intStr} Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j
+    JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"Pourquoi c'est parfait pour ce profil","vibe":"vibe"}]}`
   );
   return parseJSON(raw);
 }
@@ -180,16 +196,21 @@ async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, travelers, budget, departure, return_date }) {
+export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date }) {
   const dest   = sanitizeInput(destination);
   const nights = departure && return_date
     ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
     : Math.max(Math.round(budget / 250), 2);
+    
+  // Adaptation du ton selon le profil
+  const tone = profile === 'couple' ? 'romantique et intime' : profile === 'friends' ? 'dynamique et festif' : 'immersif et local';
+
   // Appel IA — uniquement les textes créatifs, format plat et court
   const textRaw = await callAI(
-    `Voyage à ${dest}. Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
-Génère UNIQUEMENT ce JSON avec des valeurs courtes (max 15 mots par champ):
-{"tagline":"accroche poétique","overview":"2 phrases sur le voyage","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil météo","hotel1_name":"nom hôtel","hotel1_loc":"quartier ville","hotel1_hl":"point fort","hotel2_name":"nom hôtel budget","hotel2_loc":"quartier","hotel2_hl":"point fort","activity1":"nom activité","activity1_desc":"description courte","activity2":"nom activité","activity2_desc":"description courte","activity3":"nom activité","activity3_desc":"description courte","day1_title":"titre jour 1","day1_am":"activité matin","day1_pm":"activité soir","day2_title":"titre jour 2","day2_am":"activité matin","day2_pm":"activité soir","tip1_title":"titre conseil","tip1":"conseil pratique","tip2_title":"titre conseil","tip2":"conseil pratique","phrase":"mot local","phrase_tr":"traduction"}`
+    `Tu es un expert voyage local pour ${dest}. Crée un itinéraire de type "${tone}" pour un profil "${profile}". Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
+    IMPORTANT pour le mode "party": Ne propose pas de clubs généralistes. Cherche des pépites underground, des bars secrets, des clubs de techno de renommée locale ou des festivals spécifiques. La description doit être électrique et donner envie au profil "${profile}".
+    Génère UNIQUEMENT ce JSON avec des descriptions évocatrices adaptées au profil "${profile}" :
+    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"Hôtel parfait pour ce profil","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"Alternative","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`
   );
 
   let t;
@@ -199,6 +220,7 @@ Génère UNIQUEMENT ce JSON avec des valeurs courtes (max 15 mots par champ):
     console.warn('Fallback IA activé suite à un JSON malformé (ex: Modèle OpenRouter).', err.message);
     t = {
       tagline: `Découverte magique de ${dest}`,
+      country: 'Europe',
       overview: "Profitez d'un programme sur-mesure créé par TripGenie pour vous faire découvrir les moindres secrets de cette ville.",
       weather_temp: "22°C", weather_cond: "Agréable", weather_tip: "Climat parfait pour explorer",
       hotel1_name: `Grand Hôtel ${dest}`, hotel1_loc: "Centre-ville", hotel1_hl: "Idéalement situé",
@@ -274,7 +296,17 @@ const BUDGET_RATIOS = {
 
 const ratio  = BUDGET_RATIOS[mode] || BUDGET_RATIOS.party;
 const vols      = Math.round(budget * ratio.vols);
-const heberg    = Math.round(budget * ratio.heberg);
+
+// Réalisme Hôtels : Plafonnement si le prix par nuit devient indécent pour la destination
+// On estime un prix max par nuit raisonnable par personne (ex: 200€ en moyenne)
+const maxPpn = mode === 'luxury' ? 800 : 250;
+let heberg = Math.round(budget * ratio.heberg);
+const ppn = heberg / nights / travelers;
+
+if (ppn > maxPpn) {
+  heberg = maxPpn * nights * travelers;
+}
+
 const activites = Math.round(budget * ratio.activites);
 const resto     = Math.round(budget * ratio.resto);
 const trans     = Math.round(budget * ratio.trans);
@@ -283,7 +315,7 @@ const divers    = budget - vols - heberg - activites - resto - trans;
   // Structure finale construite côté serveur
   return {
     destination: dest,
-    country:     t.country || 'France',
+    country:     t.country || 'Destination',
     tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
     overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
     weather: {
