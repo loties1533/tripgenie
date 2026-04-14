@@ -228,3 +228,39 @@ nav a:hover { color: var(--gold); }
   font-weight: 400;
   opacity: .7;
 }
+
+/* ============================================
+   THEME TOGGLE STYLES
+   ============================================ */
+.btn-theme {
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--gold);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-theme:hover {
+  background: rgba(201, 168, 76, 0.2);
+  transform: scale(1.1);
+}
+
+.btn-theme:active { transform: scale(0.95); }
+
+/* Support Dark Mode in Header */
+[data-theme="dark"] header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .btn-theme {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
