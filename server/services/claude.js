@@ -168,17 +168,34 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
   return parseJSON(raw);
 }
 
-export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, preferences }) {
+export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences }) {
   try {
     const intStr = interests?.join(', ') || 'voyage';
-    const query  = `Meilleures destinations pépites cachées (hidden gems) pour ${profile} cherchant ${mode} et ${intStr} budget ${budget}€ Europe`;
+    const moodStr = moods?.join(', ') || '';
+    
+    // Construction de la recherche selon le mode
+    let query = `Meilleures destinations voyage pour ${profile} cherchant ambiance ${mode} et intérêts ${intStr} ${moodStr}`;
+    if (discoveryMode === 'hidden_gem') {
+      query += ` pépites cachées insolites (hidden gems)`;
+    } else {
+      query += ` destinations classiques incontournables célèbres`;
+    }
+
     const webContext = await searchWeb(query);
 
     const raw = await callAI(
       `${webContext}
-      En t'inspirant FORCEMENT du contexte web, suggère 3 destinations RÉELLES (vérifie l'existence) et originales pour un profil de type "${profile}" cherchant une ambiance "${mode}" avec des intérêts pour "${intStr}".
-      Profil:${profile} Intérêts:${intStr} Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j
-      JSON: {"destinations":[{"city":"Ville","country":"Pays","iata":"XXX","why":"Pourquoi c'est parfait pour ce profil","vibe":"vibe"}]}`
+      En t'inspirant du contexte web, suggère 3 destinations RÉELLES et pertinentes.
+      TYPE DE DÉCOUVERTE : ${discoveryMode === 'hidden_gem' ? 'Pépites cachées et insolites' : 'Destinations classiques et célèbres'}.
+      PROFIL : ${profile} | AMBIANCE RÉELLE : ${mode} | INTÉRÊTS : ${intStr} | VIBES VISUELLES : ${moodStr}.
+      Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j.
+      
+      CONSIGNES :
+      - Si l'utilisateur veut du Luxe et de la Fête, propose des endroits comme Ibiza, St Tropez, Dubai, Monaco, Mykonos (selon le discoveryMode).
+      - Ne force pas l'Europe si une destination internationale semble plus pertinente.
+      - Sois précis sur pourquoi cette destination matche le profil.
+      
+      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi...", "match_score": 95}]}`
     );
     return parseJSON(raw);
   } catch (err) {
@@ -389,6 +406,35 @@ const divers    = budget - vols - heberg - activites - resto - trans;
       { phrase:t.phrase||'Santé !', translation:t.phrase_tr||'Cheers !' }
     ]
   };
+}
+
+export async function chatIntake({ currentData, userMessage }) {
+  const systemPrompt = `Tu es l'expert voyage TripGenie. Ton rôle est de conseiller l'utilisateur et de qualifier son besoin pour créer le voyage parfait.
+  
+  DONNÉES ACTUELLES :
+  ${JSON.stringify(currentData)}
+
+  OBJECTIFS :
+  1. Extraire les informations manquantes (origin, travelers, budget, duration, mode, profile, preferences).
+  2. Le message utilisateur est PRIORITAIRE : s'il contredit les "DONNÉES ACTUELLES", l'utilisateur a raison.
+  3. INTERDICTION DE SUGGÉRER DES VILLES ou destinations précises tant que isReady est false. Concentre-toi sur le profil.
+  4. Lorsque tu as assez d'informations sur le profil, demande à l'utilisateur s'il préfère des "Destinations Classiques" ou des "Pépites Cachées (Insolites)" comme étape finale.
+  5. Stocke le choix de découverte dans "discoveryMode" (valeurs: "classic" ou "hidden_gem").
+  6. Si toutes les infos (incluant discoveryMode) sont là, mets "isReady" à true.
+  
+  FORMAT RÉPONSE (JSON UNIQUEMENT) :
+  {
+    "response": "Ton message amical",
+    "chips": ["Choix 1", "Choix 2"],
+    "extractedData": { "budget": 2000, "duration": 7, "discoveryMode": "classic", "profile": "amis" },
+    "isReady": false
+  }`;
+
+  const raw = await callAI(
+    `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`
+  );
+  
+  return parseJSON(raw);
 }
 
 export async function chatModify({ currentPack, userMessage, mode }) {

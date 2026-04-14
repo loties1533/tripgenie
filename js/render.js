@@ -161,7 +161,7 @@ function renderItinerary(d) {
       </div>`;
   });
 
-  html += `<div id="tripMap" style="height: 350px; border-radius: var(--radius); margin-top: 32px; z-index: 1;"></div>`;
+  html += `</div>`; // Close prose-section (si besoin) ou div conteneur
 
   document.getElementById('itineraryContent').innerHTML = html;
 
@@ -172,12 +172,13 @@ function renderItinerary(d) {
 /* ---- MAP INIT ---- */
 async function initMap(d) {
   const mapEl = document.getElementById('tripMap');
+  const poiEl = document.getElementById('mapPoiList');
   if (!mapEl) return;
   if (window.currentMap) { window.currentMap.remove(); }
+  if (poiEl) poiEl.innerHTML = '';
   
   try {
     const destination = d.destination;
-    // 1. Centrer sur la destination
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
     const data = await res.json();
     if (!data || !data.length) { mapEl.style.display = 'none'; return; }
@@ -190,12 +191,7 @@ async function initMap(d) {
       attribution: '© OpenStreetMap' 
     }).addTo(window.currentMap);
 
-    // Marqueur ville
-    L.marker([cityLat, cityLon]).addTo(window.currentMap)
-      .bindPopup(`<b>${esc(destination)}</b>`)
-      .openPopup();
-
-    const markers = [];
+    const markers = {};
 
     // 2. Ajouter les hôtels
     for (const h of (d.hotels || [])) {
@@ -203,10 +199,15 @@ async function initMap(d) {
         const hRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(h.name + ' ' + destination)}&limit=1`);
         const hData = await hRes.json();
         if (hData?.[0]) {
-          const m = L.marker([hData[0].lat, hData[0].lon], {
+          const lat = hData[0].lat;
+          const lon = hData[0].lon;
+          const m = L.marker([lat, lon], {
             icon: L.divIcon({ className: 'custom-div-icon', html: "<div style='background:var(--gold);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.2)'>🏨</div>", iconSize: [30, 30], iconAnchor: [15, 15] })
           }).addTo(window.currentMap).bindPopup(`<b>Hébergement :</b><br>${esc(h.name)}`);
-          markers.push(m);
+          
+          const id = 'hotel-' + Math.random().toString(36).substr(2, 9);
+          markers[id] = m;
+          addPoiItem(h.name, 'Hôtel', h.emoji || '🏨', lat, lon, id);
         }
       } catch(e) {}
     }
@@ -214,27 +215,53 @@ async function initMap(d) {
     // 3. Ajouter les activités
     for (const a of (d.activities || [])) {
       try {
-        // On cherche l'activité dans la ville
         const aRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(a.name + ' ' + destination)}&limit=1`);
         const aData = await aRes.json();
         if (aData?.[0]) {
-          const m = L.marker([aData[0].lat, aData[0].lon], {
+          const lat = aData[0].lat;
+          const lon = aData[0].lon;
+          const m = L.marker([lat, lon], {
             icon: L.divIcon({ className: 'custom-div-icon', html: `<div style='background:var(--ink);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,0.2)'>${a.emoji||'📍'}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] })
           }).addTo(window.currentMap).bindPopup(`<b>Activité :</b><br>${esc(a.name)}`);
-          markers.push(m);
+          
+          const id = 'act-' + Math.random().toString(36).substr(2, 9);
+          markers[id] = m;
+          addPoiItem(a.name, 'Activité', a.emoji || '🎭', lat, lon, id);
         }
       } catch(e) {}
     }
 
-    // Ajuster la vue si on a des marqueurs
-    if (markers.length > 0) {
-      const group = new L.featureGroup(markers);
+    window.currentMarkers = markers;
+
+    const allMarkers = Object.values(markers);
+    if (allMarkers.length > 0) {
+      const group = new L.featureGroup(allMarkers);
       window.currentMap.fitBounds(group.getBounds().pad(0.2));
     }
 
   } catch (err) {
     console.error("Map error:", err);
   }
+}
+
+function addPoiItem(name, type, emoji, lat, lon, markerId) {
+  const poiList = document.getElementById('mapPoiList');
+  if (!poiList) return;
+
+  const div = document.createElement('div');
+  div.className = 'poi-item';
+  div.onclick = () => {
+    window.currentMap.setView([lat, lon], 16);
+    if (window.currentMarkers[markerId]) {
+      window.currentMarkers[markerId].openPopup();
+    }
+  };
+  div.innerHTML = `
+    <span style="font-size:18px; display:block; margin-bottom:4px;">${esc(emoji)}</span>
+    <span class="poi-title">${esc(name)}</span>
+    <span class="poi-type">${esc(type)}</span>
+  `;
+  poiList.appendChild(div);
 }
 
 /* ---- FLIGHTS ---- */

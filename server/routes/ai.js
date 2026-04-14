@@ -4,7 +4,7 @@
 
 import express from 'express';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
-import { analyzeRequest, suggestDestinations, assemblePack, chatModify } from '../services/claude.js';
+import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
 import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
 import { scorepack } from '../services/scoring.js';
@@ -57,6 +57,21 @@ router.post('/destinations', optionalAuth, async (req, res) => {
   } catch (err) {
     console.error('AI destinations error:', err.message);
     res.status(500).json({ error: 'Erreur lors de la suggestion de destinations' });
+  }
+});
+
+// ---- POST /api/ai/onboarding ----
+router.post('/onboarding', optionalAuth, async (req, res) => {
+  try {
+    const { currentData, userMessage } = req.body;
+    if (!userMessage) return res.status(400).json({ error: 'userMessage requis' });
+
+    const result = await chatIntake({ currentData, userMessage });
+    res.json(result);
+
+  } catch (err) {
+    console.error('AI onboarding error:', err.message);
+    res.status(500).json({ error: 'Erreur lors de la conversation d\'onboarding' });
   }
 });
 

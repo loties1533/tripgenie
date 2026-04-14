@@ -3,6 +3,7 @@
    ============================================ */
 
 :root {
+  /* -- Palette de base -- */
   --gold: #C9A84C;
   --gold-light: #F5E6C0;
   --gold-dark: #8B6914;
@@ -14,10 +15,30 @@
   --sky: #3A6B8A;
   --coral: #C0634A;
   --muted: #7A6E62;
+  
+  /* -- Tokens Sémantiques (Mode Clair par défaut) -- */
+  --bg-main: var(--parchment);
+  --bg-card: #FFFFFF;
+  --bg-offset: var(--parchment-dark);
+  --text-main: var(--ink);
+  --text-dim: var(--muted);
   --border: rgba(201, 168, 76, 0.25);
   --radius: 12px;
   --shadow: 0 4px 24px rgba(26, 20, 16, 0.08);
   --shadow-lg: 0 12px 48px rgba(26, 20, 16, 0.14);
+  --glass: rgba(255, 255, 255, 0.7);
+}
+
+/* -- Tokens Sémantiques (Mode Sombre) -- */
+[data-theme="dark"] {
+  --bg-main: #0F0D0B;
+  --bg-card: #1A1714;
+  --bg-offset: #13110E;
+  --text-main: #FAF7F2;
+  --text-dim: #A09384;
+  --border: rgba(201, 168, 76, 0.15);
+  --shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+  --glass: rgba(26, 23, 20, 0.8);
 }
 
 * {
@@ -28,9 +49,10 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: var(--parchment);
-  color: var(--ink);
+  background: var(--bg-main);
+  color: var(--text-main);
   min-height: 100vh;
   font-size: 15px;
   line-height: 1.6;
+  transition: background 0.3s ease, color 0.3s ease;
 }

@@ -83,6 +83,61 @@ export function startLoadingDots() {
   return timer;
 }
 
+// ---- THEME TOGGLE ----
+export function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const icon = document.querySelector('.theme-icon');
+  if (icon) icon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+}
+
+export function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  
+  const icon = document.querySelector('.theme-icon');
+  if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+  
+  showToast(`Mode ${newTheme === 'dark' ? 'sombre' : 'clair'} activé`);
+}
+
+// ---- MOOD BOARD ----
+const MOODS = [
+  { id: 'adventure', name: 'Aventure', img: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80' },
+  { id: 'relax',     name: 'Détente',  img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80' },
+  { id: 'culture',   name: 'Culture',  img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&q=80' },
+  { id: 'party',     name: 'Nightlife',img: 'https://images.unsplash.com/photo-1514525253361-b83f859b73c0?w=400&q=80' },
+  { id: 'food',      name: 'Gastro',   img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80' },
+  { id: 'luxury',    name: 'Luxe',     img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400&q=80' }
+];
+
+export function renderMoodBoard() {
+  const grid = document.getElementById('moodGrid');
+  if (!grid) return;
+  grid.innerHTML = MOODS.map(m => `
+    <div class="mood-item" data-id="${m.id}" onclick="toggleMood(this)">
+      <img src="${m.img}" alt="${m.name}">
+      <div class="mood-check">✓</div>
+      <div class="mood-item-overlay">
+        <span class="mood-name">${m.name}</span>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('moodBoard').classList.add('active');
+}
+
+export function toggleMood(el) {
+  el.classList.toggle('selected');
+}
+
+export function getSelectedMoods() {
+  return Array.from(document.querySelectorAll('.mood-item.selected'))
+    .map(el => el.dataset.id);
+}
+
 // ---- STOP LOADING DOTS (manquait dans la version précédente) ----
 export function stopLoadingDots(timer) {
   if (timer) clearInterval(timer);

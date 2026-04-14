@@ -83,7 +83,7 @@
 .trip-title {
   font-family: 'Playfair Display', serif;
   font-size: 36px;
-  color: var(--ink);
+  color: var(--text-main);
   margin-bottom: 4px;
 }
 
@@ -98,7 +98,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-dim);
 }
 
 /* EXPORT BUTTONS */
@@ -110,14 +110,14 @@
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--text-main);
   transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.btn-export:hover { background: var(--parchment); border-color: var(--gold); }
+.btn-export:hover { background: var(--bg-offset); border-color: var(--gold); }
 
 /* SUMMARY CARDS */
 .summary-grid {
@@ -128,11 +128,12 @@
 }
 
 .summary-card {
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
   text-align: center;
+  transition: background 0.3s, border 0.3s;
 }
 
 .summary-icon {
@@ -145,93 +146,150 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--text-dim);
   margin-bottom: 4px;
 }
 
 .summary-value {
   font-size: 20px;
   font-weight: 500;
-  color: var(--ink);
+  color: var(--text-main);
   font-family: 'Playfair Display', serif;
 }
 
-/* CONTENT TABS */
-.content-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1.5px solid var(--border);
-  margin-bottom: 32px;
+/* SKELETON UI & SHIMMER */
+.shimmer {
+  background: linear-gradient(
+    90deg, 
+    var(--bg-offset) 0%, 
+    var(--bg-card) 50%, 
+    var(--bg-offset) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
 }
 
-.content-tab {
-  padding: 12px 24px;
-  border: none;
-  background: transparent;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  color: var(--muted);
-  cursor: pointer;
-  border-bottom: 2.5px solid transparent;
-  margin-bottom: -1.5px;
-  transition: all 0.2s;
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 
-.content-tab.active {
-  color: var(--ink);
-  border-bottom-color: var(--gold);
-  font-weight: 500;
+.skeleton-item {
+  height: 20px;
+  margin-bottom: 10px;
+  width: 100%;
 }
 
-.content-tab:hover:not(.active) { color: var(--ink-light); }
-
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* SECTION HEADER */
-.section-header { margin-bottom: 20px; }
-
-.section-header h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 24px;
-  font-weight: 400;
-  margin-bottom: 4px;
-}
-
-.section-header p { color: var(--muted); font-size: 14px; }
-
-/* REGEN BAR */
-.regen-bar {
-  background: var(--parchment);
-  border-radius: var(--radius);
-  padding: 20px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-  gap: 12px;
+.skeleton-card {
+  height: 120px;
+  background: var(--bg-card);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
-.regen-text { font-size: 14px; color: var(--muted); }
-.regen-actions { display: flex; gap: 10px; }
+.skeleton-text { height: 12px; margin-bottom: 8px; }
+.skeleton-title { height: 24px; margin-bottom: 16px; width: 60%; }
 
-.btn-regen {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  padding: 8px 16px;
+.results-skeleton {
+  display: none;
+}
+.results-skeleton.active {
+  display: block;
+}
+
+/* SCAN-LIKE MAP LAYOUT */
+.map-layout {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+
+.itinerary-scroll-list {
+  flex: 1;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 15px;
+}
+
+.map-explorer {
+  flex: 1.5;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  height: 500px;
+}
+
+#tripMap {
+  flex: 1;
+  width: 100%;
+  min-height: 300px;
+  z-index: 10;
+}
+
+.map-side-panel {
+  height: 150px;
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  background: var(--bg-offset);
+}
+
+.side-panel-hint {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.poi-list {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.poi-item {
+  flex: 0 0 120px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 10px;
   border-radius: 8px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
   cursor: pointer;
-  color: var(--ink);
   transition: all 0.2s;
 }
 
-.btn-regen:hover { border-color: var(--gold); background: var(--gold-light); }
-.btn-regen.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
-.btn-regen.primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+.poi-item:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.poi-title {
+  font-size: 12px;
+  font-weight: 500;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poi-type {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+@media (max-width: 768px) {
+  .map-layout { flex-direction: column; }
+  .itinerary-scroll-list { max-height: none; overflow: visible; }
+  .map-explorer { height: 400px; }
+}
 
 /* --- PRINT RULES --- */
 @media print {

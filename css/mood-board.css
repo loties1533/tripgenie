@@ -1,0 +1,138 @@
+/* ============================================
+   TRIPGENIE — Mood Board Styles
+   ============================================ */
+
+.mood-board-container {
+  display: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 20px 0;
+  animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.mood-board-container.active {
+  display: block;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mood-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.mood-header h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.mood-header p {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.mood-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mood-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.mood-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: crop;
+  filter: grayscale(40%) brightness(0.9);
+  transition: all 0.5s ease;
+}
+
+.mood-item:hover img {
+  filter: grayscale(0%) brightness(1.1);
+  transform: scale(1.1);
+}
+
+.mood-item.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 15px rgba(201, 168, 76, 0.3);
+}
+
+.mood-item.selected img {
+  filter: grayscale(0%) brightness(1.1);
+}
+
+.mood-item-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
+  display: flex;
+  align-items: flex-end;
+  padding: 12px;
+  color: #fff;
+}
+
+.mood-name {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mood-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: var(--gold);
+  color: var(--ink);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mood-item.selected .mood-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mood-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-mood-confirm {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 10px 32px;
+  border-radius: 50px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-mood-confirm:hover {
+  transform: scale(1.05);
+}
