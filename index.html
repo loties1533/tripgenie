@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/search.css">
   <link rel="stylesheet" href="css/results.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mood-board.css">
   <link rel="stylesheet" href="css/responsive.css">
   <!-- Leaflet Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -35,6 +36,9 @@
     <a href="#tarifs">Tarifs</a>
   </nav>
   <div style="display:flex; gap:15px; align-items:center;">
+    <button class="btn-theme" id="themeToggle" onclick="toggleTheme()" title="Changer de thème">
+      <span class="theme-icon">🌓</span>
+    </button>
     <button class="btn-export" id="authBtn" onclick="openAuthModal('login')">Se connecter</button>
     <button class="cta-header" onclick="scrollToSearch()">Planifier un voyage</button>
   </div>
@@ -86,6 +90,21 @@
     <span class="chat-status">en ligne</span>
   </div>
   <div class="chat-messages" id="chatMessages"></div>
+  
+  <!-- MOOD BOARD CONTAINER -->
+  <div class="mood-board-container" id="moodBoard">
+    <div class="mood-header">
+      <h3>Quelle ambiance pour ce voyage ? ✨</h3>
+      <p>Choisis une ou plusieurs images qui t'inspirent.</p>
+    </div>
+    <div class="mood-grid" id="moodGrid">
+      <!-- Les items seront générés en JS pour plus de flexibilité -->
+    </div>
+    <div class="mood-actions">
+      <button class="btn-mood-confirm" onclick="confirmMood()">Confirmer ma vibe ✦</button>
+    </div>
+  </div>
+
   <div class="chat-input-row">
     <input type="text" id="chatInput" class="chat-input" placeholder="Réponds ici...">
     <button class="chat-send" id="chatSend" onclick="chatSend()">→</button>
@@ -199,6 +218,29 @@
     </div>
   </div>
 
+  <!-- SKELETON UI (Chargement Premium) -->
+  <div class="results-skeleton" id="resultsSkeleton">
+    <div class="results-header">
+      <div>
+        <div class="shimmer skeleton-title"></div>
+        <div style="display:flex; gap:10px;">
+          <div class="shimmer" style="width:100px; height:15px; border-radius:10px;"></div>
+          <div class="shimmer" style="width:100px; height:15px; border-radius:10px;"></div>
+        </div>
+      </div>
+      <div class="shimmer" style="width:120px; height:40px; border-radius:8px;"></div>
+    </div>
+    
+    <div class="summary-grid">
+      <div class="skeleton-card"><div class="shimmer skeleton-text" style="width:40%; margin:0 auto 10px;"></div><div class="shimmer skeleton-title" style="width:80%; margin:0 auto;"></div></div>
+      <div class="skeleton-card"><div class="shimmer skeleton-text" style="width:40%; margin:0 auto 10px;"></div><div class="shimmer skeleton-title" style="width:80%; margin:0 auto;"></div></div>
+      <div class="skeleton-card"><div class="shimmer skeleton-text" style="width:40%; margin:0 auto 10px;"></div><div class="shimmer skeleton-title" style="width:80%; margin:0 auto;"></div></div>
+      <div class="skeleton-card"><div class="shimmer skeleton-text" style="width:40%; margin:0 auto 10px;"></div><div class="shimmer skeleton-title" style="width:80%; margin:0 auto;"></div></div>
+    </div>
+
+    <div class="shimmer" style="height:350px; border-radius:12px; margin-bottom:40px;"></div>
+  </div>
+
   <!-- ===================== DESTINATIONS ===================== -->
 <section class="destinations-section" id="destinations">
   <h2>Inspirations voyage</h2>
@@ -293,7 +335,16 @@
 
     <!-- Tab panels -->
     <div class="tab-panel active" id="tab-itinerary">
-      <div id="itineraryContent"></div>
+      <div class="map-layout">
+        <div id="itineraryContent" class="itinerary-scroll-list"></div>
+        <div class="map-explorer">
+          <div id="tripMap"></div>
+          <div class="map-side-panel" id="mapSidePanel">
+            <p class="side-panel-hint">Points d'intérêt</p>
+            <div id="mapPoiList" class="poi-list"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="tab-panel" id="tab-flights">
