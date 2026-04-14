@@ -2,12 +2,16 @@
 // TRIPGENIE — js/main.js
 // =============================================
 
-import { generatePack, getDestinations, login, signup, logout, getCurrentUser, getPublicTrip, chatModify } from './api.js';
+import { 
+  generatePack, getDestinations, login, signup, logout, getCurrentUser, 
+  getPublicTrip, chatModify, chatOnboarding 
+} from './api.js';
 import { renderResults } from './render.js';
 import {
   showToast, switchTab, setTripType, togglePref,
   getSelectedPrefs, printItinerary, scrollToSearch,
-  initDates, startLoadingDots, stopLoadingDots
+  initDates, startLoadingDots, stopLoadingDots,
+  initTheme, toggleTheme, renderMoodBoard, toggleMood, getSelectedMoods
 } from './ui.js';
 
 const tripType = { value: 'roundtrip' };
@@ -27,13 +31,17 @@ document.addEventListener('DOMContentLoaded', () => {
   window.analyzeNLP        = () => {};
   window.openAuthModal     = openAuthModal;
   window.closeAuthModal    = closeAuthModal;
-  window.switchAuthTab     = switchAuthTab;
   window.handleLogin       = handleLogin;
   window.handleSignup      = handleSignup;
   window.shareTrip         = shareTrip;
+  window.toggleTheme       = toggleTheme;
+  window.toggleMood        = toggleMood;
+  window.confirmMood       = confirmMood;
 
+  initTheme();
   checkAuthBlock();
   checkDeepLink();
+  loadLastTrip();
 
   document.getElementById('btnGenerate').addEventListener('click', generateItinerary);
 
@@ -45,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   setTimeout(() => {
-    addMessage(STEPS[0].question, 'bot', STEPS[0].chips);
+    addMessage("Salut ! Je suis ton assistant TripGenie. ✨ Pour commencer, avec qui pars-tu ou quel type de voyage as-tu en tête ?", 'bot', ['Solo', 'En couple ❤️', 'Amis 🍻', 'Famille 👨‍👩‍👧']);
   }, 500);
 
 
@@ -108,6 +116,8 @@ async function generateItinerary() {
     window.currentTripId = result.trip_id;
     window.currentPackData = data;
     window.currentRenderParams = { origin, dest, departure, returnDate, travelers, budget, days };
+    
+    saveLastTrip(data, window.currentRenderParams);
     renderResults(data, window.currentRenderParams);
 
   } catch (err) {
@@ -133,18 +143,17 @@ function setLoadingState(loading) {
   const btnText = document.getElementById('btnText');
   const spinner = document.getElementById('btnSpinner');
   const loader  = document.getElementById('loadingState');
+  const skeleton = document.getElementById('resultsSkeleton');
   const results = document.getElementById('resultsSection');
-  const statusText = document.getElementById('statusText');
-  const statusSub  = document.getElementById('statusSub');
-
-  btn.disabled          = loading;
-  btnText.style.display = loading ? 'none'        : 'inline';
-  spinner.style.display = loading ? 'inline-block' : 'none';
 
   if (loading) {
+    btn.classList.add('loading');
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline-block';
     loader.classList.add('active');
+    skeleton.classList.add('active'); // On montre le skeleton
     results.classList.remove('active');
-    loader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollToSearch();
 
     // Rotation des messages de statut pour un effet "Premium"
     const steps = [
@@ -175,27 +184,19 @@ function setLoadingState(loading) {
 // =============================================
 
 const chatState = {
-  step: 0,
   data: { 
-    travelers: 2, 
-    profile: 'couple', 
+    travelers: null, 
+    profile: null, 
     mode: 'relax', 
     interests: [],
-    budget: 1500, 
-    origin: 'Paris', 
+    budget: null, 
+    origin: null, 
     destination: null, 
-    duration: 7 
+    duration: null,
+    discoveryMode: null,
+    moods: []
   }
 };
-
-const STEPS = [
-  { key: 'profile',   question: "Salut ! Avec qui partez-vous ? 👥",      chips: ['Solo', 'En couple ❤️', 'Entre amis 🍻', 'En famille 👨‍👩‍👧'] },
-  { key: 'mode',      question: "Quelle ambiance recherchez-vous ? ✨",   chips: ['🎉 Fête', '🧘 Détente', '🏛 Culture', '🌴 Plage', '😮 Surprise'] },
-  { key: 'interests', question: "Un centre d'intérêt particulier ? 🎨",   chips: ['Gastronomie', 'Nature', 'Histoire', 'Shopping', 'Vie nocturne'] },
-  { key: 'budget',    question: "Budget total pour le voyage ? 💰",       chips: ['< 1000€', '1000-2500€', '2500-5000€', '5000€+'] },
-  { key: 'duration',  question: "Combien de temps partez-vous ? 📅",      chips: ['Week-end (2j)', 'Semaine (7j)', '10 jours', '2 semaines'] },
-  { key: 'origin',    question: "Vous partez d'où ? ✈️",                  chips: ['Paris', 'Lyon', 'Marseille', 'Bordeaux', 'Autre'] },
-];
 
 function addMessage(text, type = 'bot', chips = []) {
   const messages = document.getElementById('chatMessages');
@@ -296,47 +297,35 @@ function chatSend() {
   processAnswer(value);
 }
 
-function processAnswer(value) {
-  const step = STEPS[chatState.step];
-  if (!step) return;
-  const v = value.toLowerCase();
-
-  if (step.key === 'profile') {
-    chatState.data.profile = v.includes('couple') ? 'couple' : v.includes('amis') ? 'friends' : v.includes('famille') ? 'family' : 'solo';
-    chatState.data.travelers = chatState.data.profile === 'solo' ? 1 : chatState.data.profile === 'couple' ? 2 : 4;
-  } else if (step.key === 'mode') {
-    chatState.data.mode = v.includes('fête') || v.includes('fete') ? 'party'
-      : v.includes('détente') || v.includes('detente') ? 'relax'
-      : v.includes('culture') ? 'culture'
-      : v.includes('surprise') ? 'surprise'
-      : v.includes('plage') ? 'beach'
-      : 'party';
-  } else if (step.key === 'interests') {
-    chatState.data.interests = [value];
-  } else if (step.key === 'budget') {
-    // Tranches : '< 1000€', '1000-2500€', '2500-5000€', '5000€+'
-    chatState.data.budget = v.includes('5000') ? 6000
-      : v.includes('2500') ? 3500
-      : v.includes('1000') ? 1500
-      : 800;
-  } else if (step.key === 'duration') {
-    chatState.data.duration = v.includes('week') ? 2 : v.includes('10') ? 10 : v.includes('2 sem') ? 14 : 7;
-  } else if (step.key === 'origin') {
-    chatState.data.origin = value.includes('Autre') ? 'Paris' : value;
-  }
-
-  chatState.step++;
-
-  showTyping();
-  setTimeout(() => {
+async function processAnswer(value) {
+  try {
+    showTyping();
+    const res = await chatOnboarding(value, chatState.data);
     removeTyping();
-    if (chatState.step < STEPS.length) {
-      addMessage(STEPS[chatState.step].question, 'bot', STEPS[chatState.step].chips);
-    } else {
-      addMessage(`Super ! 🎯 Je cherche les meilleures pépites pour votre profil (${chatState.data.profile}), mode ${chatState.data.mode}, budget total ${chatState.data.budget}€...`, 'bot');
-      suggestAndGenerate();
+
+    // Mise à jour des données extraites par l'IA
+    if (res.extractedData) {
+      Object.assign(chatState.data, res.extractedData);
+      console.log("Données extraites :", chatState.data);
     }
-  }, 800);
+
+    if (res.isReady) {
+      addMessage("Super, j'ai tout ce qu'il me faut ! 🎯 Je cherche les meilleures pépites pour vous...", 'bot');
+      suggestAndGenerate();
+    } else {
+      addMessage(res.response, 'bot', res.chips || []);
+      
+      // TRIGGER MOOD BOARD: Si c'est le début et qu'on n'a pas encore de mood
+      if (!chatState.data.moods || chatState.data.moods.length === 0) {
+        setTimeout(() => renderMoodBoard(), 1000);
+      }
+    }
+
+  } catch (err) {
+    removeTyping();
+    console.error(err);
+    addMessage("Oups, j'ai un petit souci technique. On peut continuer ?", 'bot');
+  }
 }
 
 async function suggestAndGenerate() {
@@ -350,11 +339,14 @@ async function suggestAndGenerate() {
       travelers:   chatState.data.travelers,
       duration:    chatState.data.duration,
       origin:      chatState.data.origin,
+      moods:       chatState.data.moods,
+      discoveryMode: chatState.data.discoveryMode,
       preferences: []
     });
 
     removeTyping();
-    addMessage(`Compte tenu de votre profil (${chatState.data.profile}) et de vos intérêts, voici mes 3 meilleures pépites 🌍`, 'bot');
+    const profileStr = chatState.data.profile || 'Voyageur';
+    addMessage(`Compte tenu de votre profil (${profileStr}) et de vos intérêts, voici mes 3 meilleures pépites 🌍`, 'bot');
     
     const cities = res.destinations || [];
     if (!cities.length) {
@@ -460,6 +452,23 @@ function switchAuthTab(tab) {
     sf.style.display = tab === 'signup' ? 'flex' : 'none';
   }
 }
+
+async function confirmMood() {
+  const chosen = getSelectedMoods();
+  if (chosen.length === 0) {
+    showToast("Choisis au moins une image pour m'aider ! 😊");
+    return;
+  }
+  
+  chatState.data.moods = chosen;
+  document.getElementById('moodBoard').classList.remove('active');
+  
+  addMessage(`Pépites sélectionnées : ${chosen.join(', ')} ! Je vais adapter l'itinéraire à cette ambiance. ✨`, 'user');
+  
+  // On informe l'IA du choix de l'ambiance
+  processAnswer(`J'ai choisi ces ambiances : ${chosen.join(', ')}. Adapte tes prochaines suggestions.`);
+}
+window.confirmMood = confirmMood;
 
 async function handleLogin() {
   const email = document.getElementById('loginEmail').value;
@@ -576,5 +585,24 @@ async function handleRefinement(message) {
     removeTyping();
     console.error(err);
     addMessage("Pardon, j'ai eu un problème pour modifier ton voyage. On réessaie ?", 'bot');
+  }
+}
+
+// ---- PERSISTANCE LOCALE ----
+function saveLastTrip(data, params) {
+  localStorage.setItem('lastTrip', JSON.stringify({ data, params }));
+}
+
+function loadLastTrip() {
+  try {
+    const saved = localStorage.getItem('lastTrip');
+    if (saved && !new URLSearchParams(window.location.search).get('tripId')) {
+      const { data, params } = JSON.parse(saved);
+      window.currentPackData = data;
+      window.currentRenderParams = params;
+      renderResults(data, params);
+    }
+  } catch (e) {
+    console.warn("Could not load last trip:", e);
   }
 }
