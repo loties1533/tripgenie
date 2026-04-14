@@ -105,6 +105,14 @@ export async function generatePack(params) {
   });
 }
 
+// Chat Onboarding (Dynamique)
+export async function chatOnboarding(userMessage, currentData) {
+  return request('/ai/onboarding', {
+    method: 'POST',
+    body:   JSON.stringify({ userMessage, currentData })
+  });
+}
+
 // Chat pour modifier l'itinéraire
 export async function chatModify(message, currentPack, mode, tripId) {
   return request('/ai/chat', {
