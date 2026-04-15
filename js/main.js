@@ -202,9 +202,14 @@ function addMessage(text, type = 'bot', chips = []) {
   const messages = document.getElementById('chatMessages');
   if (!messages) return;
 
-  const div = document.createElement('div');
-  div.className = `chat-msg ${type}`;
-  div.innerHTML = `<div class="chat-bubble">${text}</div>`;
+  // Wrapper pour grouper bulle + chips de la même "turn"
+  const wrapper = document.createElement('div');
+  wrapper.className = `chat-turn ${type}`;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `chat-msg ${type}`;
+  msgDiv.innerHTML = `<div class="chat-bubble">${text}</div>`;
+  wrapper.appendChild(msgDiv);
 
   if (chips.length) {
     const chipsDiv = document.createElement('div');
@@ -216,11 +221,11 @@ function addMessage(text, type = 'bot', chips = []) {
       btn.onclick = () => handleChip(chip);
       chipsDiv.appendChild(btn);
     });
-    div.appendChild(chipsDiv);
+    wrapper.appendChild(chipsDiv);
   }
 
-  messages.appendChild(div);
-  
+  messages.appendChild(wrapper);
+
   // Petit délai pour scroller après l'animation CSS
   setTimeout(() => {
     messages.scrollTop = messages.scrollHeight;
@@ -246,9 +251,12 @@ function removeTyping() {
 function handleChip(value) {
   addMessage(value, 'user');
 
-  // Mode sélection destination
+  // Mode sélection destination — matching robuste insensible à la casse
   if (window._suggestedDestinations) {
-    const dest = window._suggestedDestinations.find(d => value.includes(d.city));
+    const normalizedValue = value.toLowerCase().trim();
+    const dest = window._suggestedDestinations.find(
+      d => normalizedValue.includes(d.city.toLowerCase()) || d.city.toLowerCase().includes(normalizedValue)
+    );
     if (dest) {
       window._suggestedDestinations = null;
       addMessage(`Excellent choix ! 🚀 Je génère ton pack pour ${dest.city}...`, 'bot');
@@ -303,6 +311,10 @@ async function processAnswer(value) {
     const res = await chatOnboarding(value, chatState.data);
     removeTyping();
 
+    if (res.isMock) {
+      showSurvivalModeIndicator();
+    }
+
     // Mise à jour des données extraites par l'IA
     if (res.extractedData) {
       Object.assign(chatState.data, res.extractedData);
@@ -310,7 +322,11 @@ async function processAnswer(value) {
     }
 
     if (res.isReady) {
-      addMessage("Super, j'ai tout ce qu'il me faut ! 🎯 Je cherche les meilleures pépites pour vous...", 'bot');
+      const readyMsg = res.isMock 
+        ? "Excellent choix ! 🎯 Préparation de votre sélection 'Signature TripGenie' pour votre profil..."
+        : "Super, j'ai tout ce qu'il me faut ! 🎯 Je cherche les meilleures pépites pour vous...";
+      
+      addMessage(readyMsg, 'bot');
       suggestAndGenerate();
     } else {
       addMessage(res.response, 'bot', res.chips || []);
@@ -343,6 +359,10 @@ async function suggestAndGenerate() {
       discoveryMode: chatState.data.discoveryMode,
       preferences: []
     });
+
+    if (res.isMock) {
+      showSurvivalModeIndicator();
+    }
 
     removeTyping();
     const profileStr = chatState.data.profile || 'Voyageur';
@@ -605,4 +625,16 @@ function loadLastTrip() {
   } catch (e) {
     console.warn("Could not load last trip:", e);
   }
+}
+
+// ---- SURVIVAL MODE UI ----
+function showSurvivalModeIndicator() {
+  if (document.getElementById('survivalModeBadge')) return;
+  const badge = document.createElement('div');
+  badge.id = 'survivalModeBadge';
+  badge.className = 'survival-badge';
+  badge.innerHTML = '✦ Mode Survie Actif (Simulation)';
+  document.body.appendChild(badge);
+  
+  showToast("L'IA est saturée. Passage automatique en mode démonstration. ✨");
 }

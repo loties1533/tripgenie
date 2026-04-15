@@ -4,6 +4,7 @@
 
 import 'dotenv/config';
 import { searchWeb } from './tools/webSearch.js';
+import * as Mocks from './mocks.js';
 
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
@@ -13,13 +14,7 @@ console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_A
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
-const SURVIVAL_DESTINATIONS = {
-  destinations: [
-    { city: "Funchal", country: "Portugal", iata: "FNC", why: "Perle de l'Atlantique, climat parfait et paysages sauvages.", vibe: "Nature & Relax" },
-    { city: "Séville", country: "Espagne", iata: "SVQ", why: "Culture vibrante, tapas incroyables et architecture magnifique.", vibe: "Culture & Fête" },
-    { city: "Ljubljana", country: "Slovénie", iat: "LJU", why: "Capitale verte, ambiance conviviale et joyau caché de l'Europe.", vibe: "Calme & Découverte" }
-  ]
-};
+
 
 // =============================================
 // HELPERS
@@ -163,7 +158,9 @@ async function callGemini(systemPrompt, userPrompt) {
 export async function analyzeRequest(userInput) {
   const raw = await callAI(
     `Analyse cette demande: "${sanitizeInput(userInput)}"
-JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxury|group|relax|surprise","travelers":2,"duration_days":3,"budget_total":null,"preferences":[],"confidence":0.9}`
+JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxury|group|relax|surprise","travelers":2,"duration_days":3,"budget_total":null,"preferences":[],"confidence":0.9}`,
+    undefined,
+    'onboarding'
   );
   return parseJSON(raw);
 }
@@ -185,26 +182,20 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
 
     const raw = await callAI(
       `${webContext}
-      En t'inspirant du contexte web, suggère 3 destinations RÉELLES et pertinentes.
-      TYPE DE DÉCOUVERTE : ${discoveryMode === 'hidden_gem' ? 'Pépites cachées et insolites' : 'Destinations classiques et célèbres'}.
-      PROFIL : ${profile} | AMBIANCE RÉELLE : ${mode} | INTÉRÊTS : ${intStr} | VIBES VISUELLES : ${moodStr}.
-      Budget:${budget}€ Voyageurs:${travelers} Durée:${duration}j.
-      
-      CONSIGNES :
-      - Si l'utilisateur veut du Luxe et de la Fête, propose des endroits comme Ibiza, St Tropez, Dubai, Monaco, Mykonos (selon le discoveryMode).
-      - Ne force pas l'Europe si une destination internationale semble plus pertinente.
-      - Sois précis sur pourquoi cette destination matche le profil.
-      
-      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi...", "match_score": 95}]}`
+      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi...", "match_score": 95}]}`,
+      undefined,
+      'destinations'
     );
     return parseJSON(raw);
   } catch (err) {
     console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', err.message);
-    return SURVIVAL_DESTINATIONS;
+    return Mocks.MOCK_DESTINATIONS;
   }
 }
 
-async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
+
+
+async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboarding') {
   let errors = [];
   
   // 1. Priorité Gemini (Gratuit & Rapide)
@@ -237,7 +228,14 @@ async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT) {
     }
   }
 
-  throw new Error(`Tous les services IA ont échoué. Détails : ${errors.join(' | ')}`);
+  // 4. MODE SURVIE (Fallback ultime) - On ne lève plus d'erreur 500
+  console.error(`🚨 TOUS LES SERVICES IA ÉPUISÉS. Activation du Mode Survie (${context}).`);
+  
+  if (context === 'onboarding') return JSON.stringify(Mocks.MOCK_ONBOARDING);
+  if (context === 'destinations') return JSON.stringify(Mocks.MOCK_DESTINATIONS);
+  if (context === 'pack') return JSON.stringify(Mocks.MOCK_PACK);
+
+  return JSON.stringify({ response: "Service temporairement limité. Réessayez dans 1 minute.", isMock: true });
 }
 
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
@@ -257,30 +255,20 @@ export async function assemblePack({ destination, flights, events, mode, profile
     `Tu es un expert voyage local pour ${dest}. Crée un itinéraire de type "${tone}" pour un profil "${profile}". Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
     IMPORTANT pour le mode "party": Ne propose pas de clubs généralistes. Cherche des pépites underground, des bars secrets, des clubs de techno de renommée locale ou des festivals spécifiques. La description doit être électrique et donner envie au profil "${profile}".
     Génère UNIQUEMENT ce JSON avec des descriptions évocatrices adaptées au profil "${profile}" :
-    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"Hôtel parfait pour ce profil","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"Alternative","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`
+    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"Hôtel parfait pour ce profil","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"Alternative","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`,
+    undefined,
+    'pack'
   );
 
   let t;
   try {
     t = parseJSON(textRaw);
   } catch (err) {
-    console.warn('Fallback IA activé suite à un JSON malformé (ex: Modèle OpenRouter).', err.message);
-    t = {
-      tagline: `Découverte magique de ${dest}`,
-      country: 'Europe',
-      overview: "Profitez d'un programme sur-mesure créé par TripGenie pour vous faire découvrir les moindres secrets de cette ville.",
-      weather_temp: "22°C", weather_cond: "Agréable", weather_tip: "Climat parfait pour explorer",
-      hotel1_name: `Grand Hôtel ${dest}`, hotel1_loc: "Centre-ville", hotel1_hl: "Idéalement situé",
-      hotel2_name: "Auberge Voyageurs", hotel2_loc: "Quartier animé", hotel2_hl: "Super rapport qualité-prix",
-      activity1: "Visite des incontournables", activity1_desc: "Explorez les monuments principaux.",
-      activity2: "Saveurs locales", activity2_desc: "Dégustation des spécialités culinaires.",
-      activity3: "Balade nocturne", activity3_desc: "Découvrez la ville sous ses plus belles lumières.",
-      day1_title: "Arrivée et immersion", day1_am: "Installation & visites", day1_pm: "Dîner local",
-      day2_title: "Exploration", day2_am: "Visite guidée", day2_pm: "Repos ou achats souvenirs",
-      tip1_title: "Transports locaux", tip1: "Utilisez les pass jours pour économiser.",
-      tip2_title: "Culture", tip2: "Imprégnez-vous de l'ambiance des petits quartiers.",
-      phrase: "Bonjour", phrase_tr: "Hello"
-    };
+    console.warn('Fallback IA activé suite à un problème (ex: Quotas ou JSON malformé).', err.message);
+    t = Mocks.MOCK_PACK; // Utilisation du Mock ultra-complet pour Ibiza
+    
+    // On remplace juste le nom de la ville si c'était différent
+    if (!t.destination) t.destination = dest;
   }
 
   // Vols — données réelles si Amadeus a répondu, sinon estimées
@@ -424,14 +412,37 @@ export async function chatIntake({ currentData, userMessage }) {
   
   FORMAT RÉPONSE (JSON UNIQUEMENT) :
   {
-    "response": "Ton message amical",
-    "chips": ["Choix 1", "Choix 2"],
-    "extractedData": { "budget": 2000, "duration": 7, "discoveryMode": "classic", "profile": "amis" },
+    "response": "Rédige ici un message chaleureux qui guide l'utilisateur sans proposer de ville.",
+    "chips": ["Suggère 2 ou 3 boutons d'options pertinentes ici"],
+    "extractedData": { "origin": "ville", "budget": 2000, "profile": "amis" },
     "isReady": false
   }`;
 
+  const msg = sanitizeInput(userMessage).toLowerCase();
+
+  // Cas spécial pour sortir de la boucle du Mode Survie
+  if (msg.includes('montre-moi')) {
+    const profile = currentData?.profile || Mocks.MOCK_ONBOARDING.extractedData.profile;
+    return {
+      response: "C'est parti pour le voyage Signature TripGenie ! ✨",
+      isReady: true,
+      extractedData: { ...Mocks.MOCK_ONBOARDING.extractedData, profile },
+      isMock: true
+    };
+  }
+
+  if (msg.includes('attendre')) {
+    return {
+      response: "Pas de souci ! Je comprends. N'hésite pas à revenir d'ici une heure ou demain, je serai de nouveau au top de ma forme pour te créer un voyage sur-mesure. À bientôt ! 👋",
+      isReady: false,
+      chips: ["Réessayer"],
+      isMock: true
+    };
+  }
   const raw = await callAI(
-    `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`
+    `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`,
+    undefined,
+    'onboarding'
   );
   
   return parseJSON(raw);

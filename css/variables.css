@@ -19,6 +19,7 @@
   /* -- Tokens Sémantiques (Mode Clair par défaut) -- */
   --bg-main: var(--parchment);
   --bg-card: #FFFFFF;
+  --bg-card-hover: #F9F6F1;
   --bg-offset: var(--parchment-dark);
   --text-main: var(--ink);
   --text-dim: var(--muted);
@@ -26,19 +27,20 @@
   --radius: 12px;
   --shadow: 0 4px 24px rgba(26, 20, 16, 0.08);
   --shadow-lg: 0 12px 48px rgba(26, 20, 16, 0.14);
-  --glass: rgba(255, 255, 255, 0.7);
+  --glass: rgba(255, 255, 255, 0.75);
 }
 
 /* -- Tokens Sémantiques (Mode Sombre) -- */
 [data-theme="dark"] {
   --bg-main: #0F0D0B;
   --bg-card: #1A1714;
+  --bg-card-hover: #221F1C;
   --bg-offset: #13110E;
   --text-main: #FAF7F2;
-  --text-dim: #A09384;
-  --border: rgba(201, 168, 76, 0.15);
-  --shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
-  --glass: rgba(26, 23, 20, 0.8);
+  --text-dim: #C5B9AC;
+  --border: rgba(201, 168, 76, 0.2);
+  --shadow: 0 4px 32px rgba(0, 0, 0, 0.6);
+  --glass: rgba(26, 23, 20, 0.85);
 }
 
 * {
@@ -49,7 +51,9 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: var(--bg-main);
+  background:
+    radial-gradient(ellipse at 50% 0%, #0D1B2A 0%, #050A10 55%, #000000 100%);
+  background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
   font-size: 15px;

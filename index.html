@@ -46,10 +46,51 @@
 
 <!-- ===================== HERO ===================== -->
 <div class="hero">
-  <div class="hero-bg-destinations">
-    <span>Barcelone</span><span>Tokyo</span><span>Ibiza</span>
-    <span>Mykonos</span><span>New York</span><span>Bali</span>
-    <span>Paris</span><span>Dubaï</span><span>Rome</span>
+  <!-- Aurora glow -->
+  <div class="hero-aurora"></div>
+
+  <!-- Photos flottantes (tous publics) -->
+  <div class="hero-photos">
+    <!-- Solo adventurer -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=400&q=80" alt="Solo">
+      <div class="photo-label">Solo ✦</div>
+    </div>
+    <!-- Couple romantique -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1518291344630-4857135fb581?w=400&q=80" alt="Couple">
+      <div class="photo-label">Couple ❤️</div>
+    </div>
+    <!-- Famille -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1476703993599-0035a21b17a9?w=400&q=80" alt="Famille">
+      <div class="photo-label">Famille 👨‍👩‍👧</div>
+    </div>
+    <!-- Amis / Fête -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80" alt="Amis">
+      <div class="photo-label">Amis 🍻</div>
+    </div>
+    <!-- Luxe -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&q=80" alt="Luxe">
+      <div class="photo-label">Luxe 💎</div>
+    </div>
+    <!-- Aventure nature -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80" alt="Aventure">
+      <div class="photo-label">Aventure 🏔️</div>
+    </div>
+    <!-- Culture / ville -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=400&q=80" alt="Culture">
+      <div class="photo-label">Culture 🏛️</div>
+    </div>
+    <!-- Plage détente -->
+    <div class="hero-photo-card">
+      <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80" alt="Plage">
+      <div class="photo-label">Détente 🏖️</div>
+    </div>
   </div>
 
   <div class="hero-content">
@@ -79,39 +120,52 @@
   </div>
 </div>
 
-<!-- ===================== SEARCH CARD ===================== -->
-<div style="padding: 0 2rem;">
-  <!-- NLP Input -->
-<!-- Chat IA -->
-<div class="ai-chat" id="aiChat">
-  <div class="chat-header">
-    <span class="chat-avatar">✦</span>
-    <span class="chat-title">TripGenie AI</span>
-    <span class="chat-status">en ligne</span>
-  </div>
-  <div class="chat-messages" id="chatMessages"></div>
-  
-  <!-- MOOD BOARD CONTAINER -->
-  <div class="mood-board-container" id="moodBoard">
-    <div class="mood-header">
-      <h3>Quelle ambiance pour ce voyage ? ✨</h3>
-      <p>Choisis une ou plusieurs images qui t'inspirent.</p>
+<!-- ===================== PLANNING SECTION ===================== -->
+<section class="planning-section">
+
+  <!-- AI Chat widget -->
+  <div class="planning-chat-wrapper">
+    <div class="planning-label">
+      <span class="planning-label-badge">✦ IA</span>
+      Planifie ton voyage en conversant avec TripGenie
     </div>
-    <div class="mood-grid" id="moodGrid">
-      <!-- Les items seront générés en JS pour plus de flexibilité -->
-    </div>
-    <div class="mood-actions">
-      <button class="btn-mood-confirm" onclick="confirmMood()">Confirmer ma vibe ✦</button>
+    <div class="ai-chat" id="aiChat">
+      <div class="chat-header">
+        <span class="chat-avatar">✦</span>
+        <span class="chat-title">TripGenie AI</span>
+        <span class="chat-status">en ligne</span>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <!-- MOOD BOARD CONTAINER -->
+      <div class="mood-board-container" id="moodBoard">
+        <div class="mood-header">
+          <h3>Quelle ambiance pour ce voyage ? ✨</h3>
+          <p>Choisis une ou plusieurs images qui t'inspirent.</p>
+        </div>
+        <div class="mood-grid" id="moodGrid"></div>
+        <div class="mood-actions">
+          <button class="btn-mood-confirm" onclick="confirmMood()">Confirmer ma vibe ✦</button>
+        </div>
+      </div>
+
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Réponds ici...">
+        <button class="chat-send" id="chatSend" onclick="chatSend()">→</button>
+      </div>
     </div>
   </div>
 
-  <div class="chat-input-row">
-    <input type="text" id="chatInput" class="chat-input" placeholder="Réponds ici...">
-    <button class="chat-send" id="chatSend" onclick="chatSend()">→</button>
+  <!-- Séparateur visuel OU -->
+  <div class="planning-divider">
+    <span class="planning-divider-line"></span>
+    <span class="planning-divider-text">ou remplis le formulaire</span>
+    <span class="planning-divider-line"></span>
   </div>
-</div>
-<p class="nlp-hint">ou remplis le formulaire ci-dessous</p>
-  <div class="search-card" id="searchCard">
+
+  <!-- Formulaire manuel -->
+  <div class="planning-form-wrapper">
+    <div class="search-card" id="searchCard">
 
     <!-- Trip type tabs -->
     <div class="search-tabs">
