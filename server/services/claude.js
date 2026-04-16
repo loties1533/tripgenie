@@ -241,7 +241,7 @@ async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboa
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date }) {
+export async function assemblePack({ destination, flights, events, realHotels = [], realRestaurants = [], mode, profile, travelers, budget, departure, return_date }) {
   const dest   = sanitizeInput(destination);
   const nights = departure && return_date
     ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
@@ -250,12 +250,28 @@ export async function assemblePack({ destination, flights, events, mode, profile
   // Adaptation du ton selon le profil
   const tone = profile === 'couple' ? 'romantique et intime' : profile === 'friends' ? 'dynamique et festif' : 'immersif et local';
 
+  // Contexte hôtels réels à injecter dans le prompt si disponible
+  const realHotelContext = realHotels.length >= 2
+    ? `HÔTELS RÉELS DISPONIBLES (utilise OBLIGATOIREMENT ces noms exacts) :
+    - Hôtel 1 : "${realHotels[0].name}" (${realHotels[0].stars}★, ${realHotels[0].neighborhood || realHotels[0].city}, noté ${realHotels[0].rating}/10)
+    - Hôtel 2 : "${realHotels[1].name}" (${realHotels[1].stars}★, ${realHotels[1].neighborhood || realHotels[1].city}, noté ${realHotels[1].rating}/10)`
+    : realHotels.length === 1
+    ? `HÔTEL RÉEL DISPONIBLE : "${realHotels[0].name}" (${realHotels[0].stars}★, noté ${realHotels[0].rating}/10). Invente un second hôtel crédible.`
+    : `Aucun hôtel réel disponible. Invente des noms réalistes et crédibles pour ${dest}.`;
+
+  // Contexte restaurants réels
+  const realRestoContext = realRestaurants.length > 0
+    ? `RESTAURANTS RÉELS : ${realRestaurants.slice(0, 2).map(r => `"${r.name}"`).join(', ')}`
+    : '';
+
   // Appel IA — uniquement les textes créatifs, format plat et court
   const textRaw = await callAI(
     `Tu es un expert voyage local pour ${dest}. Crée un itinéraire de type "${tone}" pour un profil "${profile}". Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
+    ${realHotelContext}
+    ${realRestoContext}
     IMPORTANT pour le mode "party": Ne propose pas de clubs généralistes. Cherche des pépites underground, des bars secrets, des clubs de techno de renommée locale ou des festivals spécifiques. La description doit être électrique et donner envie au profil "${profile}".
     Génère UNIQUEMENT ce JSON avec des descriptions évocatrices adaptées au profil "${profile}" :
-    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"Hôtel parfait pour ce profil","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"Alternative","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`,
+    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"NOM EXACT de l'hôtel réel ci-dessus","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"NOM EXACT du second hôtel réel","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`,
     undefined,
     'pack'
   );
@@ -360,10 +376,7 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     },
     summary: { total_budget:`${budget}€`, nights, activities_count:3 },
     flights: flightData,
-    hotels: [
-      { name:t.hotel1_name||`Hôtel Central ${dest}`, location:t.hotel1_loc||`Centre, ${dest}`, stars:mode==='luxury'?5:4, price_per_night:`${Math.round(heberg/nights)}€`, highlights:t.hotel1_hl||'Bien situé, confortable', emoji:'🏨' },
-      { name:t.hotel2_name||`Hôtel Charme ${dest}`,  location:t.hotel2_loc||`Quartier animé`, stars:3, price_per_night:`${Math.round(heberg/nights*0.65)}€`, highlights:t.hotel2_hl||'Bon rapport qualité-prix', emoji:'🏩' }
-    ],
+    hotels,
     itinerary: [
       { day:1, title:t.day1_title||'Arrivée & découverte', subtitle:'Premier contact',
         items:[

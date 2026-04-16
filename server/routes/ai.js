@@ -7,6 +7,7 @@ import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
 import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
+import { searchHotels, searchRestaurants } from '../services/booking.js';
 import { scorepack } from '../services/scoring.js';
 import supabase from '../db/supabase.js';
 
@@ -109,20 +110,32 @@ router.post('/generate', optionalAuth, async (req, res) => {
       originIata && destIata
         ? searchFlights({ origin: originIata, destination: destIata, departureDate: departure, returnDate: return_date, adults: travelers })
         : Promise.resolve([]),
-      searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
+      searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
+      searchHotels({ destination, checkin: departure, checkout: return_date, adults: travelers, mode, budget }),
+      searchRestaurants({ destination, checkin: departure })
     ]);
 
-    const flights = results[0].status === 'fulfilled' ? results[0].value : [];
+    const flights     = results[0].status === 'fulfilled' ? results[0].value : [];
     if (results[0].status === 'rejected') console.warn('Flights API fallback:', results[0].reason);
 
-    const events = results[1].status === 'fulfilled' ? results[1].value : [];
+    const events      = results[1].status === 'fulfilled' ? results[1].value : [];
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
+
+    const realHotels  = results[2].status === 'fulfilled' ? results[2].value : [];
+    if (results[2].status === 'rejected') console.warn('Booking hotels fallback:', results[2].reason);
+
+    const realRestaurants = results[3].status === 'fulfilled' ? results[3].value : [];
+    if (results[3].status === 'rejected') console.warn('Booking restaurants fallback:', results[3].reason);
+
+    console.log(`📊 Données réelles: ${flights.length} vols · ${events.length} events · ${realHotels.length} hôtels · ${realRestaurants.length} restos`);
 
     // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
       destination,
       flights,
       events,
+      realHotels,
+      realRestaurants,
       mode,
       travelers,
       budget,
@@ -147,8 +160,9 @@ router.post('/generate', optionalAuth, async (req, res) => {
 
     const scoredPack = {
       ...pack,
-      flights_data: flights,
-      events_data:  events,
+      flights_data:      flights,
+      events_data:       events,
+      real_hotels_found: realHotels.length > 0,
       score: scoreResult,
       warnings: iataWarnings.length ? iataWarnings : undefined
     };

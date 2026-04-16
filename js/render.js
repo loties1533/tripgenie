@@ -324,25 +324,55 @@ function renderHotels(d) {
     return;
   }
 
-  document.getElementById('hotelsContent').innerHTML = hotels.map(h => `
+  document.getElementById('hotelsContent').innerHTML = hotels.map(h => {
+    // Badge vérifié si données réelles Booking.com
+    const verifiedBadge = h.is_real
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#E1F5EE;color:#0F6E56;font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;margin-bottom:6px;">
+           ✓ Vérifié Booking.com
+         </span>`
+      : '';
+
+    // Note si disponible
+    const ratingHtml = h.rating
+      ? `<span style="font-size:13px;color:var(--muted);">
+           <strong style="color:var(--ink)">${h.rating}/10</strong>
+           ${h.rating_label ? `· ${esc(h.rating_label)}` : ''}
+           ${h.review_count ? `<span style="color:var(--muted);">(${h.review_count} avis)</span>` : ''}
+         </span>`
+      : '';
+
+    // Image réelle ou placeholder emoji
+    const imgHtml = h.photo_url
+      ? `<img src="${esc(h.photo_url)}" alt="${esc(h.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px 12px 0 0;" loading="lazy" onerror="this.parentNode.innerHTML='<div class=hotel-img-placeholder style=font-size:64px>${esc(h.emoji || '🏨')}</div>'">`
+      : `<div class="hotel-img-placeholder" style="font-size:64px;">${esc(h.emoji || '🏨')}</div>`;
+
+    // Lien Booking : direct si dispo, sinon recherche générique
+    const bookingHref = h.booking_url
+      ? h.booking_url
+      : `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.name + ' ' + d.destination)}`;
+
+    return `
     <div class="hotel-card glass-card">
-      <div class="hotel-img">
-        <div class="hotel-img-placeholder" style="font-size:64px;">${esc(h.emoji || '🏨')}</div>
-      </div>
+      <div class="hotel-img">${imgHtml}</div>
       <div class="hotel-body">
+        ${verifiedBadge}
         <div class="hotel-name">${esc(h.name)}</div>
         <div class="hotel-location">📍 ${esc(h.location)}</div>
         <div class="hotel-stars">${'★'.repeat(Math.min(h.stars || 3, 5))}${'☆'.repeat(5 - Math.min(h.stars || 3, 5))}</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.5">${esc(h.highlights || '')}</div>
+        ${ratingHtml}
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-top:4px;">${esc(h.highlights || '')}</div>
       </div>
       <div class="hotel-footer">
         <div>
           <div class="hotel-price-night">par nuit</div>
           <div class="hotel-price-val">${esc(h.price_per_night)}</div>
         </div>
-        <a href="https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.name + ' ' + d.destination)}" target="_blank" style="text-decoration:none;"><button class="btn-book">Sur Booking</button></a>
+        <a href="${bookingHref}" target="_blank" rel="noopener" style="text-decoration:none;">
+          <button class="btn-book">Voir sur Booking</button>
+        </a>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ---- ACTIVITIES ---- */
