@@ -4,12 +4,19 @@
   "type": "module",
   "description": "AI Travel Curator — plans clé en main via scoring multi-critères",
   "main": "server/index.js",
-  "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
-    "setup-db": "node scripts/setup-db.js",
-    "client": "npx serve . -p 3001"
-  },
+  
+
+"scripts": {
+  "start": "next start -p 3001",
+  "dev": "next dev -p 3001",
+  "build": "next build",
+  "start:server": "node server/index.js",
+  "dev:server": "nodemon server/index.js",
+  "setup-db": "node scripts/setup-db.js",
+  "client": "npx serve . -p 3001",
+  "smoke:api": "node scripts/smoke-api.mjs"
+},
+
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.38.4",
