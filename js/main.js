@@ -185,16 +185,20 @@ function setLoadingState(loading) {
 
 const chatState = {
   data: { 
-    travelers: null, 
-    profile: null, 
-    mode: 'relax', 
-    interests: [],
-    budget: null, 
-    origin: null, 
-    destination: null, 
-    duration: null,
+    travelers:     null, 
+    profile:       null, 
+    mode:          'relax', 
+    intention:     null,
+    interests:     [],
+    budget:        null, 
+    origin:        null, 
+    destination:   null, 
+    duration:      null,
+    dates:         null,
+    departure:     null,
+    return_date:   null,
     discoveryMode: null,
-    moods: []
+    moods:         []
   }
 };
 
@@ -348,41 +352,75 @@ async function suggestAndGenerate() {
   showTyping();
   try {
     const res = await getDestinations({
-      mode:        chatState.data.mode,
-      profile:     chatState.data.profile,
-      interests:   chatState.data.interests,
-      budget:      chatState.data.budget,
-      travelers:   chatState.data.travelers,
-      duration:    chatState.data.duration,
-      origin:      chatState.data.origin,
-      moods:       chatState.data.moods,
+      mode:          chatState.data.mode,
+      profile:       chatState.data.profile,
+      intention:     chatState.data.intention,
+      interests:     chatState.data.interests,
+      budget:        chatState.data.budget,
+      travelers:     chatState.data.travelers,
+      duration:      chatState.data.duration,
+      origin:        chatState.data.origin,
+      dates:         chatState.data.dates,
+      departure:     chatState.data.departure,
+      return_date:   chatState.data.return_date,
+      moods:         chatState.data.moods,
       discoveryMode: chatState.data.discoveryMode,
-      preferences: []
+      preferences:   []
     });
 
-    if (res.isMock) {
-      showSurvivalModeIndicator();
-    }
+    if (res.isMock) showSurvivalModeIndicator();
 
     removeTyping();
-    const profileStr = chatState.data.profile || 'Voyageur';
-    addMessage(`Compte tenu de votre profil (${profileStr}) et de vos intérêts, voici mes 3 meilleures pépites 🌍`, 'bot');
-    
+
     const cities = res.destinations || [];
     if (!cities.length) {
-      addMessage("Désolé, je n'ai pas trouvé de destinations insolites correspondant exactement à tes critères. On réessaie ?", 'bot', ['On recommence']);
+      addMessage("Désolé, je n'ai rien trouvé qui colle parfaitement. On réessaie avec d'autres critères ?", 'bot', ['On recommence', 'Modifier le budget', 'Changer les dates']);
       return;
     }
 
-    const chips = cities.map(d => d.city);
-    addMessage('Laquelle de ces pépites te tente le plus ?', 'bot', chips);
+    // Message d'intro adapté selon l'intention
+    const intention = chatState.data.intention || res.type || 'voyage';
+    const profileStr = chatState.data.profile || 'Voyageur';
+
+    if (intention === 'festival') {
+      addMessage(`🎵 J'ai trouvé ${cities.length} festivals parfaits pour vous !`, 'bot');
+      // Afficher les festivals avec plus de détails
+      cities.forEach(fest => {
+        const details = [
+          fest.event_name ? `🎪 ${fest.event_name}` : null,
+          fest.event_date ? `📅 ${fest.event_date}` : null,
+          fest.ticket_price ? `🎫 Billet ~${fest.ticket_price}` : null,
+          fest.reason ? `✦ ${fest.reason}` : null,
+        ].filter(Boolean).join('<br>');
+        addMessage(`<strong>${fest.city}, ${fest.country}</strong><br>${details}`, 'bot');
+      });
+      const chips = cities.map(d => d.event_name || d.city);
+      addMessage('Lequel vous fait vibrer ? 🎶', 'bot', chips);
+
+    } else if (intention === 'roadtrip') {
+      addMessage(`🗺 ${cities.length} road trips sur-mesure pour vous !`, 'bot');
+      cities.forEach(rt => {
+        addMessage(`<strong>${rt.city} → ${rt.country}</strong><br>📍 ${rt.route || ''}<br>✦ ${rt.reason || ''}`, 'bot');
+      });
+      const chips = cities.map(d => d.city);
+      addMessage('Quel itinéraire vous inspire ?', 'bot', chips);
+
+    } else {
+      // Weekend surprise ou voyage classique
+      const intro = intention === 'weekend_surprise'
+        ? `✨ ${cities.length} pépites parfaites pour votre week-end !`
+        : `Voici mes meilleures suggestions pour ${profileStr} 🌍`;
+      addMessage(intro, 'bot');
+      const chips = cities.map(d => d.city);
+      addMessage('Laquelle vous tente le plus ?', 'bot', chips);
+    }
 
     window._suggestedDestinations = cities;
 
   } catch (err) {
     removeTyping();
     console.error('Destinations suggest error:', err);
-    addMessage("Je n'arrive pas à joindre mes experts pour le moment, mais ne t'inquiète pas, on peut quand même continuer !", 'bot', ['On recommence']);
+    addMessage("Petit souci technique, mais on continue ! Dis-moi directement où tu veux aller ?", 'bot', ['On recommence']);
   }
 }
 

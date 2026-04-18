@@ -165,31 +165,109 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
   return parseJSON(raw);
 }
 
-export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences }) {
+export async function suggestDestinations({ mode, profile, intention, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences, dates, departure, return_date }) {
   try {
-    const intStr = interests?.join(', ') || 'voyage';
-    const moodStr = moods?.join(', ') || '';
-    
-    // Construction de la recherche selon le mode
-    let query = `Meilleures destinations voyage pour ${profile} cherchant ambiance ${mode} et intérêts ${intStr} ${moodStr}`;
-    if (discoveryMode === 'hidden_gem') {
-      query += ` pépites cachées insolites (hidden gems)`;
-    } else {
-      query += ` destinations classiques incontournables célèbres`;
+    // ---- CAS FESTIVAL : cherche les vrais événements en premier ----
+    if (intention === 'festival' || intention === 'celebration' || (interests || []).some(i => ['festival','concert','musique','music','techno','rock','électro'].includes(i?.toLowerCase()))) {
+      const interestStr = (interests || []).join(', ') || 'festival musique';
+      const dateStr = departure || dates || (duration ? `dans ${duration} jours` : 'prochains mois');
+      
+      const webContext = await searchWeb(`meilleurs festivals ${interestStr} ${dateStr} Europe billet`);
+      
+      const raw = await callAI(
+        `${webContext}
+
+Tu es TripGenie. L'utilisateur cherche des festivals/événements pour : profil "${profile}", ${travelers} personnes, budget ${budget}€/pers, départ ${origin}, dates: ${dateStr}.
+
+Propose 3 festivals/événements RÉELS qui correspondent. 
+FORMAT JSON :
+{
+  "destinations": [
+    {
+      "city": "Ville du festival",
+      "country": "Pays",
+      "event_name": "Nom exact du festival",
+      "event_date": "Date précise",
+      "event_category": "Techno|Rock|Jazz|etc",
+      "ticket_price": "Prix indicatif billet",
+      "reason": "Pourquoi c'est parfait pour ce profil",
+      "match_score": 95
     }
+  ]
+}`,
+        undefined,
+        'destinations'
+      );
+      const result = parseJSON(raw);
+      return { ...result, type: 'festival' };
+    }
+
+    // ---- CAS ROADTRIP ----
+    if (intention === 'roadtrip') {
+      const raw = await callAI(
+        `Tu es TripGenie expert road trips. Propose 3 itinéraires road trip pour : profil "${profile}", ${travelers} pers, budget ${budget}€, départ ${origin}, durée ${duration} jours.
+FORMAT JSON :
+{
+  "destinations": [
+    {
+      "city": "Point de départ itinéraire",
+      "country": "Pays/Région",
+      "route": "Étape1 → Étape2 → Étape3",
+      "reason": "Pourquoi cet itinéraire",
+      "highlight": "Le moment magique du road trip",
+      "match_score": 90
+    }
+  ]
+}`,
+        undefined,
+        'destinations'
+      );
+      const result = parseJSON(raw);
+      return { ...result, type: 'roadtrip' };
+    }
+
+    // ---- CAS WEEKEND SURPRISE / VOYAGE CLASSIQUE ----
+    const intStr   = (interests || []).join(', ') || 'voyage';
+    const moodStr  = (moods     || []).join(', ') || '';
+    const isHidden = discoveryMode === 'hidden_gem';
+
+    let query = isHidden
+      ? `destinations insolites cachées pépites weekend ${profile} ${intStr} ${moodStr} moins connues originales`
+      : `meilleures destinations voyage ${profile} ${intStr} ${moodStr}`;
+
+    if (origin) query += ` depuis ${origin}`;
+    if (budget) query += ` budget ${budget}€`;
 
     const webContext = await searchWeb(query);
 
     const raw = await callAI(
       `${webContext}
-      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi...", "match_score": 95}]}`,
+
+Tu es TripGenie. Propose 3 destinations PARFAITES pour : profil "${profile}", ${travelers} pers, budget ${budget}€, départ ${origin}.
+${isHidden ? 'IMPORTANT: Évite absolument Paris, Rome, Barcelone, Amsterdam, Prague. Propose des pépites moins connues.' : ''}
+
+FORMAT JSON :
+{
+  "destinations": [
+    {
+      "city": "Ville",
+      "country": "Pays", 
+      "reason": "Pourquoi parfait pour ce profil en 1 phrase",
+      "vibe": "mot unique ambiance",
+      "match_score": 92
+    }
+  ]
+}`,
       undefined,
       'destinations'
     );
-    return parseJSON(raw);
+
+    const result = parseJSON(raw);
+    return { ...result, type: intention || 'voyage' };
+
   } catch (err) {
-    console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', err.message);
-    return Mocks.MOCK_DESTINATIONS;
+    console.error('⚠️ suggestDestinations failed, Mode Survie:', err.message);
+    return { ...Mocks.MOCK_DESTINATIONS, type: 'voyage' };
   }
 }
 
@@ -363,6 +441,27 @@ const resto     = Math.round(budget * ratio.resto);
 const trans     = Math.round(budget * ratio.trans);
 const divers    = budget - vols - heberg - activites - resto - trans;
 
+  // Construction des hôtels à partir des données IA + données réelles
+  const ppnFormatted = `${Math.round(heberg / Math.max(nights, 1))}€`;
+  const hotels = [
+    {
+      name:            t.hotel1_name || (realHotels[0]?.name) || `Hôtel Central ${dest}`,
+      location:        t.hotel1_loc  || (realHotels[0]?.neighborhood) || dest,
+      stars:           realHotels[0]?.stars || (mode === 'luxury' ? 5 : mode === 'student' ? 2 : 4),
+      price_per_night: realHotels[0]?.price_per_night ? `${realHotels[0].price_per_night}€` : ppnFormatted,
+      highlights:      t.hotel1_hl  || 'Idéalement situé au cœur de la ville',
+      emoji:           mode === 'luxury' ? '🏛' : '🏨',
+    },
+    {
+      name:            t.hotel2_name || (realHotels[1]?.name) || `Boutique Hôtel ${dest}`,
+      location:        t.hotel2_loc  || (realHotels[1]?.neighborhood) || dest,
+      stars:           realHotels[1]?.stars || (mode === 'luxury' ? 4 : 3),
+      price_per_night: realHotels[1]?.price_per_night ? `${realHotels[1].price_per_night}€` : `${Math.round(heberg / Math.max(nights, 1) * 0.7)}€`,
+      highlights:      t.hotel2_hl  || 'Charme et authenticité locale',
+      emoji:           '🏩',
+    },
+  ];
+
   // Structure finale construite côté serveur
   return {
     destination: dest,
@@ -410,55 +509,138 @@ const divers    = budget - vols - heberg - activites - resto - trans;
 }
 
 export async function chatIntake({ currentData, userMessage }) {
-  const systemPrompt = `Tu es l'expert voyage TripGenie. Ton rôle est de conseiller l'utilisateur et de qualifier son besoin pour créer le voyage parfait.
-  
-  DONNÉES ACTUELLES :
-  ${JSON.stringify(currentData)}
-
-  OBJECTIFS :
-  1. Extraire les informations manquantes (origin, travelers, budget, duration, mode, profile, preferences).
-  2. Le message utilisateur est PRIORITAIRE : s'il contredit les "DONNÉES ACTUELLES", l'utilisateur a raison.
-  3. INTERDICTION DE SUGGÉRER DES VILLES ou destinations précises tant que isReady est false. Concentre-toi sur le profil.
-  4. Lorsque tu as assez d'informations sur le profil, demande à l'utilisateur s'il préfère des "Destinations Classiques" ou des "Pépites Cachées (Insolites)" comme étape finale.
-  5. Stocke le choix de découverte dans "discoveryMode" (valeurs: "classic" ou "hidden_gem").
-  6. Si toutes les infos (incluant discoveryMode) sont là, mets "isReady" à true.
-  
-  FORMAT RÉPONSE (JSON UNIQUEMENT) :
-  {
-    "response": "Rédige ici un message chaleureux qui guide l'utilisateur sans proposer de ville.",
-    "chips": ["Suggère 2 ou 3 boutons d'options pertinentes ici"],
-    "extractedData": { "origin": "ville", "budget": 2000, "profile": "amis" },
-    "isReady": false
-  }`;
 
   const msg = sanitizeInput(userMessage).toLowerCase();
 
-  // Cas spécial pour sortir de la boucle du Mode Survie
-  if (msg.includes('montre-moi')) {
+  // ---- Cas spéciaux (pas besoin d'appel IA) ----
+  if (msg.includes('montre-moi') || msg.includes('génère') || msg.includes('go') || msg.includes('lance')) {
     const profile = currentData?.profile || Mocks.MOCK_ONBOARDING.extractedData.profile;
     return {
-      response: "C'est parti pour le voyage Signature TripGenie ! ✨",
+      response: "C'est parti ! Je prépare votre sélection sur-mesure ✨",
       isReady: true,
-      extractedData: { ...Mocks.MOCK_ONBOARDING.extractedData, profile },
-      isMock: true
+      extractedData: { ...Mocks.MOCK_ONBOARDING.extractedData, ...currentData, profile },
+      isMock: false
     };
   }
 
-  if (msg.includes('attendre')) {
+  if (msg.includes('attendre') || msg.includes('plus tard')) {
     return {
-      response: "Pas de souci ! Je comprends. N'hésite pas à revenir d'ici une heure ou demain, je serai de nouveau au top de ma forme pour te créer un voyage sur-mesure. À bientôt ! 👋",
+      response: "Pas de souci ! Reviens quand tu veux, je serai là 👋",
       isReady: false,
       chips: ["Réessayer"],
       isMock: true
     };
   }
-  const raw = await callAI(
-    `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`,
-    undefined,
-    'onboarding'
-  );
-  
-  return parseJSON(raw);
+
+  // ---- Données déjà collectées ----
+  const d = currentData || {};
+  const already = {
+    hasProfile:   !!(d.profile || d.travelers),
+    hasDates:     !!(d.departure || d.dates || d.duration),
+    hasBudget:    !!(d.budget),
+    hasOrigin:    !!(d.origin),
+    hasIntention: !!(d.intention),
+    hasDiscovery: !!(d.discoveryMode),
+  };
+
+  // isReady si on a les 5 infos clés
+  const readyCount = Object.values(already).filter(Boolean).length;
+
+  const systemPrompt = `Tu es TripGenie, assistant voyage conversationnel. Tu aides TOUS types de voyageurs :
+- Groupe d'amis qui cherche un festival
+- Couple qui veut un week-end surprise
+- Solo qui fait un road trip
+- Famille qui cherche la mer
+- Quelqu'un qui a juste une envie vague
+
+DONNÉES DÉJÀ COLLECTÉES : ${JSON.stringify(d)}
+INFOS MANQUANTES : ${JSON.stringify(Object.entries(already).filter(([,v]) => !v).map(([k]) => k))}
+
+RÈGLES ABSOLUES :
+1. Le message utilisateur est PRIORITAIRE sur les données déjà collectées
+2. Pose UNE SEULE question à la fois, courte et naturelle
+3. Si l'user donne plusieurs infos d'un coup (ex: "4 amis festival techno juin 500€ Bordeaux"), extrais TOUT sans reposer les questions déjà répondues
+4. DÉTECTE L'INTENTION automatiquement :
+   - Mots clés festival/concert/musique → intention: "festival"
+   - Mots clés road trip/van/étapes → intention: "roadtrip"  
+   - Mots clés week-end/escapade/surprise → intention: "weekend_surprise"
+   - Mots clés voyage/vacances/séjour → intention: "voyage"
+   - Mots clés anniversaire/fête/célébration → intention: "celebration"
+5. NE PROPOSE JAMAIS de ville/destination tant que isReady est false
+6. Quand tu as : profile + intention + dates + budget + origin → mets isReady: true
+7. Si l'user a déjà donné 4+ infos dans son premier message → isReady peut être true directement
+8. Adapte ton ton : décontracté pour amis/solo, romantique pour couple, pratique pour famille
+
+ORDRE DE PRIORITÉ des questions manquantes :
+1. Qui voyage + intention (si pas encore connu)
+2. Dates ou durée
+3. Budget (par personne si groupe)
+4. Ville de départ
+
+FORMAT RÉPONSE JSON UNIQUEMENT :
+{
+  "response": "ta réponse courte et adaptée au profil détecté",
+  "chips": ["2-4 suggestions cliquables max, vides [] si pas pertinent"],
+  "extractedData": {
+    "profile": "solo|couple|amis|famille|null",
+    "travelers": null,
+    "intention": "festival|roadtrip|weekend_surprise|voyage|celebration|null",
+    "dates": "null ou description",
+    "departure": "YYYY-MM-DD ou null",
+    "return_date": "YYYY-MM-DD ou null", 
+    "duration": null,
+    "budget": null,
+    "origin": "ville ou null",
+    "mode": "party|relax|luxury|student|group|surprise|null",
+    "interests": [],
+    "discoveryMode": "classic|hidden_gem|null"
+  },
+  "isReady": false
+}`;
+
+  try {
+    const raw = await callAI(
+      `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`,
+      undefined,
+      'onboarding'
+    );
+
+    const result = parseJSON(raw);
+
+    // Sécurité : fusionner avec les données existantes
+    const merged = { ...d, ...(result.extractedData || {}) };
+    // Nettoyer les null pour garder les anciennes valeurs
+    Object.keys(merged).forEach(k => {
+      if (merged[k] === null && d[k]) merged[k] = d[k];
+    });
+
+    return {
+      response:      result.response      ?? "Dis-moi en plus sur ton projet de voyage !",
+      chips:         result.chips         ?? [],
+      extractedData: merged,
+      isReady:       result.isReady       ?? false,
+      isMock:        false,
+    };
+
+  } catch (err) {
+    console.error('chatIntake error:', err.message);
+    // Fallback mode survie intelligent
+    const fallbacks = {
+      noProfile:   { response: "Super projet ! C'est pour combien de personnes et vous partez d'où ?", chips: ["Solo 🎒", "En couple ❤️", "Amis 🍻", "Famille 👨‍👩‍👧"] },
+      noDates:     { response: "Parfait ! Vous avez des dates en tête ?", chips: ["Ce week-end", "Dans 1 mois", "Cet été", "Dates flexibles"] },
+      noBudget:    { response: "Quel budget par personne vous convient ?", chips: ["< 300€", "300-600€", "600-1000€", "1000€+"] },
+      noOrigin:    { response: "Vous partez de quelle ville ?", chips: ["Paris", "Lyon", "Bordeaux", "Marseille"] },
+      default:     { response: "Oups, petit souci technique ! Décris ton voyage idéal en quelques mots 😊", chips: ["Festival", "Week-end surprise", "Road trip", "Voyage"] },
+    };
+
+    const fb = !already.hasProfile ? fallbacks.noProfile
+             : !already.hasDates   ? fallbacks.noDates
+             : !already.hasBudget  ? fallbacks.noBudget
+             : !already.hasOrigin  ? fallbacks.noOrigin
+             : fallbacks.default;
+
+    return { ...fb, extractedData: d, isReady: false, isMock: true };
+  }
 }
 
 export async function chatModify({ currentPack, userMessage, mode }) {
