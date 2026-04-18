@@ -165,111 +165,161 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
   return parseJSON(raw);
 }
 
-export async function suggestDestinations({ mode, profile, intention, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences, dates, departure, return_date }) {
+// =============================================
+// SUGGEST PACKS — 3 packs sur-mesure
+// Coup de cœur + Alternative + Pépite
+// =============================================
+
+export async function suggestPacks({ profile, intention, interests, budget, travelers, duration, origin, zone, lodging, mode, dates, departure, return_date, moods }) {
+
+  const profileStr  = profile   || 'voyageur';
+  const intentStr   = intention || 'voyage';
+  const budgetStr   = budget    ? `${budget}€/pers` : 'budget flexible';
+  const originStr   = origin    || 'France';
+  const zoneStr     = zone === 'europe' ? 'en Europe uniquement' : 'dans le monde entier';
+  const durationStr = duration  ? `${duration} jours` : (dates || 'quelques jours');
+  const travelersN  = travelers || (profile === 'couple' ? 2 : profile === 'solo' ? 1 : 4);
+  const interestStr = (interests || []).join(', ') || intentStr;
+  const lodgingStr  = lodging   || 'peu importe';
+
+  // Tavily web search
+  let webContext = '';
   try {
-    // ---- CAS FESTIVAL : cherche les vrais événements en premier ----
-    if (intention === 'festival' || intention === 'celebration' || (interests || []).some(i => ['festival','concert','musique','music','techno','rock','électro'].includes(i?.toLowerCase()))) {
-      const interestStr = (interests || []).join(', ') || 'festival musique';
-      const dateStr = departure || dates || (duration ? `dans ${duration} jours` : 'prochains mois');
-      
-      const webContext = await searchWeb(`meilleurs festivals ${interestStr} ${dateStr} Europe billet`);
-      
-      const raw = await callAI(
-        `${webContext}
+    const query = intention === 'festival'
+      ? `meilleurs festivals ${interestStr} ${durationStr} ${zoneStr} 2026`
+      : intention === 'roadtrip'
+      ? `road trip ${interestStr} ${durationStr} ${zoneStr} itinéraire`
+      : `destinations voyage ${profileStr} ${interestStr} ${budgetStr} ${durationStr} ${zoneStr} pépites`;
+    webContext = await searchWeb(query);
+  } catch (e) {
+    console.warn('[suggestPacks] Tavily unavailable:', e.message);
+  }
 
-Tu es TripGenie. L'utilisateur cherche des festivals/événements pour : profil "${profile}", ${travelers} personnes, budget ${budget}€/pers, départ ${origin}, dates: ${dateStr}.
+  // PredictHQ si festival
+  let eventsContext = '';
+  if (intention === 'festival' || (interests || []).some(i => ['festival','concert','musique','techno','rock','électro','dj'].includes(i?.toLowerCase()))) {
+    try {
+      const { searchEvents } = await import('./predicthq.js');
+      const events = await searchEvents({
+        location: zone === 'europe' ? 'Europe' : 'World',
+        dateFrom: departure || new Date().toISOString().slice(0,10),
+        dateTo:   return_date || new Date(Date.now() + (duration || 7) * 86400000).toISOString().slice(0,10),
+        mode: 'party'
+      });
+      if (events.length > 0) {
+        eventsContext = `\nÉVÉNEMENTS RÉELS TROUVÉS :\n${events.slice(0,5).map(e => `- "${e.title}" le ${e.start?.slice(0,10)||'TBD'} à ${e.venue||'lieu TBD'}`).join('\n')}\n`;
+      }
+    } catch (e) {
+      console.warn('[suggestPacks] PredictHQ unavailable:', e.message);
+    }
+  }
 
-Propose 3 festivals/événements RÉELS qui correspondent. 
-FORMAT JSON :
+  const prompt = `${webContext}${eventsContext}
+
+Tu es TripGenie, expert voyage premium. Génère exactement 3 packs voyage sur-mesure.
+
+PROFIL :
+- Qui : ${profileStr} (${travelersN} personnes)
+- Envie : ${intentStr} — ${interestStr}
+- Durée : ${durationStr}
+- Budget : ${budgetStr} par personne
+- Départ : ${originStr}
+- Zone : ${zoneStr}
+- Logement : ${lodgingStr}
+- Ambiance : ${mode || 'libre'}
+
+RÈGLES :
+1. Les 3 packs correspondent au MÊME profil, angles différents
+2. Combos libres : amis + fête + luxe = Ibiza 5★ ou Monaco — c'est cohérent
+3. Pack 3 "Pépite" = destination moins évidente mais qui coche TOUTES les cases
+4. Si festival : inclure nom, date, prix billet estimé
+5. Ton adapté : décontracté amis, romantique couple, aventurier solo, pratique famille
+
+FORMAT JSON STRICT :
 {
-  "destinations": [
+  "packs": [
     {
-      "city": "Ville du festival",
+      "id": "coup_de_coeur",
+      "label": "Coup de cœur",
+      "emoji": "❤️",
+      "destination": "Ville",
       "country": "Pays",
-      "event_name": "Nom exact du festival",
-      "event_date": "Date précise",
-      "event_category": "Techno|Rock|Jazz|etc",
-      "ticket_price": "Prix indicatif billet",
-      "reason": "Pourquoi c'est parfait pour ce profil",
-      "match_score": 95
-    }
-  ]
-}`,
-        undefined,
-        'destinations'
-      );
-      const result = parseJSON(raw);
-      return { ...result, type: 'festival' };
-    }
-
-    // ---- CAS ROADTRIP ----
-    if (intention === 'roadtrip') {
-      const raw = await callAI(
-        `Tu es TripGenie expert road trips. Propose 3 itinéraires road trip pour : profil "${profile}", ${travelers} pers, budget ${budget}€, départ ${origin}, durée ${duration} jours.
-FORMAT JSON :
-{
-  "destinations": [
+      "tagline": "Accroche max 8 mots",
+      "why": "Pourquoi parfait pour CE profil (2 phrases)",
+      "highlight": "L'expérience signature unique",
+      "estimated_flight": "~XXX€/pers depuis ${originStr}",
+      "estimated_hotel": "~XXX€/nuit",
+      "total_estimate": "~XXX€/pers tout compris",
+      "match_score": 95,
+      "vibe_tags": ["tag1", "tag2", "tag3"],
+      "event_name": null,
+      "event_date": null,
+      "event_ticket": null,
+      "type": "${intentStr}"
+    },
     {
-      "city": "Point de départ itinéraire",
-      "country": "Pays/Région",
-      "route": "Étape1 → Étape2 → Étape3",
-      "reason": "Pourquoi cet itinéraire",
-      "highlight": "Le moment magique du road trip",
-      "match_score": 90
-    }
-  ]
-}`,
-        undefined,
-        'destinations'
-      );
-      const result = parseJSON(raw);
-      return { ...result, type: 'roadtrip' };
-    }
-
-    // ---- CAS WEEKEND SURPRISE / VOYAGE CLASSIQUE ----
-    const intStr   = (interests || []).join(', ') || 'voyage';
-    const moodStr  = (moods     || []).join(', ') || '';
-    const isHidden = discoveryMode === 'hidden_gem';
-
-    let query = isHidden
-      ? `destinations insolites cachées pépites weekend ${profile} ${intStr} ${moodStr} moins connues originales`
-      : `meilleures destinations voyage ${profile} ${intStr} ${moodStr}`;
-
-    if (origin) query += ` depuis ${origin}`;
-    if (budget) query += ` budget ${budget}€`;
-
-    const webContext = await searchWeb(query);
-
-    const raw = await callAI(
-      `${webContext}
-
-Tu es TripGenie. Propose 3 destinations PARFAITES pour : profil "${profile}", ${travelers} pers, budget ${budget}€, départ ${origin}.
-${isHidden ? 'IMPORTANT: Évite absolument Paris, Rome, Barcelone, Amsterdam, Prague. Propose des pépites moins connues.' : ''}
-
-FORMAT JSON :
-{
-  "destinations": [
+      "id": "alternative",
+      "label": "L'Alternative",
+      "emoji": "⚡",
+      "destination": "Ville différente",
+      "country": "Pays",
+      "tagline": "...",
+      "why": "...",
+      "highlight": "...",
+      "estimated_flight": "~XXX€/pers",
+      "estimated_hotel": "~XXX€/nuit",
+      "total_estimate": "~XXX€/pers",
+      "match_score": 88,
+      "vibe_tags": ["tag1", "tag2"],
+      "event_name": null,
+      "event_date": null,
+      "event_ticket": null,
+      "type": "${intentStr}"
+    },
     {
-      "city": "Ville",
-      "country": "Pays", 
-      "reason": "Pourquoi parfait pour ce profil en 1 phrase",
-      "vibe": "mot unique ambiance",
-      "match_score": 92
+      "id": "pepite",
+      "label": "La Pépite",
+      "emoji": "💎",
+      "destination": "Ville moins connue",
+      "country": "Pays",
+      "tagline": "...",
+      "why": "Moins connue mais coche toutes les cases",
+      "highlight": "Ce que personne ne fait et qui est incroyable",
+      "estimated_flight": "~XXX€/pers",
+      "estimated_hotel": "~XXX€/nuit",
+      "total_estimate": "~XXX€/pers",
+      "match_score": 82,
+      "vibe_tags": ["pépite", "tag2"],
+      "event_name": null,
+      "event_date": null,
+      "event_ticket": null,
+      "type": "${intentStr}"
     }
   ]
-}`,
-      undefined,
-      'destinations'
-    );
+}`;
 
+  try {
+    const raw = await callAI(prompt, undefined, 'destinations');
     const result = parseJSON(raw);
-    return { ...result, type: intention || 'voyage' };
-
+    if (!Array.isArray(result.packs) || result.packs.length === 0) throw new Error('Format invalide');
+    return { packs: result.packs, type: intentStr };
   } catch (err) {
-    console.error('⚠️ suggestDestinations failed, Mode Survie:', err.message);
-    return { ...Mocks.MOCK_DESTINATIONS, type: 'voyage' };
+    console.error('[suggestPacks] Error:', err.message);
+    return {
+      packs: [
+        { id: 'coup_de_coeur', label: 'Coup de cœur', emoji: '❤️', destination: 'Barcelone', country: 'Espagne', tagline: 'Fête, plage et architecture', why: 'Parfaite pour une ambiance festive avec luxe accessible.', highlight: 'Clubs de plage et gastronomie étoilée', estimated_flight: '~120€/pers', estimated_hotel: '~150€/nuit', total_estimate: `~${budget||800}€/pers`, match_score: 90, vibe_tags: ['fête','plage','gastronomie'], event_name: null, event_date: null, event_ticket: null, type: intentStr },
+        { id: 'alternative', label: "L'Alternative", emoji: '⚡', destination: 'Ibiza', country: 'Espagne', tagline: 'La capitale mondiale de la fête', why: 'Pour pousser l\'expérience au maximum.', highlight: 'Les clubs les plus célèbres du monde', estimated_flight: '~140€/pers', estimated_hotel: '~180€/nuit', total_estimate: `~${Math.round((budget||800)*1.2)}€/pers`, match_score: 85, vibe_tags: ['clubs','luxe','plage'], event_name: null, event_date: null, event_ticket: null, type: intentStr },
+        { id: 'pepite', label: 'La Pépite', emoji: '💎', destination: 'Tivat', country: 'Monténégro', tagline: 'Le Monaco des Balkans', why: 'Luxe et fête sans les foules d\'Ibiza.', highlight: 'Porto Montenegro — le plus beau port de la Méditerranée', estimated_flight: '~160€/pers', estimated_hotel: '~120€/nuit', total_estimate: `~${Math.round((budget||800)*0.9)}€/pers`, match_score: 80, vibe_tags: ['pépite','luxe','authentique'], event_name: null, event_date: null, event_ticket: null, type: intentStr }
+      ],
+      type: intentStr
+    };
   }
 }
+
+export async function suggestDestinations(params) {
+  return suggestPacks(params);
+}
+
 
 
 
