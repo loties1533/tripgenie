@@ -10,7 +10,7 @@ const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
 const AI_TIMEOUT_MS  = 45_000;
 
-console.log(`🤖 AI Provider: ${ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_API_KEY ? 'Gemini' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
+console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER === 'ollama' ? 'Ollama' : ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_API_KEY ? 'Gemini' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
@@ -52,6 +52,17 @@ function parseJSON(raw) {
       throw new Error(`JSON malformé: ${e.message}`);
     }
   }
+}
+
+function normalizeChips(chips) {
+  if (!Array.isArray(chips)) return []
+  return chips.map(c => {
+    if (typeof c === 'string') return c
+    if (c?.label) return c.label
+    if (c?.value) return c.value
+    if (c?.text) return c.text
+    return String(c)
+  }).filter(Boolean)
 }
 
 // =============================================
@@ -151,6 +162,24 @@ async function callGemini(systemPrompt, userPrompt) {
   return data.candidates[0].content.parts[0].text;
 }
 
+async function callOllama(systemPrompt, userPrompt) {
+  const res = await fetchWithTimeout(`${process.env.OLLAMA_BASE_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model:    process.env.OLLAMA_MODEL || 'gemma2:9b',
+      stream:   false,
+      messages: [
+        { role: 'system',  content: systemPrompt },
+        { role: 'user',    content: userPrompt   }
+      ]
+    })
+  }, 60_000)
+  const data = await res.json()
+  if (!res.ok) throw new Error(`Ollama error: ${JSON.stringify(data)}`)
+  return data.message.content
+}
+
 // =============================================
 // EXPORTS
 // =============================================
@@ -194,47 +223,54 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
 }
 
 
-
 async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboarding') {
   let errors = [];
-  
-  // 1. Priorité Gemini (Gratuit & Rapide)
+
+  // 1. Ollama en priorité si configuré
+  if (process.env.AI_PROVIDER === 'ollama' && process.env.OLLAMA_BASE_URL) {
+    try {
+      return await callOllama(systemPrompt, userPrompt);
+    } catch (e) {
+      console.warn('Ollama failed:', e.message);
+      errors.push(`Ollama: ${e.message}`);
+    }
+  }
+
+  // 2. Gemini
   if (process.env.GEMINI_API_KEY) {
-    try { 
-      return await callGemini(systemPrompt, userPrompt); 
-    } catch (e) { 
-      console.warn('Gemini failed:', e.message); 
-      errors.push(`Gemini: ${e.message}`); 
+    try {
+      return await callGemini(systemPrompt, userPrompt);
+    } catch (e) {
+      console.warn('Gemini failed:', e.message);
+      errors.push(`Gemini: ${e.message}`);
     }
   }
 
-  // 2. OpenRouter (Large choix de modèles gratuits)
+  // 3. OpenRouter
   if (OPENROUTER_KEY) {
-    try { 
-      return await callOpenRouter(systemPrompt, userPrompt); 
-    } catch (e) { 
-      console.warn('OpenRouter failed:', e.message); 
-      errors.push(`OpenRouter: ${e.message}`); 
+    try {
+      return await callOpenRouter(systemPrompt, userPrompt);
+    } catch (e) {
+      console.warn('OpenRouter failed:', e.message);
+      errors.push(`OpenRouter: ${e.message}`);
     }
   }
 
-  // 3. Claude (Dernier recours car payant/limité)
+  // 4. Claude
   if (ANTHROPIC_KEY) {
-    try { 
-      return await callClaude(systemPrompt, userPrompt); 
-    } catch (e) { 
-      console.warn('Claude failed:', e.message); 
-      errors.push(`Claude: ${e.message}`); 
+    try {
+      return await callClaude(systemPrompt, userPrompt);
+    } catch (e) {
+      console.warn('Claude failed:', e.message);
+      errors.push(`Claude: ${e.message}`);
     }
   }
 
-  // 4. MODE SURVIE (Fallback ultime) - On ne lève plus d'erreur 500
+  // 5. Mode survie
   console.error(`🚨 TOUS LES SERVICES IA ÉPUISÉS. Activation du Mode Survie (${context}).`);
-  
-  if (context === 'onboarding') return JSON.stringify(Mocks.MOCK_ONBOARDING);
+  if (context === 'onboarding')   return JSON.stringify(Mocks.MOCK_ONBOARDING);
   if (context === 'destinations') return JSON.stringify(Mocks.MOCK_DESTINATIONS);
-  if (context === 'pack') return JSON.stringify(Mocks.MOCK_PACK);
-
+  if (context === 'pack')         return JSON.stringify(Mocks.MOCK_PACK);
   return JSON.stringify({ response: "Service temporairement limité. Réessayez dans 1 minute.", isMock: true });
 }
 
@@ -397,26 +433,77 @@ const divers    = budget - vols - heberg - activites - resto - trans;
 }
 
 export async function chatIntake({ currentData, userMessage }) {
-  const systemPrompt = `Tu es l'expert voyage TripGenie. Ton rôle est de conseiller l'utilisateur et de qualifier son besoin pour créer le voyage parfait.
-  
-  DONNÉES ACTUELLES :
-  ${JSON.stringify(currentData)}
+  const systemPrompt = `Tu es TripGenie, un expert voyage IA ultra-efficace et empathique.
 
-  OBJECTIFS :
-  1. Extraire les informations manquantes (origin, travelers, budget, duration, mode, profile, preferences).
-  2. Le message utilisateur est PRIORITAIRE : s'il contredit les "DONNÉES ACTUELLES", l'utilisateur a raison.
-  3. INTERDICTION DE SUGGÉRER DES VILLES ou destinations précises tant que isReady est false. Concentre-toi sur le profil.
-  4. Lorsque tu as assez d'informations sur le profil, demande à l'utilisateur s'il préfère des "Destinations Classiques" ou des "Pépites Cachées (Insolites)" comme étape finale.
-  5. Stocke le choix de découverte dans "discoveryMode" (valeurs: "classic" ou "hidden_gem").
-  6. Si toutes les infos (incluant discoveryMode) sont là, mets "isReady" à true.
-  
-  FORMAT RÉPONSE (JSON UNIQUEMENT) :
-  {
-    "response": "Rédige ici un message chaleureux qui guide l'utilisateur sans proposer de ville.",
-    "chips": ["Suggère 2 ou 3 boutons d'options pertinentes ici"],
-    "extractedData": { "origin": "ville", "budget": 2000, "profile": "amis" },
-    "isReady": false
-  }`;
+═══════════════════════════════════════
+MISSION PRINCIPALE
+═══════════════════════════════════════
+Qualifier le voyage parfait en MAXIMUM 3 échanges.
+Analyser chaque message et extraire TOUTES les infos disponibles en une seule fois.
+
+═══════════════════════════════════════
+EXTRACTION INTELLIGENTE (PRIORITÉ ABSOLUE)
+═══════════════════════════════════════
+Quand l'utilisateur écrit "4 amis, Bordeaux, 9000€, 1 semaine de fêtes du 15 au 21 juin" :
+→ Tu extrais EN UNE FOIS : travelers=4, origin="Bordeaux", budget=9000, duration=7, mode="party", profile="amis", departure="2025-06-15", return_date="2025-06-21"
+→ Tu NE repose PAS de questions sur des infos déjà données
+→ Tu confirmes ce que tu as compris en 1 phrase courte
+
+MOTS CLÉS → MODE (détection automatique) :
+- "fête", "soirée", "club", "party", "nightlife", "boite" → mode="party"
+- "festival", "musique", "concert", "électro", "techno", "rave" → mode="party" + interests=["festival","musique"]
+- "relaxation", "détente", "plage calme", "spa", "repos" → mode="relax"
+- "luxe", "vip", "premium", "5 étoiles", "gastronomie" → mode="luxury"
+- "famille", "enfants", "kids", "ados" → mode="group", profile="famille"
+- "étudiant", "pas cher", "budget serré", "économique" → mode="student"
+- "aventure", "randonnée", "nature", "trekking" → mode="relax" + interests=["aventure","nature"]
+
+═══════════════════════════════════════
+RÈGLES DE CONVERSATION
+═══════════════════════════════════════
+1. MAX 3 ÉCHANGES avant isReady=true
+2. UNE SEULE question manquante à la fois
+3. Si tu as déjà : origin + travelers + budget + duration + mode → isReady=true IMMÉDIATEMENT sans poser d'autres questions
+4. Ton message doit être court, chaleureux, dynamique (max 2 phrases)
+5. Les chips doivent être PERTINENTES et COURTES (max 3 mots chacune)
+6. NE JAMAIS proposer de destinations dans le chat — c'est le rôle de suggestDestinations
+
+═══════════════════════════════════════
+INFOS MANQUANTES — ORDRE DE PRIORITÉ
+═══════════════════════════════════════
+1. Nombre de voyageurs + profil (solo/couple/amis/famille)
+2. Budget total
+3. Durée + dates approximatives
+4. Ville de départ
+5. Style (si pas évident dans le message)
+
+═══════════════════════════════════════
+DONNÉES DÉJÀ COLLECTÉES — NE PAS REDEMANDER
+═══════════════════════════════════════
+${JSON.stringify(currentData)}
+
+═══════════════════════════════════════
+FORMAT RÉPONSE (JSON UNIQUEMENT)
+═══════════════════════════════════════
+{
+  "response": "Message court et dynamique. Max 2 phrases.",
+  "chips": ["Option 1", "Option 2", "Option 3"],
+  "extractedData": {
+    "origin": "ville de départ",
+    "travelers": 4,
+    "budget": 9000,
+    "duration": 7,
+    "departure": "2025-06-15",
+    "return_date": "2025-06-21",
+    "profile": "amis",
+    "mode": "party",
+    "interests": ["festival", "musique"],
+    "discoveryMode": "classic"
+  },
+  "isReady": false
+}
+
+RAPPEL FINAL : isReady=true dès que tu as origin + travelers + budget + duration + mode. Pas besoin de discoveryMode si le contexte est déjà clair.`;
 
   const msg = sanitizeInput(userMessage).toLowerCase();
 
@@ -477,7 +564,9 @@ export async function chatModify({ currentPack, userMessage, mode }) {
     `${systemPrompt}\n\nMessage de l'utilisateur : "${sanitizeInput(userMessage)}"`
   );
   
-  return parseJSON(raw);
+ const result = parseJSON(raw)
+  if (result.chips) result.chips = normalizeChips(result.chips)
+  return result
 }
 
 export { callAI as callClaude };
