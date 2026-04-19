@@ -1,0 +1,379 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
+import { useSearchStore } from '../../store'
+import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge, SkeletonCard } from '../ui'
+
+// ---- Hotel card ----
+function HotelCard({ hotel }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className="glass rounded-2xl overflow-hidden group hover:shadow-card-lg transition-shadow duration-300">
+      {/* Photo */}
+      <div className="h-36 bg-parchment-dark dark:bg-ink-light relative overflow-hidden">
+        {hotel.photo_url
+          ? <img src={hotel.photo_url} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          : <div className="w-full h-full flex items-center justify-center text-5xl opacity-30">{hotel.emoji || '🏨'}</div>
+        }
+        {hotel.is_real && (
+          <div className="absolute top-2 left-2"><VerifiedBadge /></div>
+        )}
+        {hotel.rating && (
+          <div className="absolute top-2 right-2 bg-white/90 dark:bg-ink/90 rounded-lg px-2 py-1 text-xs font-bold text-ink dark:text-parchment">
+            {hotel.rating} <span className="text-gold">★</span>
+          </div>
+        )}
+      </div>
+      {/* Body */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="font-semibold text-ink dark:text-parchment text-sm leading-tight">{hotel.name}</h4>
+          <Stars count={hotel.stars} />
+        </div>
+        <p className="text-xs text-muted mt-1 flex items-center gap-1">
+          <span>📍</span>{hotel.location}
+        </p>
+        {hotel.highlights && (
+          <p className="text-xs text-muted mt-2 line-clamp-2 leading-relaxed">{hotel.highlights}</p>
+        )}
+        {hotel.review_count > 0 && (
+          <p className="text-xs text-muted/70 mt-1">{hotel.review_count} avis · {hotel.rating_label}</p>
+        )}
+      </div>
+      {/* Footer */}
+      <div className="px-4 pb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs text-muted">par nuit</p>
+          <p className="font-bold text-gold text-lg">{hotel.price_per_night}</p>
+        </div>
+        <a href={hotel.booking_url || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.name)}`}
+           target="_blank" rel="noopener"
+           className="btn-primary text-sm px-4 py-2">
+          Réserver
+        </a>
+      </div>
+    </motion.div>
+  )
+}
+
+// ---- Flight card ----
+function FlightCard({ flight }) {
+  const isReturn = flight.type === 'return'
+  return (
+    <motion.div initial={{ opacity: 0, x: isReturn ? 8 : -8 }} animate={{ opacity: 1, x: 0 }}
+      className="glass rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {isReturn ? 'Retour' : 'Aller'}
+        </span>
+        <span className="text-xs text-muted">{flight.airline}</span>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flight.stops === 'Direct' ? 'bg-sage/10 text-sage' : 'bg-coral/10 text-coral'}`}>
+          {flight.stops}
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="text-center flex-1">
+          <p className="text-2xl font-bold text-ink dark:text-parchment font-display">{flight.departure_time}</p>
+          <p className="text-xs font-semibold text-muted">{flight.from} · {flight.from_city}</p>
+        </div>
+        <div className="flex-1 flex flex-col items-center gap-1">
+          <p className="text-xs text-muted">{flight.duration}</p>
+          <div className="w-full flex items-center gap-1">
+            <div className="h-px flex-1 bg-gold/30" />
+            <span className="text-gold text-sm">✈</span>
+            <div className="h-px flex-1 bg-gold/30" />
+          </div>
+        </div>
+        <div className="text-center flex-1">
+          <p className="text-2xl font-bold text-ink dark:text-parchment font-display">{flight.arrival_time}</p>
+          <p className="text-xs font-semibold text-muted">{flight.to} · {flight.to_city}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-gold">{flight.price_per_person}</p>
+          <p className="text-xs text-muted">/pers.</p>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ---- Itinerary day ----
+function ItineraryDay({ day }) {
+  const [open, setOpen] = useState(true)
+  const icons = { activity: '🏛', food: '🍽', event: '🎉', transport: '🚗' }
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gold/5 transition-colors">
+        <div className="flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full bg-gold/15 text-gold font-bold text-sm flex items-center justify-center">
+            {day.day}
+          </span>
+          <div className="text-left">
+            <p className="font-semibold text-ink dark:text-parchment text-sm">{day.title}</p>
+            <p className="text-xs text-muted">{day.subtitle}</p>
+          </div>
+        </div>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} className="text-muted text-sm">▼</motion.span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
+            className="px-5 pb-4 space-y-3 border-t border-parchment-dark dark:border-white/10">
+            {day.items?.map((item, i) => (
+              <div key={i} className="flex gap-3 pt-3">
+                <div className="text-center flex-shrink-0 w-12">
+                  <p className="text-xs font-medium text-gold">{item.time}</p>
+                  <p className="text-lg">{icons[item.type] || '📍'}</p>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm text-ink dark:text-parchment">{item.title}</p>
+                  <p className="text-xs text-muted mt-0.5 leading-relaxed">{item.description}</p>
+                  <div className="flex gap-3 mt-1.5">
+                    {item.price && <span className="text-xs text-sage font-medium">{item.price}</span>}
+                    {item.duration && <span className="text-xs text-muted">{item.duration}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ---- Budget breakdown chart ----
+function BudgetChart({ breakdown }) {
+  if (!breakdown) return null
+  const entries = Object.entries(breakdown).filter(([k]) => k !== 'total')
+  const colors  = ['#C9A84C', '#5A7A5E', '#3A6B8A', '#C0634A', '#7A6E62', '#8B6914']
+  const data    = entries.map(([k, v], i) => ({
+    name:  k.charAt(0).toUpperCase() + k.slice(1),
+    value: parseInt(v) || 0,
+    color: colors[i % colors.length]
+  }))
+  const total = breakdown.total || '—'
+
+  return (
+    <div className="glass rounded-2xl p-5">
+      <SectionTitle sub={`Total : ${total}`}>Budget</SectionTitle>
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="w-44 h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={72}
+                   dataKey="value" paddingAngle={2}>
+                {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+              </Pie>
+              <Tooltip formatter={(v) => `${v}€`} contentStyle={{ background: 'var(--color-bg, #fff)', border: 'none', borderRadius: 8, fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 space-y-2">
+          {data.map((d, i) => (
+            <div key={i} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                <span className="text-sm text-muted capitalize">{d.name}</span>
+              </div>
+              <span className="text-sm font-medium text-ink dark:text-parchment">{d.value}€</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Event card ----
+function EventCard({ event }) {
+  return (
+    <div className="flex gap-3 p-3 glass rounded-xl">
+      <div className="w-10 h-10 bg-coral/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎭</div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm text-ink dark:text-parchment truncate">{event.name}</p>
+        <p className="text-xs text-muted mt-0.5">{event.date} · {event.venue}</p>
+        {event.description && <p className="text-xs text-muted mt-1 line-clamp-2">{event.description}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ---- Activity card ----
+function ActivityCard({ activity }) {
+  return (
+    <div className="glass rounded-xl p-4 flex gap-3">
+      <span className="text-2xl">{activity.emoji || '🎯'}</span>
+      <div className="flex-1">
+        <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
+        <p className="text-xs text-muted mt-0.5">{activity.category}</p>
+        <p className="text-xs text-muted mt-1 leading-relaxed line-clamp-2">{activity.description}</p>
+        <div className="flex gap-3 mt-2">
+          <span className="text-xs text-sage font-medium">{activity.price}</span>
+          <span className="text-xs text-muted">{activity.duration}</span>
+          <span className="text-xs text-muted">{activity.best_time}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================
+// MAIN PACK RESULTS
+// =============================================
+const TABS = [
+  { id: 'overview',    label: 'Aperçu',      icon: '✦' },
+  { id: 'hotels',      label: 'Hôtels',      icon: '🏨' },
+  { id: 'flights',     label: 'Vols',        icon: '✈' },
+  { id: 'itinerary',   label: 'Itinéraire',  icon: '📅' },
+  { id: 'activities',  label: 'Activités',   icon: '🎯' },
+  { id: 'budget',      label: 'Budget',      icon: '💰' },
+]
+
+export default function PackResults() {
+  const { pack, isLoading, mode } = useSearchStore()
+  const [activeTab, setActiveTab] = useState('overview')
+
+  if (isLoading) {
+    return (
+      <div id="pack-results" className="mt-8 space-y-4">
+        <div className="h-32 glass rounded-2xl animate-shimmer" />
+        <div className="grid grid-cols-2 gap-4">
+          <SkeletonCard /><SkeletonCard />
+        </div>
+        <SkeletonCard />
+      </div>
+    )
+  }
+
+  if (!pack) return null
+
+  const d = pack
+
+  return (
+    <motion.div id="pack-results" className="mt-10 space-y-5"
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}>
+
+      {/* Hero banner */}
+      <div className="glass rounded-3xl p-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky/5 pointer-events-none" />
+        <div className="relative">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <ModeBadge mode={mode} />
+                {d.score && <ScoreBadge score={d.score} />}
+              </div>
+              <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment">
+                {d.destination}
+                <span className="text-muted text-xl font-normal ml-2">{d.country}</span>
+              </h2>
+              <p className="text-gold italic font-display mt-1">{d.tagline}</p>
+            </div>
+            <div className="flex gap-4 text-center">
+              <div className="glass rounded-xl px-4 py-2">
+                <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
+                <p className="text-xs text-muted">nuits</p>
+              </div>
+              <div className="glass rounded-xl px-4 py-2">
+                <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
+                <p className="text-xs text-muted">budget</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Weather */}
+          {d.weather && (
+            <div className="mt-4 flex items-center gap-3 text-sm text-muted">
+              <span className="text-xl">🌤</span>
+              <span className="font-medium text-ink dark:text-parchment">{d.weather.avg_temp}</span>
+              <span>·</span>
+              <span>{d.weather.conditions}</span>
+              <span>·</span>
+              <span className="italic">{d.weather.tip}</span>
+            </div>
+          )}
+
+          {/* Overview */}
+          {d.overview && (
+            <p className="mt-4 text-sm leading-relaxed text-muted border-l-2 border-gold/40 pl-4 italic">
+              {d.overview}
+            </p>
+          )}
+
+          {/* Tips */}
+          {d.tips?.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {d.tips.map((tip, i) => (
+                <div key={i} className="bg-gold/5 rounded-xl px-3 py-2 text-xs">
+                  <span className="font-semibold text-ink dark:text-parchment">{tip.title} · </span>
+                  <span className="text-muted">{tip.content}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Phrase locale */}
+          {d.local_phrases?.[0] && (
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <span className="text-xl">🗣</span>
+              <span className="font-display italic text-gold">"{d.local_phrases[0].phrase}"</span>
+              <span className="text-muted text-xs">= {d.local_phrases[0].translation}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
+
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}>
+
+          {activeTab === 'overview' && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {d.hotels?.slice(0, 2).map((h, i) => <HotelCard key={i} hotel={h} />)}
+              {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} />)}
+              {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} />)}
+            </div>
+          )}
+
+          {activeTab === 'hotels' && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {d.hotels?.map((h, i) => <HotelCard key={i} hotel={h} />)}
+            </div>
+          )}
+
+          {activeTab === 'flights' && (
+            <div className="space-y-3">
+              {d.flights?.map((f, i) => <FlightCard key={i} flight={f} />)}
+            </div>
+          )}
+
+          {activeTab === 'itinerary' && (
+            <div className="space-y-3">
+              {d.itinerary?.map((day, i) => <ItineraryDay key={i} day={day} />)}
+            </div>
+          )}
+
+          {activeTab === 'activities' && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {d.activities?.map((a, i) => <ActivityCard key={i} activity={a} />)}
+            </div>
+          )}
+
+          {activeTab === 'budget' && <BudgetChart breakdown={d.budget_breakdown} />}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  )
+}
