@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripGenie — Maquettes & Schéma d'enchaînement</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f7f5f0;
+      color: #1a1a2e;
+      padding: 32px 24px;
+    }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; color: #1a1a2e; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 40px; }
+    h2 { font-size: 18px; font-weight: 600; margin: 40px 0 16px; color: #1a1a2e; border-bottom: 2px solid #c9a84c33; padding-bottom: 8px; }
+    h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+    .grid { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+    .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .badge { display: inline-block; background: #c9a84c20; color: #c9a84c; border: 1px solid #c9a84c40; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+    .note { font-size: 12px; color: #888; margin-top: 10px; font-style: italic; }
+    /* Flow diagram */
+    .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 16px 0; }
+    .flow-box { background: white; border: 2px solid #e8e0d0; border-radius: 10px; padding: 10px 16px; text-align: center; font-size: 13px; font-weight: 500; min-width: 110px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    .flow-box.active { border-color: #c9a84c; background: #fffbf0; }
+    .flow-arrow { font-size: 18px; color: #c9a84c; padding: 0 6px; }
+    .flow-label { font-size: 10px; color: #aaa; text-align: center; margin-top: 3px; }
+    .flow-col { display: flex; flex-direction: column; align-items: center; }
+  </style>
+</head>
+<body>
+
+<h1>🗺️ TripGenie — Maquettes UI & Schéma d'enchaînement</h1>
+<p class="subtitle">Document de conception — RNCP 5 DWWM · Compétence : Maquetter des interfaces utilisateur web ou web mobile</p>
+
+<!-- ========== SCHÉMA D'ENCHAÎNEMENT ========== -->
+<h2>1. Schéma d'enchaînement des écrans</h2>
+<div class="card" style="overflow-x:auto">
+  <div class="flow" style="gap:0; padding:8px 0;">
+
+    <div class="flow-col">
+      <div class="flow-box active">🏠 Home<br/><span style="font-size:11px;color:#888">/</span></div>
+      <div class="flow-label">Hero + Stats</div>
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-col">
+      <div class="flow-box active">💬 Chat<br/><span style="font-size:11px;color:#888">Onboarding</span></div>
+      <div class="flow-label">Max 3 échanges</div>
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-col">
+      <div class="flow-box active">🌍 Destinations<br/><span style="font-size:11px;color:#888">Suggestions IA</span></div>
+      <div class="flow-label">3 choix proposés</div>
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-col">
+      <div class="flow-box active">✈️ Pack<br/><span style="font-size:11px;color:#888">Résultats</span></div>
+      <div class="flow-label">Vols · Hôtels · Activ.</div>
+    </div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-col">
+      <div class="flow-box">📋 Détail<br/><span style="font-size:11px;color:#888">/trip/:id</span></div>
+      <div class="flow-label">Sauvegardé (auth)</div>
+    </div>
+
+  </div>
+  <div style="margin-top:20px; display:flex; gap:32px; flex-wrap:wrap;">
+    <div>
+      <div class="flow-col" style="align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="flow-arrow" style="padding:0">↘</span>
+          <div class="flow-box" style="min-width:90px">🔐 Login<br/><span style="font-size:11px;color:#888">/login</span></div>
+        </div>
+        <p class="note">Accessible depuis le header (bouton Connexion) ou après génération d'un pack pour sauvegarder</p>
+      </div>
+    </div>
+    <div>
+      <div class="flow-col" style="align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="flow-arrow" style="padding:0">↘</span>
+          <div class="flow-box" style="min-width:90px">📦 Mes Voyages<br/><span style="font-size:11px;color:#888">/trips</span></div>
+        </div>
+        <p class="note">Liste des voyages sauvegardés (auth requise)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MAQUETTE DESKTOP ========== -->
+<h2>2. Maquettes Desktop (≥1024px)</h2>
+
+<div class="grid">
+
+  <!-- HOME -->
+  <div>
+    <h3>Écran 1 — Page d'accueil / Chat</h3>
+    <div class="badge">Desktop · 1280px</div>
+    <svg width="540" height="640" viewBox="0 0 540 640" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:10px;border:1px solid #e8e0d0;">
+      <!-- Background -->
+      <rect width="540" height="640" fill="#faf8f3"/>
+      <!-- Header -->
+      <rect width="540" height="48" fill="white" opacity=".9"/>
+      <rect x="0" y="47" width="540" height="1" fill="#e8e0d0"/>
+      <!-- Logo -->
+      <rect x="16" y="13" width="22" height="22" rx="5" fill="#c9a84c22"/>
+      <text x="27" y="29" text-anchor="middle" font-size="13" fill="#c9a84c" font-weight="bold">✦</text>
+      <text x="46" y="30" font-size="14" font-weight="700" fill="#1a1a2e" font-family="Georgia, serif">TripGenie</text>
+      <!-- Nav -->
+      <text x="260" y="30" text-anchor="middle" font-size="12" fill="#888">Accueil</text>
+      <text x="330" y="30" text-anchor="middle" font-size="12" fill="#888">Mes voyages</text>
+      <!-- CTA header -->
+      <rect x="450" y="14" width="72" height="24" rx="12" fill="#c9a84c"/>
+      <text x="486" y="30" text-anchor="middle" font-size="11" fill="white" font-weight="600">Connexion</text>
+
+      <!-- Hero -->
+      <text x="270" y="92" text-anchor="middle" font-size="10" fill="#c9a84c" font-weight="600">✦ Powered by AI · Vos voyages de rêve</text>
+      <text x="270" y="120" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a2e" font-family="Georgia, serif">Votre itinéraire parfait,</text>
+      <text x="270" y="145" text-anchor="middle" font-size="22" font-weight="700" fill="#c9a84c" font-family="Georgia, serif" font-style="italic">créé en secondes</text>
+      <text x="270" y="168" text-anchor="middle" font-size="11" fill="#888">Décris ton voyage en une phrase. TripGenie trouve la destination,</text>
+      <text x="270" y="183" text-anchor="middle" font-size="11" fill="#888">les vols, l'hôtel et les activités — tout optimisé pour toi.</text>
+      <!-- Stats -->
+      <text x="160" y="210" text-anchor="middle" font-size="16" font-weight="700" fill="#c9a84c" font-family="Georgia">12 400+</text>
+      <text x="160" y="224" text-anchor="middle" font-size="10" fill="#aaa">voyages créés</text>
+      <text x="270" y="210" text-anchor="middle" font-size="16" font-weight="700" fill="#c9a84c" font-family="Georgia">98%</text>
+      <text x="270" y="224" text-anchor="middle" font-size="10" fill="#aaa">satisfaction</text>
+      <text x="380" y="210" text-anchor="middle" font-size="16" font-weight="700" fill="#c9a84c" font-family="Georgia">45 s</text>
+      <text x="380" y="224" text-anchor="middle" font-size="10" fill="#aaa">en moyenne</text>
+
+      <!-- Chat widget -->
+      <rect x="40" y="242" width="460" height="330" rx="18" fill="white" stroke="#c9a84c33" stroke-width="1.5"/>
+      <!-- Chat header -->
+      <rect x="40" y="242" width="460" height="44" rx="18" fill="white"/>
+      <rect x="40" y="268" width="460" height="18" fill="white"/>
+      <rect x="40" y="285" width="460" height="1" fill="#f0ebe0"/>
+      <circle cx="68" cy="264" r="12" fill="#c9a84c22"/>
+      <text x="68" y="269" text-anchor="middle" font-size="11" fill="#c9a84c">✦</text>
+      <text x="88" y="261" font-size="11" font-weight="600" fill="#1a1a2e">TripGenie</text>
+      <text x="88" y="274" font-size="9" fill="#6b9e6b">● En ligne · Expert voyage IA</text>
+      <text x="460" y="268" text-anchor="end" font-size="10" fill="#aaa">Nouveau chat</text>
+
+      <!-- Messages -->
+      <circle cx="68" cy="312" r="10" fill="#c9a84c15" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="68" y="316" text-anchor="middle" font-size="9" fill="#c9a84c">✦</text>
+      <rect x="84" y="300" width="220" height="34" rx="8" fill="#f0ebe0"/>
+      <text x="96" y="316" font-size="10" fill="#1a1a2e">Salut ! Je suis TripGenie ✨</text>
+      <text x="96" y="328" font-size="10" fill="#1a1a2e">Pour commencer, avec qui pars-tu ?</text>
+      <!-- Chips -->
+      <rect x="84" y="340" width="72" height="22" rx="11" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="120" y="355" text-anchor="middle" font-size="10" fill="#1a1a2e">Solo 🎒</text>
+      <rect x="162" y="340" width="84" height="22" rx="11" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="204" y="355" text-anchor="middle" font-size="10" fill="#1a1a2e">En couple ❤️</text>
+      <rect x="252" y="340" width="68" height="22" rx="11" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="286" y="355" text-anchor="middle" font-size="10" fill="#1a1a2e">Amis 🍻</text>
+      <rect x="326" y="340" width="80" height="22" rx="11" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="366" y="355" text-anchor="middle" font-size="10" fill="#1a1a2e">Famille 👨‍👩‍👧</text>
+
+      <!-- User message -->
+      <rect x="300" y="378" width="160" height="26" rx="8" fill="#c9a84c"/>
+      <text x="380" y="395" text-anchor="middle" font-size="10" fill="white">Amis 🍻</text>
+
+      <!-- Bot response -->
+      <circle cx="68" cy="424" r="10" fill="#c9a84c15" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="68" y="428" text-anchor="middle" font-size="9" fill="#c9a84c">✦</text>
+      <rect x="84" y="414" width="200" height="26" rx="8" fill="#f0ebe0"/>
+      <text x="96" y="426" font-size="10" fill="#1a1a2e">Super ! Quel est votre budget</text>
+      <text x="96" y="438" font-size="10" fill="#1a1a2e">total pour ce voyage ?</text>
+
+      <!-- Input bar -->
+      <rect x="52" y="548" width="360" height="36" rx="10" fill="#f7f5f0" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="70" y="571" font-size="10" fill="#bbb">Décris ton voyage idéal...</text>
+      <rect x="422" y="548" width="36" height="36" rx="10" fill="#c9a84c"/>
+      <text x="440" y="571" text-anchor="middle" font-size="13" fill="white">➤</text>
+      <text x="270" y="596" text-anchor="middle" font-size="9" fill="#ccc">Entrée pour envoyer · Shift+Entrée pour saut de ligne</text>
+    </svg>
+    <p class="note">Vue desktop — Chatbot d'onboarding avec bulles de messages et chips cliquables</p>
+  </div>
+
+  <!-- RÉSULTATS -->
+  <div>
+    <h3>Écran 2 — Résultats Pack généré</h3>
+    <div class="badge">Desktop · 1280px</div>
+    <svg width="540" height="640" viewBox="0 0 540 640" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:10px;border:1px solid #e8e0d0;">
+      <rect width="540" height="640" fill="#faf8f3"/>
+      <!-- Header -->
+      <rect width="540" height="48" fill="white" opacity=".9"/>
+      <rect x="0" y="47" width="540" height="1" fill="#e8e0d0"/>
+      <text x="27" y="30" text-anchor="middle" font-size="14" fill="#c9a84c">✦</text>
+      <text x="46" y="30" font-size="14" font-weight="700" fill="#1a1a2e" font-family="Georgia, serif">TripGenie</text>
+
+      <!-- Pack header -->
+      <rect x="16" y="60" width="508" height="100" rx="14" fill="#1a1a2e"/>
+      <rect x="16" y="60" width="508" height="100" rx="14" fill="url(#grad1)" opacity=".6"/>
+      <defs>
+        <linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#c9a84c" stop-opacity=".4"/>
+          <stop offset="100%" stop-color="#1a1a2e" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <text x="32" y="92" font-size="22" font-weight="700" fill="white" font-family="Georgia, serif">Ibiza</text>
+      <text x="32" y="110" font-size="11" fill="#c9a84c">Espagne · 7 nuits</text>
+      <text x="32" y="128" font-size="10" fill="rgba(255,255,255,.6)">La Mecque de la fête électronique</text>
+      <!-- Score badge -->
+      <rect x="430" y="80" width="72" height="30" rx="8" fill="#c9a84c"/>
+      <text x="466" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="white">87 / 100</text>
+
+      <!-- Tab bar -->
+      <rect x="16" y="172" width="508" height="34" rx="8" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <rect x="18" y="174" width="100" height="30" rx="6" fill="#c9a84c22"/>
+      <text x="68" y="194" text-anchor="middle" font-size="11" font-weight="600" fill="#c9a84c">✈️ Vols</text>
+      <text x="170" y="194" text-anchor="middle" font-size="11" fill="#888">🏨 Hôtels</text>
+      <text x="270" y="194" text-anchor="middle" font-size="11" fill="#888">🎉 Activités</text>
+      <text x="370" y="194" text-anchor="middle" font-size="11" fill="#888">📅 Itinéraire</text>
+      <text x="460" y="194" text-anchor="middle" font-size="11" fill="#888">💰 Budget</text>
+
+      <!-- Vol card -->
+      <rect x="16" y="216" width="508" height="68" rx="12" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="32" y="236" font-size="10" fill="#aaa">ALLER · CDG → IBZ</text>
+      <text x="32" y="254" font-size="15" font-weight="700" fill="#1a1a2e">10:30</text>
+      <text x="32" y="270" font-size="9" fill="#888">Paris CDG</text>
+      <text x="200" y="248" text-anchor="middle" font-size="9" fill="#aaa">── Direct ──</text>
+      <text x="200" y="262" text-anchor="middle" font-size="9" fill="#aaa">2h00</text>
+      <text x="368" y="254" text-anchor="middle" font-size="15" font-weight="700" fill="#1a1a2e">12:30</text>
+      <text x="368" y="270" text-anchor="middle" font-size="9" fill="#888">Ibiza IBZ</text>
+      <text x="490" y="254" text-anchor="end" font-size="14" font-weight="700" fill="#c9a84c">185€</text>
+      <text x="490" y="268" text-anchor="end" font-size="9" fill="#aaa">/ pers.</text>
+
+      <!-- Hotel cards -->
+      <rect x="16" y="296" width="244" height="140" rx="12" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <rect x="16" y="296" width="244" height="56" rx="12" fill="#e8e0d0"/>
+      <text x="138" y="326" text-anchor="middle" font-size="28">🏨</text>
+      <text x="32" y="372" font-size="11" font-weight="600" fill="#1a1a2e">Ushuaïa Ibiza Beach</text>
+      <text x="32" y="387" font-size="9" fill="#888">📍 Playa d'en Bossa</text>
+      <text x="32" y="404" font-size="9" fill="#888">Piscine à débordement · DJ pool party</text>
+      <text x="32" y="422" font-size="14" font-weight="700" fill="#c9a84c">280€</text>
+      <text x="100" y="422" font-size="9" fill="#aaa">/ nuit</text>
+      <rect x="170" y="412" width="72" height="22" rx="11" fill="#c9a84c"/>
+      <text x="206" y="427" text-anchor="middle" font-size="10" fill="white">Réserver</text>
+
+      <rect x="280" y="296" width="244" height="140" rx="12" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <rect x="280" y="296" width="244" height="56" rx="12" fill="#e8e0d0"/>
+      <text x="402" y="326" text-anchor="middle" font-size="28">🏩</text>
+      <text x="296" y="372" font-size="11" font-weight="600" fill="#1a1a2e">Gran Hotel Montesol</text>
+      <text x="296" y="387" font-size="9" fill="#888">📍 Ibiza Town</text>
+      <text x="296" y="404" font-size="9" fill="#888">Vue mer · Charme historique</text>
+      <text x="296" y="422" font-size="14" font-weight="700" fill="#c9a84c">160€</text>
+      <text x="354" y="422" font-size="9" fill="#aaa">/ nuit</text>
+      <rect x="434" y="412" width="72" height="22" rx="11" fill="#c9a84c"/>
+      <text x="470" y="427" text-anchor="middle" font-size="10" fill="white">Réserver</text>
+
+      <!-- Budget breakdown -->
+      <rect x="16" y="448" width="508" height="80" rx="12" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="32" y="470" font-size="11" font-weight="600" fill="#1a1a2e">💰 Répartition du budget — 3 000€</text>
+      <!-- Budget bars -->
+      <rect x="32" y="480" width="100" height="8" rx="4" fill="#e8e0d0"/>
+      <rect x="32" y="480" width="63" height="8" rx="4" fill="#c9a84c"/>
+      <text x="32" y="502" font-size="9" fill="#888">Vols · 630€</text>
+      <rect x="160" y="480" width="100" height="8" rx="4" fill="#e8e0d0"/>
+      <rect x="160" y="480" width="72" height="8" rx="4" fill="#6b9e6b"/>
+      <text x="160" y="502" font-size="9" fill="#888">Héberg. · 720€</text>
+      <rect x="290" y="480" width="100" height="8" rx="4" fill="#e8e0d0"/>
+      <rect x="290" y="480" width="45" height="8" rx="4" fill="#e88c6b"/>
+      <text x="290" y="502" font-size="9" fill="#888">Activités · 450€</text>
+      <rect x="420" y="480" width="80" height="8" rx="4" fill="#e8e0d0"/>
+      <rect x="420" y="480" width="38" height="8" rx="4" fill="#9b8ec4"/>
+      <text x="420" y="502" font-size="9" fill="#888">Restau · 360€</text>
+
+      <!-- Chat modify -->
+      <rect x="16" y="540" width="508" height="44" rx="12" fill="#fffbf0" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="32" y="558" font-size="10" fill="#888">💬 Modifie ton pack avec le chat...</text>
+      <text x="32" y="574" font-size="9" fill="#ccc">ex: "enlève le 2ème hôtel" · "trouve des vols moins chers"</text>
+      <rect x="458" y="550" width="52" height="24" rx="10" fill="#c9a84c"/>
+      <text x="484" y="566" text-anchor="middle" font-size="10" fill="white">Envoyer</text>
+
+      <!-- Footer label -->
+      <text x="270" y="622" text-anchor="middle" font-size="9" fill="#ccc">Écran résultats — 4 onglets : Vols · Hôtels · Activités · Itinéraire · Budget</text>
+    </svg>
+    <p class="note">Vue desktop — Résultats du pack généré avec scoring, vols, hôtels et répartition budget</p>
+  </div>
+
+</div>
+
+<!-- ========== MAQUETTES MOBILE ========== -->
+<h2>3. Maquettes Mobile (≤768px)</h2>
+
+<div class="grid">
+
+  <!-- MOBILE HOME -->
+  <div>
+    <h3>Écran 1 Mobile — Accueil / Chat</h3>
+    <div class="badge">Mobile · 390px</div>
+    <svg width="240" height="480" viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:24px;border:6px solid #1a1a2e;box-shadow:0 8px 32px rgba(0,0,0,.15);">
+      <rect width="240" height="480" fill="#faf8f3" rx="18"/>
+      <!-- Status bar -->
+      <rect width="240" height="24" fill="white" opacity=".9"/>
+      <text x="20" y="16" font-size="9" fill="#888">9:41</text>
+      <text x="220" y="16" text-anchor="end" font-size="9" fill="#888">●●●</text>
+      <!-- Header mobile -->
+      <rect y="24" width="240" height="38" fill="white"/>
+      <rect y="61" width="240" height="1" fill="#e8e0d0"/>
+      <text x="16" y="47" font-size="13" font-weight="700" fill="#1a1a2e" font-family="Georgia">TripGenie</text>
+      <text x="224" y="47" text-anchor="end" font-size="11" fill="#c9a84c">✦</text>
+      <!-- Hero mobile réduit -->
+      <text x="120" y="82" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a2e" font-family="Georgia">Votre voyage</text>
+      <text x="120" y="98" text-anchor="middle" font-size="14" font-weight="700" fill="#c9a84c" font-family="Georgia" font-style="italic">en secondes</text>
+      <!-- Chat widget mobile -->
+      <rect x="8" y="110" width="224" height="300" rx="14" fill="white" stroke="#c9a84c33" stroke-width="1"/>
+      <!-- Chat header mobile -->
+      <rect x="8" y="110" width="224" height="36" rx="14" fill="white"/>
+      <rect x="8" y="132" width="224" height="14" fill="white"/>
+      <rect x="8" y="145" width="224" height="1" fill="#f0ebe0"/>
+      <circle cx="28" cy="128" r="9" fill="#c9a84c15" stroke="#c9a84c30" stroke-width="1"/>
+      <text x="28" y="132" text-anchor="middle" font-size="8" fill="#c9a84c">✦</text>
+      <text x="44" y="125" font-size="9" font-weight="600" fill="#1a1a2e">TripGenie</text>
+      <text x="44" y="136" font-size="7.5" fill="#6b9e6b">● En ligne</text>
+      <!-- Bot message -->
+      <rect x="22" y="155" width="160" height="32" rx="8" fill="#f0ebe0"/>
+      <text x="30" y="168" font-size="8.5" fill="#1a1a2e">Salut ! Avec qui pars-tu ?</text>
+      <!-- Chips mobile -->
+      <rect x="22" y="194" width="52" height="18" rx="9" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="48" y="207" text-anchor="middle" font-size="8" fill="#1a1a2e">Solo 🎒</text>
+      <rect x="80" y="194" width="64" height="18" rx="9" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="112" y="207" text-anchor="middle" font-size="8" fill="#1a1a2e">En couple ❤️</text>
+      <rect x="22" y="218" width="54" height="18" rx="9" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="49" y="231" text-anchor="middle" font-size="8" fill="#1a1a2e">Amis 🍻</text>
+      <rect x="82" y="218" width="64" height="18" rx="9" fill="white" stroke="#c9a84c40" stroke-width="1"/>
+      <text x="114" y="231" text-anchor="middle" font-size="8" fill="#1a1a2e">Famille 👨‍👩‍👧</text>
+      <!-- User reply -->
+      <rect x="100" y="248" width="112" height="20" rx="8" fill="#c9a84c"/>
+      <text x="156" y="262" text-anchor="middle" font-size="8" fill="white">Amis 🍻</text>
+      <!-- Typing dots -->
+      <circle cx="38" cy="280" r="7" fill="#c9a84c15" stroke="#c9a84c30" stroke-width="1"/>
+      <text x="38" y="284" text-anchor="middle" font-size="7" fill="#c9a84c">✦</text>
+      <rect x="52" y="272" width="48" height="16" rx="8" fill="#f0ebe0"/>
+      <circle cx="62" cy="280" r="2.5" fill="#c9a84c60"/>
+      <circle cx="70" cy="280" r="2.5" fill="#c9a84c60"/>
+      <circle cx="78" cy="280" r="2.5" fill="#c9a84c60"/>
+      <!-- Input mobile -->
+      <rect x="14" y="388" width="168" height="30" rx="10" fill="#f7f5f0" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="24" y="407" font-size="8" fill="#bbb">Décris ton voyage...</text>
+      <rect x="188" y="388" width="30" height="30" rx="10" fill="#c9a84c"/>
+      <text x="203" y="407" text-anchor="middle" font-size="11" fill="white">➤</text>
+      <!-- Bottom nav indicator -->
+      <rect x="90" y="460" width="60" height="4" rx="2" fill="#1a1a2e" opacity=".2"/>
+    </svg>
+    <p class="note">Vue mobile — Chat condensé, chips en grille 2×2, input fixé en bas</p>
+  </div>
+
+  <!-- MOBILE RÉSULTATS -->
+  <div>
+    <h3>Écran 2 Mobile — Pack résultats</h3>
+    <div class="badge">Mobile · 390px</div>
+    <svg width="240" height="480" viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:24px;border:6px solid #1a1a2e;box-shadow:0 8px 32px rgba(0,0,0,.15);">
+      <rect width="240" height="480" fill="#faf8f3" rx="18"/>
+      <!-- Status bar -->
+      <rect width="240" height="24" fill="#1a1a2e" opacity=".9"/>
+      <text x="20" y="16" font-size="9" fill="white">9:41</text>
+      <!-- Pack banner -->
+      <rect y="24" width="240" height="90" fill="#1a1a2e"/>
+      <text x="16" y="52" font-size="18" font-weight="700" fill="white" font-family="Georgia">Ibiza</text>
+      <text x="16" y="68" font-size="9" fill="#c9a84c">Espagne · 7 nuits</text>
+      <text x="16" y="82" font-size="8.5" fill="rgba(255,255,255,.5)">La Mecque de la fête électronique</text>
+      <rect x="168" y="44" width="54" height="22" rx="8" fill="#c9a84c"/>
+      <text x="195" y="59" text-anchor="middle" font-size="10" font-weight="700" fill="white">87/100</text>
+      <!-- Tabs mobile -->
+      <rect y="114" width="240" height="28" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <rect x="2" y="116" width="70" height="24" rx="5" fill="#c9a84c22"/>
+      <text x="37" y="133" text-anchor="middle" font-size="8.5" font-weight="600" fill="#c9a84c">✈️ Vols</text>
+      <text x="100" y="133" text-anchor="middle" font-size="8.5" fill="#aaa">🏨 Hôtels</text>
+      <text x="160" y="133" text-anchor="middle" font-size="8.5" fill="#aaa">🎉 Activ.</text>
+      <text x="215" y="133" text-anchor="middle" font-size="8.5" fill="#aaa">💰</text>
+      <!-- Vol card mobile -->
+      <rect x="8" y="148" width="224" height="60" rx="10" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="18" y="164" font-size="7.5" fill="#aaa">ALLER · CDG → IBZ</text>
+      <text x="18" y="178" font-size="12" font-weight="700" fill="#1a1a2e">10:30</text>
+      <text x="18" y="190" font-size="7.5" fill="#888">Paris CDG</text>
+      <text x="120" y="180" text-anchor="middle" font-size="7.5" fill="#aaa">─ Direct ─</text>
+      <text x="120" y="190" text-anchor="middle" font-size="7.5" fill="#aaa">2h00</text>
+      <text x="180" y="178" font-size="12" font-weight="700" fill="#1a1a2e">12:30</text>
+      <text x="180" y="190" font-size="7.5" fill="#888">Ibiza IBZ</text>
+      <text x="228" y="175" text-anchor="end" font-size="11" font-weight="700" fill="#c9a84c">185€</text>
+      <text x="228" y="188" text-anchor="end" font-size="7" fill="#aaa">/ pers.</text>
+      <!-- Hotel card mobile -->
+      <rect x="8" y="218" width="224" height="80" rx="10" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <rect x="8" y="218" width="224" height="36" rx="10" fill="#e8e0d0"/>
+      <text x="120" y="240" text-anchor="middle" font-size="20">🏨</text>
+      <text x="18" y="270" font-size="9" font-weight="600" fill="#1a1a2e">Ushuaïa Ibiza Beach Hotel</text>
+      <text x="18" y="283" font-size="7.5" fill="#888">📍 Playa d'en Bossa · ⭐⭐⭐⭐⭐</text>
+      <text x="18" y="294" font-size="11" font-weight="700" fill="#c9a84c">280€</text>
+      <text x="58" y="294" font-size="7.5" fill="#aaa">/nuit</text>
+      <rect x="168" y="284" width="56" height="18" rx="9" fill="#c9a84c"/>
+      <text x="196" y="296" text-anchor="middle" font-size="8" fill="white">Réserver</text>
+      <!-- Budget mobile -->
+      <rect x="8" y="308" width="224" height="64" rx="10" fill="white" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="18" y="324" font-size="9" font-weight="600" fill="#1a1a2e">💰 Budget total — 3 000€</text>
+      <rect x="18" y="332" width="80" height="6" rx="3" fill="#e8e0d0"/>
+      <rect x="18" y="332" width="50" height="6" rx="3" fill="#c9a84c"/>
+      <text x="18" y="348" font-size="7.5" fill="#888">Vols · 630€</text>
+      <rect x="120" y="332" width="80" height="6" rx="3" fill="#e8e0d0"/>
+      <rect x="120" y="332" width="58" height="6" rx="3" fill="#6b9e6b"/>
+      <text x="120" y="348" font-size="7.5" fill="#888">Héberg. · 720€</text>
+      <rect x="18" y="356" width="80" height="6" rx="3" fill="#e8e0d0"/>
+      <rect x="18" y="356" width="36" height="6" rx="3" fill="#e88c6b"/>
+      <text x="18" y="372" font-size="7.5" fill="#888">Activités · 450€</text>
+      <rect x="120" y="356" width="80" height="6" rx="3" fill="#e8e0d0"/>
+      <rect x="120" y="356" width="30" height="6" rx="3" fill="#9b8ec4"/>
+      <text x="120" y="372" font-size="7.5" fill="#888">Restau · 360€</text>
+      <!-- Input -->
+      <rect x="8" y="382" width="172" height="28" rx="10" fill="#f7f5f0" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="18" y="400" font-size="7.5" fill="#ccc">Modifie ton pack...</text>
+      <rect x="186" y="382" width="46" height="28" rx="10" fill="#c9a84c"/>
+      <text x="209" y="400" text-anchor="middle" font-size="8.5" fill="white">Envoyer</text>
+      <!-- Bottom bar -->
+      <rect x="90" y="460" width="60" height="4" rx="2" fill="#1a1a2e" opacity=".2"/>
+    </svg>
+    <p class="note">Vue mobile — Pack condensé : tabs horizontaux, cartes empilées, budget en barres</p>
+  </div>
+
+  <!-- MOBILE LOGIN -->
+  <div>
+    <h3>Écran 3 Mobile — Connexion</h3>
+    <div class="badge">Mobile · 390px</div>
+    <svg width="240" height="480" viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:24px;border:6px solid #1a1a2e;box-shadow:0 8px 32px rgba(0,0,0,.15);">
+      <rect width="240" height="480" fill="#faf8f3" rx="18"/>
+      <rect width="240" height="24" fill="white" opacity=".9"/>
+      <text x="20" y="16" font-size="9" fill="#888">9:41</text>
+      <!-- Logo centered -->
+      <circle cx="120" cy="100" r="28" fill="#c9a84c15" stroke="#c9a84c30" stroke-width="1.5"/>
+      <text x="120" y="108" text-anchor="middle" font-size="22" fill="#c9a84c">✦</text>
+      <text x="120" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a2e" font-family="Georgia">TripGenie</text>
+      <text x="120" y="162" text-anchor="middle" font-size="9" fill="#aaa">Connecte-toi pour sauvegarder tes voyages</text>
+      <!-- Form -->
+      <text x="18" y="188" font-size="9" font-weight="600" fill="#1a1a2e">Email</text>
+      <rect x="16" y="194" width="208" height="32" rx="8" fill="white" stroke="#e8e0d0" stroke-width="1.5"/>
+      <text x="26" y="215" font-size="9" fill="#ccc">ton@email.com</text>
+      <text x="18" y="242" font-size="9" font-weight="600" fill="#1a1a2e">Mot de passe</text>
+      <rect x="16" y="248" width="208" height="32" rx="8" fill="white" stroke="#e8e0d0" stroke-width="1.5"/>
+      <text x="26" y="269" font-size="9" fill="#ccc">••••••••</text>
+      <!-- CTA -->
+      <rect x="16" y="298" width="208" height="36" rx="10" fill="#c9a84c"/>
+      <text x="120" y="321" text-anchor="middle" font-size="12" font-weight="600" fill="white">Se connecter</text>
+      <!-- Separator -->
+      <line x1="30" y1="352" x2="100" y2="352" stroke="#e8e0d0" stroke-width="1"/>
+      <text x="120" y="356" text-anchor="middle" font-size="8" fill="#bbb">ou</text>
+      <line x1="140" y1="352" x2="210" y2="352" stroke="#e8e0d0" stroke-width="1"/>
+      <!-- Register -->
+      <rect x="16" y="362" width="208" height="34" rx="10" fill="white" stroke="#e8e0d0" stroke-width="1.5"/>
+      <text x="120" y="384" text-anchor="middle" font-size="11" fill="#1a1a2e">Créer un compte</text>
+      <!-- Note -->
+      <text x="120" y="420" text-anchor="middle" font-size="8" fill="#ccc">Sécurisé · JWT · Données chiffrées</text>
+      <rect x="90" y="460" width="60" height="4" rx="2" fill="#1a1a2e" opacity=".2"/>
+    </svg>
+    <p class="note">Vue mobile — Formulaire centré, validation côté client et serveur</p>
+  </div>
+
+</div>
+
+<!-- ========== NOTES DE CONCEPTION ========== -->
+<h2>4. Notes de conception & Accessibilité</h2>
+<div class="card" style="max-width:860px">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead>
+      <tr style="background:#f7f5f0;">
+        <th style="text-align:left;padding:8px 12px;color:#888;font-weight:600;border-bottom:1px solid #e8e0d0;">Critère</th>
+        <th style="text-align:left;padding:8px 12px;color:#888;font-weight:600;border-bottom:1px solid #e8e0d0;">Décision</th>
+        <th style="text-align:left;padding:8px 12px;color:#888;font-weight:600;border-bottom:1px solid #e8e0d0;">Justification</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #f0ebe0">
+        <td style="padding:8px 12px;font-weight:500">Couleurs</td>
+        <td style="padding:8px 12px">Or (#c9a84c) + Encre (#1a1a2e) + Parchemin (#faf8f3)</td>
+        <td style="padding:8px 12px;color:#666">Palette luxe-voyage, contraste WCAG AA ≥ 4.5:1</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0ebe0">
+        <td style="padding:8px 12px;font-weight:500">Typographie</td>
+        <td style="padding:8px 12px">Georgia (titres) + DM Sans (corps)</td>
+        <td style="padding:8px 12px;color:#666">Lisibilité corps 14px min, titres avec caractère</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0ebe0">
+        <td style="padding:8px 12px;font-weight:500">Responsive</td>
+        <td style="padding:8px 12px">Tailwind CSS — breakpoints sm(640) / md(768) / lg(1024)</td>
+        <td style="padding:8px 12px;color:#666">Mobile-first, grille s'adapte de 1 à 3 colonnes</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0ebe0">
+        <td style="padding:8px 12px;font-weight:500">Accessibilité</td>
+        <td style="padding:8px 12px">aria-label sur boutons, focus visible, roles ARIA</td>
+        <td style="padding:8px 12px;color:#666">Conformité RGAA — navigation clavier possible</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0ebe0">
+        <td style="padding:8px 12px;font-weight:500">Sécurité front</td>
+        <td style="padding:8px 12px">Validation email côté client + serveur, sanitizeInput</td>
+        <td style="padding:8px 12px;color:#666">Protection XSS, entrées < 300 caractères</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-weight:500">UX Chat</td>
+        <td style="padding:8px 12px">Max 3 échanges, chips cliquables, auto-scroll</td>
+        <td style="padding:8px 12px;color:#666">Réduction friction, guidage progressif</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p style="margin-top:32px;font-size:11px;color:#bbb;text-align:center">
+  TripGenie · Dossier de projet RNCP 5 DWWM · Compétence C2 — Maquetter des interfaces utilisateur web ou web mobile
+</p>
+
+</body>
+</html>

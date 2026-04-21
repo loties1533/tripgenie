@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HBnB &mdash; Add Review</title>
+    <link rel="icon" type="image/png" href="images/icon.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header>
+        <a href="index.html">
+            <img src="images/logo.png" alt="HBnB logo" class="logo">
+        </a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="login.html" class="login-button">Login</a>
+        </nav>
+    </header>
+
+    <main>
+
+        <h1 id="review-page-title" class="review-page-title">Add a Review</h1>
+
+
+        <form id="review-form" class="form" novalidate>
+            <h2>Add a Review</h2>
+
+            <div>
+                <label for="review">Your Review:</label>
+                <textarea id="review" name="review" required></textarea>
+            </div>
+
+            <div>
+                <label for="rating">Rating:</label>
+                <select id="rating" name="rating" required>
+                    <option value="1">1 </option>
+                    <option value="2">2 </option>
+                    <option value="3">3 </option>
+                    <option value="4">4 </option>
+                    <option value="5">5 </option>
+                </select>
+            </div>
+
+            <div id="review-feedback" role="alert" style="display:none;"></div>
+
+            <button type="submit">Submit Review</button>
+        </form>
+
+        <p style="margin-top:1rem;">
+            <a id="back-to-place" href="index.html"
+               style="color:var(--primary); font-weight:600; text-decoration:none;">
+                &larr; Back to place
+            </a>
+        </p>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 HBnB Evolution. All rights reserved.</p>
+    </footer>
+
+    <script src="scripts.js"></script>
+</body>
+</html>
