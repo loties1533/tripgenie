@@ -4,7 +4,7 @@
 
 ---
 
-## 1. INTRODUCTION DU PROJET (À envoyer au formateur)
+## 1. INTRODUCTION DU PROJET
 
 Le secteur du tourisme est en pleine mutation. S'il existe aujourd'hui des milliers d'agences de voyage en ligne, les utilisateurs se retrouvent souvent perdus face à une quantité trop abondante d'informations, d'avis contradictoires et de parcours complexes. L'objectif de mon projet est de simplifier et de personnaliser drastiquement la préparation d'un voyage grâce à l'Intelligence Artificielle.
 
@@ -20,7 +20,7 @@ Ce projet couvre les deux grandes activités du référentiel DWWM : la concepti
 
 ## 2. PLAN DÉTAILLÉ DU DOSSIER DE PROJET (DPJ)
 
-Voici le plan que je compte suivre pour rédiger mon dossier de projet complet pour le jury :
+Voici le plan détaillé que je compte suivre pour rédiger mon dossier de projet complet pour le jury :
 
 ### I. Présentation du projet et de la démarche
 * **1.1 Contexte et problématique :** Le besoin d'une préparation de voyage centralisée par l'IA.
@@ -29,7 +29,7 @@ Voici le plan que je compte suivre pour rédiger mon dossier de projet complet p
 
 ### II. Conception et Maquettage
 * **2.1 Analyse fonctionnelle :** Définition des parcours utilisateurs (User Stories) et fonctionnalités clés (Auth, Génération, Sauvegarde).
-* **2.2 Identité visuelle et maquettage (Activité 1) :** Réalisation des Wireframes/Maquettes *(à ajouter)*.
+* **2.2 Identité visuelle et maquettage (Activité 1) :** Réalisation des Wireframes/Maquettes (à ajouter).
 * **2.3 Modélisation des données (Activité 2) :** Présentation du Modèle Conceptuel de Données (MCD) pour le stockage des accès sur Supabase.
 
 ### III. Choix Techniques et Architecture
