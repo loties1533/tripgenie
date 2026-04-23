@@ -23,9 +23,9 @@ export function SkeletonCard() {
 // ---- Score badge ----
 export function ScoreBadge({ score }) {
   const pct   = Math.round((score?.total ?? score ?? 0) * 100)
-  const color = pct >= 75 ? 'bg-sage/15 text-sage' : pct >= 50 ? 'bg-gold/15 text-gold-dark' : 'bg-coral/15 text-coral'
+  const color = pct >= 75 ? 'bg-sage/20 text-sage' : pct >= 50 ? 'bg-gold/20 text-gold-dark' : 'bg-coral/20 text-coral'
   return (
-    <span className={clsx('score-badge', color)}>
+    <span className={clsx('score-badge shadow-glow-gold animate-pulse-gold', color)}>
       ★ {pct}<span className="opacity-60 text-[10px]">/100</span>
     </span>
   )

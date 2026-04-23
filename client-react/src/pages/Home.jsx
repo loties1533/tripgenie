@@ -2,49 +2,56 @@ import { motion } from 'framer-motion'
 import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
 import PackResults from '../components/results/PackResults'
+import PackSkeleton from '../components/results/PackSkeleton'
 import { useSearchStore, useChatStore } from '../store'
 
 // ---- Hero section ----
 function Hero() {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="text-center py-12 sm:py-16">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-                   bg-gold/10 border border-gold/30 text-gold text-sm font-medium mb-6">
-        <span className="animate-pulse-slow">✦</span>
-        Powered by AI · Vos voyages de rêve
-      </motion.div>
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1 }}
+      className="relative -mx-4 sm:-mx-8 -mt-8 mb-12 h-[450px] sm:h-[550px] flex items-center justify-center overflow-hidden">
+      
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="/assets/hero.png" 
+          alt="Travel Destinations" 
+          className="w-full h-full object-cover scale-105 animate-slow-zoom"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/40 to-ink dark:from-ink/80 dark:via-ink/60 dark:to-ink" />
+      </div>
 
-      <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-ink dark:text-parchment leading-tight mb-4">
-        Votre itinéraire parfait,
-        <br />
-        <em className="text-gold not-italic">créé en secondes</em>
-      </h1>
+      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+                     bg-gold/20 backdrop-blur-md border border-gold/30 text-gold text-sm font-medium mb-8">
+          <span className="animate-pulse-slow">✦</span>
+          Expertise IA · Voyages d'exception
+        </motion.div>
 
-      <p className="text-lg text-muted max-w-xl mx-auto leading-relaxed">
-        Décris ton voyage en une phrase. TripGenie trouve la destination,
-        les vols, l'hôtel et les activités — tout optimisé pour toi.
-      </p>
+        <motion.h1 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-6 drop-shadow-lg">
+          Votre itinéraire parfait,
+          <br />
+          <span className="text-gold italic font-serif">créé en secondes</span>
+        </motion.h1>
 
-      {/* Stats */}
-      <div className="flex items-center justify-center gap-8 mt-8">
-        {[
-          { val: '12 400+', label: 'voyages créés' },
-          { val: '98%',     label: 'satisfaction' },
-          { val: '45 s',    label: 'en moyenne' },
-        ].map((s, i) => (
-          <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 + i * 0.1 }}>
-            <p className="font-display font-bold text-2xl text-gold">{s.val}</p>
-            <p className="text-xs text-muted">{s.label}</p>
-          </motion.div>
-        ))}
+        <motion.p 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-lg sm:text-xl text-parchment/90 max-w-2xl mx-auto leading-relaxed font-light">
+          Décrivez votre voyage idéal. TripGenie s'occupe du reste : destination, vols, hôtels et activités sur-mesure.
+        </motion.p>
       </div>
     </motion.section>
   )
@@ -101,13 +108,15 @@ function ChatSection() {
 // HOME PAGE
 // =============================================
 export default function Home() {
-  const { pack } = useSearchStore()
+  const { pack, isLoading } = useSearchStore()
 
   return (
     <PageLayout>
       <Hero />
       <ChatSection />
-      {pack && <PackResults />}
+      
+      {isLoading && <PackSkeleton />}
+      {pack && !isLoading && <PackResults />}
 
       {/* Features section (si pas de pack affiché) */}
       {!pack && (

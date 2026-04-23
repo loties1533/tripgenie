@@ -8,6 +8,7 @@ import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatInta
 import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
 import { scorepack } from '../services/scoring.js';
+import { smartFlightSearch } from '../services/smartSearch.js';
 import supabase from '../db/supabase.js';
 
 const router = express.Router();
@@ -48,10 +49,10 @@ router.post('/analyze', optionalAuth, async (req, res) => {
 // ---- POST /api/ai/destinations ----
 router.post('/destinations', optionalAuth, async (req, res) => {
   try {
-    const { mode, budget, travelers, duration, origin, preferences } = req.body;
+    const { mode, budget, travelers, duration, origin, preferences, departure } = req.body;
     if (!mode) return res.status(400).json({ error: 'mode requis' });
 
-    const result = await suggestDestinations({ mode, budget, travelers, duration, origin, preferences });
+    const result = await suggestDestinations({ mode, budget, travelers, duration, origin, preferences, departure });
     res.json(result);
 
   } catch (err) {
@@ -112,8 +113,31 @@ router.post('/generate', optionalAuth, async (req, res) => {
       searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
     ]);
 
-    const flights = results[0].status === 'fulfilled' ? results[0].value : [];
+    let flights = results[0].status === 'fulfilled' ? results[0].value : [];
     if (results[0].status === 'rejected') console.warn('Flights API fallback:', results[0].reason);
+
+    // ---- Fallback SmartSearch (Tavily + IA) si Amadeus est vide ----
+    if (flights.length === 0) {
+      console.log('✈️ Amadeus vide ou indisponible, tentative via SmartSearch (Tavily)...');
+      const aiFlight = await smartFlightSearch({ origin, destination, departure, return_date });
+      if (aiFlight) {
+        flights = [{
+          id: 'AI-SEARCH',
+          price: aiFlight.price * travelers,
+          price_per_person: aiFlight.price,
+          outbound: { 
+            from: origin, to: destination, airline: aiFlight.airline, 
+            departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time, 
+            duration: aiFlight.duration, stops: aiFlight.stops 
+          },
+          return: { 
+            from: destination, to: origin, airline: aiFlight.airline, 
+            departure_time: '18:00', arrival_time: '20:00', // Valeurs probables
+            duration: aiFlight.duration, stops: aiFlight.stops 
+          }
+        }];
+      }
+    }
 
     const events = results[1].status === 'fulfilled' ? results[1].value : [];
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
@@ -132,10 +156,16 @@ router.post('/generate', optionalAuth, async (req, res) => {
 
     // ---- Scoring réel via scoring.js ----
     const bestFlight = flights[0] ?? null;
+    const hotelData = pack.hotels?.[0] || null;
+    
     const scoreResult = scorepack(
       {
-        vol:        bestFlight ? { price: bestFlight.price, duration_min: bestFlight.outbound?.duration_min, stops: bestFlight.outbound?.stops } : { price: budget * 0.3, duration_min: 120, stops: 0 },
-        hotel:      pack.hotels?.[0] ? { stars: pack.hotels[0].stars, price_per_night: parseInt(pack.hotels[0].price_per_night) || 100, rating: 7.5 } : { stars: 3, price_per_night: 100, rating: 7 },
+        vol: bestFlight 
+          ? { price: bestFlight.price, duration_min: bestFlight.outbound?.duration_min, stops: bestFlight.outbound?.stops } 
+          : { price: budget * 0.25, duration_min: 180, stops: 0 }, // Simulation intelligente pour le score
+        hotel: hotelData 
+          ? { stars: hotelData.stars || 4, price_per_night: parseInt(hotelData.price_per_night) || 150, rating: 8.5 } 
+          : { stars: 4, price_per_night: 150, rating: 8 },
         events,
         activities: pack.activities ?? [],
         totalPrice: budget

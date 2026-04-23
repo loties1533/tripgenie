@@ -32,7 +32,7 @@ export const useSearchStore = create(
     }),
     {
       name:    'tg_v2_search',
-      partialize: (s) => ({ pack: s.pack, tripId: s.tripId, destination: s.destination }),
+      partialize: (s) => ({ destination: s.destination }),
     }
   )
 )

@@ -154,6 +154,7 @@ async function suggestDestinations(chatData, ctx) {
       origin:        chatData.origin,
       moods:         chatData.moods,
       discoveryMode: chatData.discoveryMode,
+      departure:     chatData.departure,
       preferences:   []
     })
     setTyping(false)
@@ -221,9 +222,11 @@ export default function ChatWidget() {
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
 
+  const initRef = useRef(false)
   // Message de bienvenue au montage
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !initRef.current) {
+      initRef.current = true
       setTimeout(() => {
         addMessage({
           role:  'bot',

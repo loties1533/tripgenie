@@ -4,7 +4,8 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
 import { useSearchStore } from '../../store'
-import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge, SkeletonCard } from '../ui'
+import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge } from '../ui'
+import PackSkeleton from './PackSkeleton'
 
 // ---- Hotel card ----
 function HotelCard({ hotel }) {
@@ -240,15 +241,7 @@ export default function PackResults() {
   const [activeTab, setActiveTab] = useState('overview')
 
   if (isLoading) {
-    return (
-      <div id="pack-results" className="mt-8 space-y-4">
-        <div className="h-32 glass rounded-2xl animate-shimmer" />
-        <div className="grid grid-cols-2 gap-4">
-          <SkeletonCard /><SkeletonCard />
-        </div>
-        <SkeletonCard />
-      </div>
-    )
+    return <PackSkeleton />
   }
 
   if (!pack) return null
@@ -261,7 +254,7 @@ export default function PackResults() {
       transition={{ duration: 0.5, ease: 'easeOut' }}>
 
       {/* Hero banner */}
-      <div className="glass rounded-3xl p-6 relative overflow-hidden">
+      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold">
         <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky/5 pointer-events-none" />
         <div className="relative">
           <div className="flex flex-wrap items-start justify-between gap-3">

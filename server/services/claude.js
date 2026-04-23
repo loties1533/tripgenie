@@ -10,7 +10,7 @@ const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
 const AI_TIMEOUT_MS  = 45_000;
 
-console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER === 'ollama' ? 'Ollama' : ANTHROPIC_KEY ? 'Claude' : process.env.GEMINI_API_KEY ? 'Gemini' : OPENROUTER_KEY ? 'OpenRouter' : '⚠️ AUCUN'}`);
+console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER === 'ollama' ? 'Ollama' : process.env.AI_PROVIDER === 'openrouter' ? 'OpenRouter' : process.env.AI_PROVIDER === 'gemini' ? 'Gemini' : ANTHROPIC_KEY ? 'Claude' : '⚠️ AUCUN'}`);
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
@@ -194,24 +194,38 @@ JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxu
   return parseJSON(raw);
 }
 
-export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences }) {
+export async function suggestDestinations({ mode, profile, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences, departure }) {
   try {
     const intStr = interests?.join(', ') || 'voyage';
     const moodStr = moods?.join(', ') || '';
     
-    // Construction de la recherche selon le mode
-    let query = `Meilleures destinations voyage pour ${profile} cherchant ambiance ${mode} et intérêts ${intStr} ${moodStr}`;
+    // Détection du mois pour la saisonnalité
+    const month = departure ? new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(departure)) : 'actuellement';
+    
+    // Construction de la recherche ultra-ciblée
+    let query = `Meilleures destinations ${mode} pour ${profile} en ${month}. `;
+    if (mode === 'party') {
+      query += `Focus sur la vie nocturne, clubs underground, festivals, ambiance électrique et branchée. `;
+    }
+    query += `Budget total ${budget}€ pour ${travelers} personnes. Intérêts: ${intStr} ${moodStr}.`;
+    
     if (discoveryMode === 'hidden_gem') {
-      query += ` pépites cachées insolites (hidden gems)`;
-    } else {
-      query += ` destinations classiques incontournables célèbres`;
+      query += ` Cherche des pépites cachées, pas les destinations ultra-touristiques habituelles.`;
     }
 
     const webContext = await searchWeb(query);
 
     const raw = await callAI(
-      `${webContext}
-      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi...", "match_score": 95}]}`,
+      `CONTEXTE WEB RÉCENT : ${webContext}
+      MISSION : Suggère 3 destinations parfaites pour un voyage en ${month}.
+      PROFIL : ${profile}, MODE : ${mode}.
+      BUDGET : ${budget >= 10000 ? 'LUXE / ILLIMITÉ' : budget + '€'}.
+      
+      STRATÉGIE : 2 destinations CLASSIQUES + 1 destination PÉPITE (Hidden Gem).
+      1. Si BUDGET >= 10000 : Ton ton doit être VIP/Prestigieux. INTERDICTION de parler de "gratuit".
+      2. Si MODE = PARTY : Focus sur la vie nocturne mondiale.
+      
+      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi ce spot est parfait (Mentionne explicitement si c'est la PÉPITE).", "match_score": 95}]}`,
       undefined,
       'destinations'
     );
@@ -223,47 +237,31 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
 }
 
 
-async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboarding') {
+export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboarding') {
   let errors = [];
 
-  // 1. Ollama en priorité si configuré
-  if (process.env.AI_PROVIDER === 'ollama' && process.env.OLLAMA_BASE_URL) {
-    try {
-      return await callOllama(systemPrompt, userPrompt);
-    } catch (e) {
-      console.warn('Ollama failed:', e.message);
-      errors.push(`Ollama: ${e.message}`);
-    }
+  const provider = process.env.AI_PROVIDER;
+
+  // 1. Tenter le provider spécifié en priorité
+  if (provider === 'ollama' && process.env.OLLAMA_BASE_URL) {
+    try { return await callOllama(systemPrompt, userPrompt); } catch (e) { errors.push(`Ollama: ${e.message}`); }
+  }
+  if (provider === 'openrouter' && OPENROUTER_KEY) {
+    try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${e.message}`); }
+  }
+  if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+    try { return await callGemini(systemPrompt, userPrompt); } catch (e) { errors.push(`Gemini: ${e.message}`); }
   }
 
-  // 2. Gemini
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      return await callGemini(systemPrompt, userPrompt);
-    } catch (e) {
-      console.warn('Gemini failed:', e.message);
-      errors.push(`Gemini: ${e.message}`);
-    }
+  // 2. Fallback si le premier a échoué ou n'était pas spécifié
+  if (process.env.GEMINI_API_KEY && provider !== 'gemini') {
+    try { return await callGemini(systemPrompt, userPrompt); } catch (e) { errors.push(`Gemini: ${e.message}`); }
   }
-
-  // 3. OpenRouter
-  if (OPENROUTER_KEY) {
-    try {
-      return await callOpenRouter(systemPrompt, userPrompt);
-    } catch (e) {
-      console.warn('OpenRouter failed:', e.message);
-      errors.push(`OpenRouter: ${e.message}`);
-    }
+  if (OPENROUTER_KEY && provider !== 'openrouter') {
+    try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${e.message}`); }
   }
-
-  // 4. Claude
   if (ANTHROPIC_KEY) {
-    try {
-      return await callClaude(systemPrompt, userPrompt);
-    } catch (e) {
-      console.warn('Claude failed:', e.message);
-      errors.push(`Claude: ${e.message}`);
-    }
+    try { return await callClaude(systemPrompt, userPrompt); } catch (e) { errors.push(`Claude: ${e.message}`); }
   }
 
   // 5. Mode survie
@@ -283,15 +281,38 @@ export async function assemblePack({ destination, flights, events, mode, profile
     ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
     : Math.max(Math.round(budget / 250), 2);
     
-  // Adaptation du ton selon le profil
-  const tone = profile === 'couple' ? 'romantique et intime' : profile === 'friends' ? 'dynamique et festif' : 'immersif et local';
-
-  // Appel IA — uniquement les textes créatifs, format plat et court
+  const budgetPerPers = Math.round(budget / travelers);
+  
+  // Appel IA — Instructions ultra-ciblées
   const textRaw = await callAI(
-    `Tu es un expert voyage local pour ${dest}. Crée un itinéraire de type "${tone}" pour un profil "${profile}". Mode:${mode} ${travelers} pers. ${budget}€ ${nights} nuits.
-    IMPORTANT pour le mode "party": Ne propose pas de clubs généralistes. Cherche des pépites underground, des bars secrets, des clubs de techno de renommée locale ou des festivals spécifiques. La description doit être électrique et donner envie au profil "${profile}".
-    Génère UNIQUEMENT ce JSON avec des descriptions évocatrices adaptées au profil "${profile}" :
-    {"country":"Pays","tagline":"accroche adaptée au profil","overview":"Paragraphe immersif captivant","weather_temp":"22°C","weather_cond":"Ensoleillé","weather_tip":"conseil vestimentaire","hotel1_name":"Hôtel parfait pour ce profil","hotel1_loc":"Quartier","hotel1_hl":"Pourquoi ce profil va adorer","hotel2_name":"Alternative","hotel2_loc":"Quartier","hotel2_hl":"Point fort","activity1":"Activité 1","activity1_desc":"Description","activity2":"Activité 2","activity2_desc":"Description","activity3":"Activité 3","activity3_desc":"Description","day1_title":"Jour 1","day1_am":"Matin","day1_pm":"Soirée","day2_title":"Jour 2","day2_am":"Matin","day2_pm":"Soirée","tip1_title":"Conseil","tip1":"Détail","tip2_title":"Miam","tip2":"Spécialité","phrase":"Argot","phrase_tr":"Traduction"}`,
+    `Tu es le concierge privé de TripGenie. Destination : ${dest}. 
+    PROFIL : ${profile}, MODE : ${mode}, BUDGET : ${budgetPerPers}€/personne, DURÉE : ${nights} nuits.
+    
+    LOGIQUE DE GÉNÉRATION PAR MODE :
+    - Si MODE = "party" : L'itinéraire doit être NOCTURNE. Matin = "Recovery/Repos". Après-midi = "Vibe/Rooftops". Soir = "Clubs VIP/Underground". 
+    - Si BUDGET > 1500€/pers : Propose uniquement des lieux HAUT DE GAMME, réservations exclusives, accès VIP, transferts privés. Évite le "tourisme de masse".
+    - Si MODE = "luxury" : Focus sur l'exclusivité, la gastronomie étoilée et le calme absolu.
+
+    Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
+    {
+      "country": "Pays",
+      "tagline": "Accroche",
+      "overview": "Description",
+      "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Style"},
+      "hotels": [
+        {"name": "Hôtel VIP", "loc": "Quartier", "hl": "Point fort"},
+        {"name": "Alternative Hype", "loc": "Quartier", "hl": "Point fort"}
+      ],
+      "itinerary": [
+        { "day": 1, "title": "Titre", "am": "Activité matin", "pm": "Activité soir" }
+      ],
+      "activities": [
+        {"name": "Expérience 1", "desc": "Détails"},
+        {"name": "Expérience 2", "desc": "Détails"},
+        {"name": "Expérience 3", "desc": "Détails"}
+      ],
+      "tip1": "Conseil", "tip2": "Miam", "phrase": "Argot", "phrase_tr": "Traduction"
+    }`,
     undefined,
     'pack'
   );
@@ -390,44 +411,49 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
     overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
     weather: {
-      avg_temp:   t.weather_temp || '20°C',
-      conditions: t.weather_cond || 'Ensoleillé',
-      tip:        t.weather_tip  || 'Prévoyez des couches'
+      avg_temp:   t.weather?.temp || '20°C',
+      conditions: t.weather?.cond || 'Ensoleillé',
+      tip:        t.weather?.tip  || 'Prévoyez des couches'
     },
-    summary: { total_budget:`${budget}€`, nights, activities_count:3 },
+    summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
-    hotels: [
-      { name:t.hotel1_name||`Hôtel Central ${dest}`, location:t.hotel1_loc||`Centre, ${dest}`, stars:mode==='luxury'?5:4, price_per_night:`${Math.round(heberg/nights)}€`, highlights:t.hotel1_hl||'Bien situé, confortable', emoji:'🏨' },
-      { name:t.hotel2_name||`Hôtel Charme ${dest}`,  location:t.hotel2_loc||`Quartier animé`, stars:3, price_per_night:`${Math.round(heberg/nights*0.65)}€`, highlights:t.hotel2_hl||'Bon rapport qualité-prix', emoji:'🏩' }
-    ],
-    itinerary: [
-      { day:1, title:t.day1_title||'Arrivée & découverte', subtitle:'Premier contact',
-        items:[
-          { time:'14:00', type:'activity', title:t.day1_am||'Exploration du centre', description:`Découvrez ${dest}`, price:'gratuit', duration:'2h' },
-          { time:'19:30', type:'food',     title:t.day1_pm||'Dîner local',           description:'Cuisine régionale',  price:'25€',    duration:'1h30' }
-        ]},
-      { day:2, title:t.day2_title||'Exploration & expériences', subtitle:'Incontournables',
-        items:[
-          { time:'10:00', type:'activity', title:t.day2_am||'Visite principale',  description:`Le must-see de ${dest}`, price:'15€', duration:'2h' },
-          { time:'20:00', type:'event',    title:t.day2_pm||'Soirée mémorable',   description:'Ambiance garantie',       price:'20€', duration:'3h' }
-        ]}
-    ],
-    activities: [
-      { name:t.activity1||'Visite culturelle',   category:'Culture',     emoji:'🏛', description:t.activity1_desc||'Incontournable', duration:'2h', price:'15€', best_time:'Matin' },
-      { name:t.activity2||'Expérience culinaire',category:'Gastronomie', emoji:'🍽', description:t.activity2_desc||'Saveurs locales', duration:'3h', price:'40€', best_time:'Midi'  },
-      { name:t.activity3||'Vie nocturne',        category:'Nightlife',   emoji:'🎉', description:t.activity3_desc||'Clubs & bars',    duration:'4h', price:'30€', best_time:'Soir'  }
-    ],
+    hotels: (t.hotels || []).map((h, i) => ({
+      name: h.name || `Hôtel ${i+1}`,
+      location: h.loc || 'Centre',
+      stars: i === 0 && mode === 'luxury' ? 5 : 4,
+      price_per_night: `${Math.round(heberg/nights/(i+1))}€`,
+      highlights: h.hl || 'Excellent choix',
+      emoji: i === 0 ? '🏨' : '🏩'
+    })),
+    itinerary: (t.itinerary || []).map(d => ({
+      day: d.day,
+      title: d.title || 'Journée découverte',
+      subtitle: mode === 'party' ? 'Vibe & Nightlife' : 'Exploration',
+      items: [
+        { time: mode === 'party' ? '14:00' : '10:00', type: 'activity', title: d.am || 'Exploration', description: 'Découverte locale', price: 'gratuit', duration: '3h' },
+        { time: mode === 'party' ? '22:00' : '20:00', type: mode === 'party' ? 'event' : 'food', title: d.pm || 'Soirée', description: 'Moment mémorable', price: '40€', duration: '4h' }
+      ]
+    })),
+    activities: (t.activities || []).map((a, i) => ({
+      name: a.name || 'Activité',
+      category: i === 2 ? 'Nightlife' : 'Culture',
+      emoji: i === 2 ? '🎉' : '🏛',
+      description: a.desc || 'Incontournable',
+      duration: '3h',
+      price: '30€',
+      best_time: i === 2 ? 'Soir' : 'Matin'
+    })),
     events: eventData,
     budget_breakdown: {
       vols:`${vols}€`, hebergement:`${heberg}€`, activites:`${activites}€`,
       restauration:`${resto}€`, transports:`${trans}€`, divers:`${divers}€`, total:`${budget}€`
     },
     tips: [
-      { title:t.tip1_title||'Conseil pratique', content:t.tip1||'Réservez à l\'avance' },
-      { title:t.tip2_title||'Sur place',        content:t.tip2||'Explorez les quartiers locaux' }
+      { title: 'Conseil pratique', content: t.tip1 || 'Réservez à l\'avance' },
+      { title: 'Sur place',        content: t.tip2 || 'Explorez les quartiers locaux' }
     ],
     local_phrases: [
-      { phrase:t.phrase||'Santé !', translation:t.phrase_tr||'Cheers !' }
+      { phrase: t.phrase || 'Santé !', translation: t.phrase_tr || 'Cheers !' }
     ]
   };
 }
@@ -442,21 +468,26 @@ Qualifier le voyage parfait en MAXIMUM 3 échanges.
 Analyser chaque message et extraire TOUTES les infos disponibles en une seule fois.
 
 ═══════════════════════════════════════
-EXTRACTION INTELLIGENTE (PRIORITÉ ABSOLUE)
-═══════════════════════════════════════
-Quand l'utilisateur écrit "4 amis, Bordeaux, 9000€, 1 semaine de fêtes du 15 au 21 juin" :
-→ Tu extrais EN UNE FOIS : travelers=4, origin="Bordeaux", budget=9000, duration=7, mode="party", profile="amis", departure="2025-06-15", return_date="2025-06-21"
-→ Tu NE repose PAS de questions sur des infos déjà données
-→ Tu confirmes ce que tu as compris en 1 phrase courte
+EXTRACTION SÉMANTIQUE GÉNÉRALISÉE
+    ═══════════════════════════════════════
+    Ton rôle est d'être un "détecteur d'intentions". 
+    Pour chaque message, effectue cette analyse :
+    1. ENTITÉS : Extrais les nombres (voyageurs, budget, durée) et les lieux.
+    2. TEMPORALITÉ : Identifie les dates ou les saisons mentionnées.
+    3. PSYCHOGRAPHIE : Déduis le 'mode' et le 'profile' à partir du vocabulaire employé.
+    
+    RÈGLES D'OR :
+    - Sois flexible : "une semaine" = duration=7, "une dizaine de jours" = duration=10.
+    - Sois intelligent : "on est 4" implique profile="group" ou "friends" selon le ton.
+    - NE REPOSE JAMAIS une question si l'info peut être déduite sémantiquement.
+    - Si l'utilisateur donne TOUT en un seul message, passe isReady=true immédiatement.
 
-MOTS CLÉS → MODE (détection automatique) :
-- "fête", "soirée", "club", "party", "nightlife", "boite" → mode="party"
-- "festival", "musique", "concert", "électro", "techno", "rave" → mode="party" + interests=["festival","musique"]
-- "relaxation", "détente", "plage calme", "spa", "repos" → mode="relax"
-- "luxe", "vip", "premium", "5 étoiles", "gastronomie" → mode="luxury"
-- "famille", "enfants", "kids", "ados" → mode="group", profile="famille"
-- "étudiant", "pas cher", "budget serré", "économique" → mode="student"
-- "aventure", "randonnée", "nature", "trekking" → mode="relax" + interests=["aventure","nature"]
+    DÉTECTION AUTOMATIQUE DU STYLE & BUDGET :
+    - Budget "Illimité" / "Unlimited" → budget=15000 (OBLIGATOIRE pour activer le mode LUXE/VIP).
+    - Vocabulaire festif/nocturne (clubs, bars, nuit, rave) → mode="party"
+    - Vocabulaire confort/prestige (luxe, calme, spa, gastronomie, 5*, illimité) → mode="luxury"
+    - Vocabulaire familial (enfants, ados, kids, famille) → mode="group", profile="famille"
+    - Vocabulaire économique (pas cher, routard, auberge, étudiant) → mode="student"
 
 ═══════════════════════════════════════
 RÈGLES DE CONVERSATION
