@@ -8,6 +8,7 @@ import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge } fro
 import { saveVote } from '../../lib/api'
 import PackSkeleton from './PackSkeleton'
 import TripMap from './TripMap'
+import VoteButtons from './VoteButtons'
 
 // ---- Internal Components ----
 const TagBadge = ({ text }) => {
@@ -16,35 +17,6 @@ const TagBadge = ({ text }) => {
     <span className="bg-sage/10 text-sage text-[10px] px-2 py-0.5 rounded-full border border-sage/20 whitespace-nowrap">
       {text}
     </span>
-  )
-}
-
-// ---- Vote Buttons Component ----
-const VoteButtons = ({ tripId, itemId }) => {
-  const [userVote, setUserVote] = useState(null)
-  
-  const onVote = async (type) => {
-    try {
-      await saveVote(tripId, itemId, type)
-      setUserVote(type)
-    } catch (err) { console.error(err) }
-  }
-
-  return (
-    <div className="flex gap-1.5">
-      <button 
-        onClick={() => onVote(true)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${userVote === true ? 'bg-sage/40 border-sage' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-      >
-        👍
-      </button>
-      <button 
-        onClick={() => onVote(false)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${userVote === false ? 'bg-rose-500/20 border-rose-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-      >
-        👎
-      </button>
-    </div>
   )
 }
 

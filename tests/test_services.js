@@ -34,12 +34,33 @@ async function main() {
   process.stdout.write('Testing MOCK_PACK exists... ');
   console.log(hasMockPack ? '✅ PASS' : '❌ FAIL');
 
-  // Test 3: Destination extraction
+  // Test 3: parseJSON (Markdown)
   assert_equal(
     'parseJSON (Markdown)',
     parseJSON('Voici le JSON : ```json {"city": "Berlin"} ```'),
     { city: 'Berlin' }
   );
+
+  // Test 4: Scoring réel
+  const { scorepack } = await import('../server/services/scoring.js');
+  const result = scorepack(
+    {
+      vol:        { price: 300, duration_min: 120, stops: 0 },
+      hotel:      { stars: 4, price_per_night: 120, rating: 8.5 },
+      events:     [{ name: 'Festival Test' }],
+      activities: [],
+      totalPrice: 1500
+    },
+    'party',  // mode
+    2,        // travelers
+    'Ibiza'   // destination
+  );
+  process.stdout.write('Testing scorepack (mode: party)... ');
+  if (result && result.total > 0) {
+    console.log(`✅ PASS (Score: ${result.total}/10)`);
+  } else {
+    console.log('❌ FAIL — Score invalide ou nul');
+  }
 
   console.log('\n📊 LOGIC SERVICES VALIDATED.');
 }

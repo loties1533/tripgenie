@@ -16,10 +16,10 @@
 | 3 | **Fallback IA (Mode Survie)** | `server/services/claude.js` | ✅ OK | ✅ `claude.test.js` |
 | 4 | **Recherche de Vols (Amadeus)** | `server/services/amadeus.js` | ⚠️ Partiel | ❌ Pas de test isolé |
 | 5 | **Événements locaux (PredictHQ)** | `server/services/predicthq.js` | ⚠️ Partiel | ❌ Pas de test isolé |
-| 6 | **Scoring du Pack** | `server/services/scoring.js` | ✅ OK | ❌ Pas de test |
-| 7 | **Système de Votes (Groupe)** | `server/routes/votes.js` | ✅ OK | ⚠️ Bloqué par FK UUID |
+| 6 | **Scoring du Pack** | `server/services/scoring.js` | ✅ OK | ✅ `test_services.js` (0.51/10) |
+| 7 | **Système de Votes (Groupe)** | `server/routes/votes.js` | ✅ OK | ✅ `test_api_v1.js` |
 | 8 | **Health Check API** | `server/index.js` → `/health` | ✅ OK | ✅ `test_api_v1.js` |
-| 9 | **Authentification (JWT/Bcrypt)** | `server/routes/auth.js` | ✅ OK | ❌ Pas de test |
+| 9 | **Authentification (JWT/Bcrypt)** | `server/routes/auth.js` | ✅ OK | ✅ `test_api_v1.js` |
 | 10 | **Sauvegarde des Voyages (Supabase)** | `server/routes/trips.js` | ✅ OK | ❌ Pas de test |
 | 11 | **Parsing JSON de l'IA** | `server/services/claude.js` → `parseJSON` | ✅ OK | ✅ `claude.test.js` |
 | 12 | **Interface Résultats (React)** | `client-react/src/components/results/` | ✅ OK | ❌ Pas de test |
@@ -31,9 +31,9 @@
 ### 🔴 PRIORITÉ 1 — Blinder les tests manquants
 Ces fonctionnalités marchent mais ne sont pas prouvées. Pour le RNCP, **la preuve est tout**.
 
-- [ ] **Test du Scoring** : Ajouter dans `tests/test_services.js` un test qui vérifie que `scorepack()` renvoie un score > 0.
-- [ ] **Test de l'Auth** : Ajouter dans `tests/test_api_v1.js` un test `POST /api/auth/register` et `POST /api/auth/login`.
-- [ ] **Test des Votes (débloquer)** : Créer un voyage de test en base via Supabase Dashboard, noter son UUID, l'utiliser dans les tests.
+- [x] **Test du Scoring** : ✅ `test_services.js` → Score 0.51/10 pour Ibiza (party)
+- [x] **Test de l'Auth** : ✅ `test_api_v1.js` → Signup + Login 201/200
+- [x] **Test des Votes** : ✅ `test_api_v1.js` → Vote créé avec vrai UUID en base
 
 ### 🟡 PRIORITÉ 2 — Solidifier ce qui est "Partiel"
 - [ ] **Amadeus** : Vérifier que si Amadeus échoue (quota), le fallback SmartSearch s'active. Documenter.
