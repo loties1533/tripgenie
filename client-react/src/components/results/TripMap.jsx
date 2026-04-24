@@ -14,9 +14,36 @@ L.Icon.Default.mergeOptions({
 // Component to handle map centering when coords change
 function ChangeView({ center, zoom }) {
   const map = useMap()
-  map.setView(center, zoom)
+  useEffect(() => {
+    map.setView(center, zoom)
+  }, [center, zoom, map])
   return null
 }
+
+// Custom icon generator
+const createCustomIcon = (emoji, color = '#D4AF37') => L.divIcon({
+  html: `
+    <div style="
+      background: white;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 15px ${color}66, inset 0 0 5px rgba(0,0,0,0.1);
+      border: 2px solid ${color};
+      cursor: pointer;
+      transition: transform 0.2s;
+    " class="marker-hover">
+      ${emoji}
+    </div>
+  `,
+  className: 'custom-div-icon',
+  iconSize: [35, 35],
+  iconAnchor: [17, 35],
+})
 
 export default function TripMap({ destination, hotels = [], focusedLocation = null }) {
   const [center, setCenter] = useState(null)
@@ -28,7 +55,6 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
       if (!destination) return
       setLoading(true)
       try {
-        // 1. Geocode Destination (Main center)
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`)
         const data = await res.json()
         
@@ -38,9 +64,8 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
           setCenter(mainCoords)
         }
 
-        // 2. Geocode Hotels (Optional markers)
         const hotelMarkers = []
-        for (const hotel of hotels.slice(0, 3)) { // Limit to 3 to avoid rate limiting
+        for (const hotel of hotels.slice(0, 3)) {
           const hRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(hotel.name + ' ' + destination)}&limit=1`)
           const hData = await hRes.json()
           if (hData && hData.length > 0) {
@@ -48,12 +73,12 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
               id: hotel.name,
               coords: [parseFloat(hData[0].lat), parseFloat(hData[0].lon)],
               name: hotel.name,
-              type: 'hotel'
+              type: 'hotel',
+              emoji: hotel.emoji || '🏨'
             })
           }
         }
         setMarkers(hotelMarkers)
-
       } catch (err) {
         console.error("Mapping error:", err)
       } finally {
@@ -63,7 +88,6 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
     initPoints()
   }, [destination, hotels])
 
-  // Update center when a specific location is focused (e.g. clicking an itinerary item)
   useEffect(() => {
     if (focusedLocation) {
       setCenter(focusedLocation)
@@ -82,6 +106,21 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
 
   return (
     <div className="w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 shadow-glow-gold relative z-0">
+      <style>{`
+        .leaflet-popup-content-wrapper {
+          background: rgba(28, 28, 30, 0.8) !important;
+          backdrop-filter: blur(10px);
+          color: #F2F2F7 !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .leaflet-popup-tip {
+          background: rgba(28, 28, 30, 0.8) !important;
+        }
+        .marker-hover:hover {
+          transform: scale(1.2) translateY(-5px);
+        }
+      `}</style>
       <MapContainer 
         center={center} 
         zoom={13} 
@@ -95,14 +134,24 @@ export default function TripMap({ destination, hotels = [], focusedLocation = nu
         />
         
         {/* Main City Marker */}
-        <Marker position={center}>
-          <Popup><div className="font-sans font-bold">✨ {destination}</div></Popup>
+        <Marker position={center} icon={createCustomIcon('✨', '#D4AF37')}>
+          <Popup>
+            <div className="p-1">
+              <p className="font-bold text-gold text-sm">✨ {destination}</p>
+              <p className="text-[10px] opacity-70">Ta destination de rêve</p>
+            </div>
+          </Popup>
         </Marker>
 
         {/* Hotel Markers */}
         {markers.map(m => (
-          <Marker key={m.id} position={m.coords}>
-            <Popup><div className="font-sans">🏨 <b>{m.name}</b></div></Popup>
+          <Marker key={m.id} position={m.coords} icon={createCustomIcon(m.emoji, '#86efac')}>
+            <Popup>
+              <div className="p-1">
+                <p className="font-bold text-sm">{m.emoji} {m.name}</p>
+                <p className="text-[10px] text-sage">Hébergement sélectionné</p>
+              </div>
+            </Popup>
           </Marker>
         ))}
       </MapContainer>

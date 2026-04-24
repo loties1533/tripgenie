@@ -32,7 +32,7 @@ function sanitizeInput(str) {
   return str.slice(0, 300).replace(/[`\\]/g, ' ').trim();
 }
 
-function parseJSON(raw) {
+export function parseJSON(raw) {
   let str = raw
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/gi, '')
@@ -95,6 +95,10 @@ const FREE_MODELS = [
   'google/gemma-3-12b-it:free',
   'google/gemma-3-4b-it:free',
   'meta-llama/llama-3.2-3b-instruct:free',
+  'mistralai/mistral-7b-instruct:free',
+  'microsoft/phi-3-medium-128k-instruct:free',
+  'google/gemma-7b-it:free',
+  'qwen/qwen-2-7b-instruct:free',
   'z-ai/glm-4.5-air:free',
   'liquid/lfm-2.5-1.2b-instruct:free',
   'nvidia/nemotron-nano-9b-v2:free',
@@ -116,7 +120,7 @@ async function callOpenRouter(systemPrompt, userPrompt) {
           model,
           max_tokens: 4000,
           messages: [
-            { role: 'system', content: systemPrompt },
+            { role: 'system', content: systemPrompt + "\n\nCRITICAL: REPONDS UNIQUEMENT EN JSON VALIDE. PAS DE TEXTE AVANT OU APRES. TON OUTPUT SERA PARSE DIRECTEMENT PAR UN SCRIPT." },
             { role: 'user',   content: userPrompt }
           ]
         })
@@ -142,7 +146,7 @@ async function callOpenRouter(systemPrompt, userPrompt) {
 
 async function callGemini(systemPrompt, userPrompt) {
   const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -150,7 +154,7 @@ async function callGemini(systemPrompt, userPrompt) {
         contents: [{
           parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
         }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7, responseMimeType: "application/json" }
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
       })
     }
   );
@@ -250,7 +254,11 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
     try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${e.message}`); }
   }
   if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
-    try { return await callGemini(systemPrompt, userPrompt); } catch (e) { errors.push(`Gemini: ${e.message}`); }
+    try { 
+      return await callGemini(systemPrompt, userPrompt); 
+    } catch (e) { 
+      errors.push(`Gemini: ${e.message}`); 
+    }
   }
 
   // 2. Fallback si le premier a échoué ou n'était pas spécifié
@@ -265,6 +273,7 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
   }
 
   // 5. Mode survie
+  console.error('❌ AI FAILURES LOG:', JSON.stringify(errors, null, 2));
   console.error(`🚨 TOUS LES SERVICES IA ÉPUISÉS. Activation du Mode Survie (${context}).`);
   if (context === 'onboarding')   return JSON.stringify(Mocks.MOCK_ONBOARDING);
   if (context === 'destinations') return JSON.stringify(Mocks.MOCK_DESTINATIONS);

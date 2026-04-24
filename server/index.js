@@ -15,6 +15,7 @@ import authRoutes  from './routes/auth.js';
 import tripRoutes  from './routes/trips.js';
 import aiRoutes    from './routes/ai.js';
 import packRoutes  from './routes/packs.js';
+import voteRoutes  from './routes/votes.js';
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +53,7 @@ app.use('/api/auth',  authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/ai',    aiLimiter, aiRoutes);
 app.use('/api/packs', packRoutes);
+app.use('/api/votes', voteRoutes);
 
 // ---- Health check ----
 app.get('/api/health', (req, res) => {

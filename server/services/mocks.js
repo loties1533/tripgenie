@@ -50,13 +50,18 @@ export const MOCK_PACK = {
   overview: "Ibiza n'est pas qu'une île de fête. C'est un joyau des Baléares où les eaux cristallines rencontrent une architecture bohème-chic. Pour votre groupe, c'est le mix parfait entre luxe décontracté et soirées inoubliables.",
   weather: { avg_temp: "26°C", conditions: "Soleil radieux", tip: "N'oubliez pas vos lunettes de soleil et une tenue élégante pour le soir." },
   summary: { total_budget: "8000€", nights: 7, activities_count: 12 },
+  activities: [
+    { name: "Plage de Pampelonne", desc: "Le spot mythique pour bronzer et voir du monde." },
+    { name: "Place des Lices", desc: "Partie de pétanque et marché provençal." },
+    { name: "Citadelle de Saint-Tropez", desc: "Vue imprenable sur tout le golfe." }
+  ],
   flights: [
-    { from: "BOD", from_city: "Bordeaux", to: "IBZ", to_city: "Ibiza", departure_time: "10:15", arrival_time: "12:00", duration: "1h45", stops: "Direct", airline: "Volotea", price_per_person: "145€", type: "outbound" },
-    { from: "IBZ", from_city: "Ibiza", to: "BOD", to_city: "Bordeaux", departure_time: "18:30", arrival_time: "20:15", duration: "1h45", stops: "Direct", airline: "Volotea", price_per_person: "145€", type: "return" }
+    { from: "BOD", from_city: "Bordeaux", to: "NCE", to_city: "Nice", departure_time: "10:15", arrival_time: "12:00", duration: "1h45", stops: "Direct", airline: "Air France", price_per_person: "145€", type: "outbound" },
+    { from: "NCE", from_city: "Nice", to: "BOD", to_city: "Bordeaux", departure_time: "18:30", arrival_time: "20:15", duration: "1h45", stops: "Direct", airline: "Air France", price_per_person: "145€", type: "return" }
   ],
   hotels: [
-    { name: "Nobu Hotel Ibiza Bay", location: "Talamanca", stars: 5, price_per_night: "650€", highlights: "Piscine à débordement, spa luxueux et accès direct à la mer.", emoji: "🏨" },
-    { name: "OKU Ibiza", location: "San Antonio", stars: 5, price_per_night: "450€", highlights: "Design minimaliste et ambiance chill-out lounge.", emoji: "🏩" }
+    { name: "Hôtel Byblos", location: "Centre", stars: 5, price_per_night: "850€", highlights: "La légende de Saint-Tropez, piscine mythique et club Caves du Roy.", emoji: "🏨", match_reason: "Le summum du luxe festif" },
+    { name: "Hôtel de Paris", location: "Port", stars: 5, price_per_night: "550€", highlights: "Rooftop avec piscine transparente et vue sur le port.", emoji: "🏩", match_reason: "Design moderne et vue mer" }
   ],
   itinerary: [
     { 

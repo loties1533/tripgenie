@@ -62,16 +62,28 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ---- TABLE DES VOTES (CONSENSUS) ----
+CREATE TABLE IF NOT EXISTS public.trip_votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id UUID NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
+    item_id TEXT NOT NULL, -- ID de l'hôtel, vol ou activité
+    voter_name TEXT,       -- Nom optionnel du votant
+    vote_type BOOLEAN NOT NULL, -- TRUE = Like, FALSE = Dislike
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ---- INDEX ----
 CREATE INDEX IF NOT EXISTS idx_trips_user_id   ON trips(user_id);
 CREATE INDEX IF NOT EXISTS idx_trips_mode      ON trips(mode);
 CREATE INDEX IF NOT EXISTS idx_packs_trip_id   ON packs(trip_id);
+CREATE INDEX IF NOT EXISTS idx_votes_trip_id   ON trip_votes(trip_id);
 
 -- ---- RLS (Row Level Security) ----
 ALTER TABLE users             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trips             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packs             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_preferences  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trip_votes        ENABLE ROW LEVEL SECURITY;
 
 -- Policy : chaque user voit seulement ses données
 CREATE POLICY "users_own_data" ON users
@@ -82,3 +94,7 @@ CREATE POLICY "trips_own_data" ON trips
 
 CREATE POLICY "packs_own_data" ON packs
   FOR ALL USING (trip_id IN (SELECT id FROM trips WHERE user_id = auth.uid()));
+
+-- Policy Votes : tout le monde peut voter et voir les votes (lien de partage)
+CREATE POLICY "votes_insert_all" ON trip_votes FOR INSERT WITH CHECK (true);
+CREATE POLICY "votes_select_all" ON trip_votes FOR SELECT USING (true);

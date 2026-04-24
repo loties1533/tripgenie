@@ -51,3 +51,9 @@ export const getTrips     = (filters = {}) => request(`/trips?${new URLSearchPar
 export const getTrip      = (id) => request(`/trips/${id}`)
 export const getPublicTrip = (id) => request(`/trips/share/${id}`)
 export const deleteTrip   = (id) => request(`/trips/${id}`, { method: 'DELETE' })
+
+// Votes
+export const saveVote     = (trip_id, item_id, vote_type, voter_name) => 
+  request('/votes', { method: 'POST', body: JSON.stringify({ trip_id, item_id, vote_type, voter_name }) })
+
+export const getVotes     = (trip_id) => request(`/votes/${trip_id}`)

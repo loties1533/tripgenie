@@ -5,3 +5,5 @@ node_modules/
 dist/
 .vercel/
 .npm-cache/hbnb-main/
+
+.npm-cache/

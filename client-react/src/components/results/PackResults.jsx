@@ -5,8 +5,48 @@ import { fr } from 'date-fns/locale'
 import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
 import { useSearchStore } from '../../store'
 import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge } from '../ui'
+import { saveVote } from '../../lib/api'
 import PackSkeleton from './PackSkeleton'
 import TripMap from './TripMap'
+
+// ---- Internal Components ----
+const TagBadge = ({ text }) => {
+  if (!text) return null
+  return (
+    <span className="bg-sage/10 text-sage text-[10px] px-2 py-0.5 rounded-full border border-sage/20 whitespace-nowrap">
+      {text}
+    </span>
+  )
+}
+
+// ---- Vote Buttons Component ----
+const VoteButtons = ({ tripId, itemId }) => {
+  const [userVote, setUserVote] = useState(null)
+  
+  const onVote = async (type) => {
+    try {
+      await saveVote(tripId, itemId, type)
+      setUserVote(type)
+    } catch (err) { console.error(err) }
+  }
+
+  return (
+    <div className="flex gap-1.5">
+      <button 
+        onClick={() => onVote(true)}
+        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${userVote === true ? 'bg-sage/40 border-sage' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+      >
+        👍
+      </button>
+      <button 
+        onClick={() => onVote(false)}
+        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${userVote === false ? 'bg-rose-500/20 border-rose-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+      >
+        👎
+      </button>
+    </div>
+  )
+}
 
 // ---- Hotel card ----
 function HotelCard({ hotel }) {
@@ -61,40 +101,54 @@ function HotelCard({ hotel }) {
 }
 
 // ---- Flight card ----
-function FlightCard({ flight }) {
+function FlightCard({ flight, tripId, destination }) {
   const isReturn = flight.type === 'return'
+  const bookingUrl = `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(flight.to_city || destination)}%20from%20${encodeURIComponent(flight.from_city)}`
+
   return (
     <motion.div initial={{ opacity: 0, x: isReturn ? 8 : -8 }} animate={{ opacity: 1, x: 0 }}
-      className="glass rounded-2xl p-4">
+      className="glass rounded-2xl p-4 group">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-          {isReturn ? 'Retour' : 'Aller'}
-        </span>
-        <span className="text-xs text-muted">{flight.airline}</span>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flight.stops === 'Direct' ? 'bg-sage/10 text-sage' : 'bg-coral/10 text-coral'}`}>
-          {flight.stops}
-        </span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="text-center flex-1">
-          <p className="text-2xl font-bold text-ink dark:text-parchment font-display">{flight.departure_time}</p>
-          <p className="text-xs font-semibold text-muted">{flight.from} · {flight.from_city}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-gold/10 text-gold rounded-md border border-gold/20">
+            {isReturn ? 'Retour' : 'Aller'}
+          </span>
+          <span className="text-xs text-muted font-medium">{flight.airline}</span>
         </div>
-        <div className="flex-1 flex flex-col items-center gap-1">
-          <p className="text-xs text-muted">{flight.duration}</p>
+        <div className="flex items-center gap-3">
+          <VoteButtons tripId={tripId} itemId={`flight-${flight.type}-${flight.airline}`} />
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${flight.stops === 'Direct' ? 'bg-sage/10 text-sage border border-sage/20' : 'bg-coral/10 text-coral border border-coral/20'}`}>
+            {flight.stops}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="text-center flex-1">
+          <p className="text-2xl font-bold text-ink dark:text-parchment font-display leading-none">{flight.departure_time}</p>
+          <p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-tighter">{flight.from} · {flight.from_city}</p>
+        </div>
+        <div className="flex-[0.5] flex flex-col items-center gap-1 opacity-50">
+          <p className="text-[9px] font-bold text-muted uppercase">{flight.duration}</p>
           <div className="w-full flex items-center gap-1">
-            <div className="h-px flex-1 bg-gold/30" />
-            <span className="text-gold text-sm">✈</span>
-            <div className="h-px flex-1 bg-gold/30" />
+            <div className="h-px flex-1 bg-muted/30" />
+            <span className="text-muted text-[10px]">✈</span>
+            <div className="h-px flex-1 bg-muted/30" />
           </div>
         </div>
         <div className="text-center flex-1">
-          <p className="text-2xl font-bold text-ink dark:text-parchment font-display">{flight.arrival_time}</p>
-          <p className="text-xs font-semibold text-muted">{flight.to} · {flight.to_city}</p>
+          <p className="text-2xl font-bold text-ink dark:text-parchment font-display leading-none">{flight.arrival_time}</p>
+          <p className="text-[10px] font-bold text-muted mt-1 uppercase tracking-tighter">{flight.to} · {flight.to_city}</p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-gold">{flight.price_per_person}</p>
-          <p className="text-xs text-muted">/pers.</p>
+        <div className="pl-4 border-l border-white/5 flex flex-col items-end gap-1">
+          <p className="text-lg font-bold text-gold leading-none">{flight.price_per_person}</p>
+          <a 
+            href={bookingUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[10px] font-bold text-sage hover:underline flex items-center gap-0.5"
+          >
+            Réserver ↗
+          </a>
         </div>
       </div>
     </motion.div>
@@ -266,7 +320,21 @@ export default function PackResults() {
     }
   }
 
-  // ---- Internal Cards with Locate button ----
+  // Function to share via WhatsApp
+  const handleShare = () => {
+    const url = window.location.href
+    const text = `🌍 *TripGenie* : Voyage à ${d.destination} !\n\n` +
+                 `📅 *Dates* : Du ${d.departure || '?'} au ${d.return_date || '?'}\n` +
+                 `🏨 *Hôtel* : ${d.hotels?.[0]?.name || 'À choisir'}\n` +
+                 `💰 *Budget* : ${d.summary?.total_budget || 'À définir'}\n\n` +
+                 `✨ _"${d.tagline}"_\n\n` +
+                 `Découvre le programme complet ici : ${url}`
+    
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(waUrl, '_blank')
+  }
+
+  // ---- Internal Cards with Locate & Vote button ----
   const LocalHotelCard = ({ hotel }) => (
     <div className="glass rounded-xl p-4 flex flex-col gap-3">
       <div className="flex gap-3">
@@ -284,23 +352,42 @@ export default function PackResults() {
       </div>
       <div className="flex justify-between items-center pt-2 border-t border-white/5">
         <span className="text-xs font-medium text-sage">{hotel.price_per_night}</span>
-        <TagBadge text={hotel.match_reason} />
+        <div className="flex items-center gap-3">
+          <VoteButtons tripId={d.id} itemId={hotel.name} />
+          <TagBadge text={hotel.match_reason} />
+        </div>
       </div>
     </div>
   )
 
   const LocalActivityCard = ({ activity }) => (
-    <div className="glass rounded-xl p-4 flex gap-3">
-      <span className="text-2xl">{activity.emoji || '🎯'}</span>
-      <div className="flex-1">
-        <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
-        <p className="text-xs text-muted mt-0.5">{activity.category}</p>
-        <button 
-          onClick={() => handleLocate(activity.name)}
-          className="mt-1 text-[10px] uppercase tracking-wider font-bold text-gold/60 hover:text-gold flex items-center gap-1 transition-colors"
-        >
-          📍 Carte
-        </button>
+    <div className="glass rounded-xl p-4 flex flex-col gap-3">
+      <div className="flex gap-3">
+        <span className="text-2xl">{activity.emoji || '🎯'}</span>
+        <div className="flex-1">
+          <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
+          <p className="text-xs text-muted mt-0.5">{activity.category || 'Culture'}</p>
+          <p className="text-xs text-muted/80 mt-1 line-clamp-2 leading-relaxed">{activity.desc || activity.description}</p>
+        </div>
+      </div>
+      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+        <div className="flex gap-2">
+          <button 
+            onClick={() => handleLocate(activity.name)}
+            className="text-[10px] uppercase tracking-wider font-bold text-gold/60 hover:text-gold flex items-center gap-1 transition-colors"
+          >
+            📍 Carte
+          </button>
+          <a 
+            href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] uppercase tracking-wider font-bold text-sage/60 hover:text-sage flex items-center gap-1 transition-colors"
+          >
+            ↗ Détails
+          </a>
+        </div>
+        <VoteButtons tripId={d.id} itemId={activity.name} />
       </div>
     </div>
   )
@@ -320,9 +407,15 @@ export default function PackResults() {
                 <ModeBadge mode={mode} />
                 {d.score && <ScoreBadge score={d.score} />}
               </div>
-              <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment">
+              <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment flex items-center gap-3">
                 {d.destination}
-                <span className="text-muted text-xl font-normal ml-2">{d.country}</span>
+                <span className="text-muted text-xl font-normal">{d.country}</span>
+                <button 
+                  onClick={handleShare}
+                  className="ml-2 bg-sage/20 hover:bg-sage/40 text-sage px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border border-sage/20"
+                >
+                  <span className="text-base">📲</span> Partager
+                </button>
               </h2>
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
             </div>
@@ -398,7 +491,7 @@ export default function PackResults() {
               />
               <div className="grid sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
-                {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} />)}
+                {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} tripId={d.id} destination={d.destination} />)}
                 {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} />)}
               </div>
             </div>
@@ -412,7 +505,7 @@ export default function PackResults() {
 
           {activeTab === 'flights' && (
             <div className="space-y-3">
-              {d.flights?.map((f, i) => <FlightCard key={i} flight={f} />)}
+              {d.flights?.map((f, i) => <FlightCard key={i} flight={f} tripId={d.id} destination={d.destination} />)}
             </div>
           )}
 
