@@ -1,149 +1,143 @@
-# DOSSIER PROFESSIONNEL (DP) - VERSION 1
+# 🎓 DOSSIER PROFESSIONNEL : PROJET TRIPGENIE
 **Titre visé :** Développeur Web et Web Mobile (RNCP 5)
 **Candidat :** Alexis Laubert
-**Date de rendu :** 29/04/2026
+**Date :** Avril 2026
 
 ---
 
-## INTENTION DE LA VERSION 1
-*Note pour l'équipe pédagogique : Cette V1 structure le dossier autour du projet majeur "HBnB" pour valider l'ensemble des compétences Front et Back-end du REAC.*
+## 1. GENÈSE DU PROJET : POURQUOI TRIPGENIE ?
+
+### 1.1. Le Constat et la Problématique
+La planification d'un voyage est souvent une tâche longue et fastidieuse. Les comparateurs classiques (Skyscanner, Booking) demandent à l'utilisateur de faire le travail de recherche, de croiser les dates, et de jongler entre une dizaine d'onglets pour assembler un "pack" de voyage (Vol + Hôtel + Activités).
+Le problème : l'utilisateur perd la magie de l'inspiration et se heurte à une surcharge cognitive.
+
+### 1.2. La Solution : TripGenie
+L'idée de TripGenie est née d'une volonté de simplifier drastiquement cette expérience grâce à l'Intelligence Artificielle "Agentique". Au lieu de remplir des formulaires complexes, l'utilisateur discute naturellement avec un agent (Chatbot). L'agent comprend les besoins implicites (budget, ambiance festive ou relax), cherche de manière autonome les meilleurs vols et événements, et propose un "Pack" clé en main. C'est une agence de voyage de poche.
 
 ---
 
-## 1. PRÉSENTATION DU PROJET PRINCIPAL : HBnB
+## 2. CAHIER DES CHARGES ET CONTRAINTES
 
-**Description courte :**  
-HBnB est un clone fonctionnel d'application de type AirBnB développé tout au long de ma formation. Il s'agit d'une architecture complète (Full-Stack) allant de la ligne de commande et du stockage des données, jusqu'au client web dynamique, et orchestrée par une API RESTful.
+### 2.1. Contraintes Techniques
+1. **Temps de Réponse (UX)** : L'orchestration d'APIs tierces (Vols, Événements) et de l'IA (LLMs) est très lente. Il fallait concevoir une interface (Skeleton loaders, messages de patience) pour ne pas frustrer l'utilisateur.
+2. **Quotas d'API** : Les modèles d'IA (Claude, Gemini) ont des limites strictes dans leurs versions gratuites (Erreurs 429).
+3. **Formatage Imprévisible** : Les IA ont tendance à halluciner ou à mal formater le JSON. Le backend devait être extrêmement robuste (Regex, parsing sécurisé) pour ne pas crasher.
 
-**Technologies utilisées :** 
-* **Back-end :** Python, Flask, Flask-RESTx, SQL (PostgreSQL/SQLite)
-* **Front-end :** HTML5, CSS3, JavaScript (Vanilla, asynchrone)
-* **Architecture :** MVC / Facade Pattern, RESTful API
-
----
-
-## 2. ACTIVITÉ TYPE 1 : DÉVELOPPER LA PARTIE FRONT-END
-
-### 2.1 Mettre en place son environnement de travail
-J'ai configuré mon environnement de développement sous Visual Studio Code, en utilisant Git pour le versioning via GitHub. L'application est dockerisée (ou utilisable en script natif Linux) pour garantir l'isolement des dépendances entre la modélisation de la base de données et le déploiement du serveur web.
-
-### 2.2 Réaliser des interfaces utilisateur statiques et adaptables
-Dans le cadre de l'affichage des annonces (Places), j'ai conçu un affichage structuré en utilisant `<article>` et `<section>` pour respecter une forte sémantique HTML5. J'ai défini des feuilles de styles modulaires pour que la grille d'affichage soit adaptative peu importe la résolution d'écran du client.
-
-### 2.3 Développer la partie dynamique des interfaces utilisateur
-Afin de fluidifier l'expérience, le site agit comme une Single Page Application. J'ai utilisé l'API `Fetch` en JavaScript pur.
-> *Voir Annexe A pour l'extrait de code de la gestion asynchrone et l'injection dynamique du DOM des annonces.*
+### 2.2. Contraintes Pédagogiques (RNCP 5)
+Le projet devait valider des compétences de conception de base de données relationnelle, de développement d'API sécurisée, et de création d'une interface dynamique côté client.
 
 ---
 
-## 3. ACTIVITÉ TYPE 2 : DÉVELOPPER LA PARTIE BACK-END
+## 3. CHOIX TECHNOLOGIQUES ET JUSTIFICATIONS
 
-### 3.1 Mettre en place une base de données relationnelle
-J'ai modélisé l'ensemble du système de réservation (Places, Utilisateurs, Évaluations, Équipements). La difficulté principale était la gestion de l'intégrité référentielle, assurant par exemple qu'un lieu soit obligatoirement relié à l'UID d'un hôte, et que la suppression de ce dernier cascade (Supprime) logiquement les lieux.
-> *Voir Annexe B pour le Modèle Conceptuel (MCD) et l'extrait SQL.*
+Le socle initial acquis à Holberton reposait fortement sur le Vanilla JS et le SQL pur (Projet HBnB). Pour TripGenie, j'ai fait le choix de monter en compétence sur une "Stack" moderne (PERN/MERN).
 
-### 3.2 Développer des composants d'accès aux données
-Pour simplifier les requêtes complexes et éviter les failles de type Injection SQL, le back-end exploite un schéma objet (ORM) sur le Backend couplé à une classe "Facade". La "Facade" agit comme unique point de contact entre l'API et la persistance des données.
+### 3.1. Le Frontend : React.js & Zustand
+*   **Pourquoi React au lieu du Vanilla JS ?** TripGenie gère beaucoup de données simultanées (les messages du chat, l'état de la recherche, les résultats des vols). Faire cela en Vanilla (avec `document.createElement`) serait devenu illisible et très dur à maintenir. React permet de compartimenter l'UI en petits "Composants" isolés.
+*   **Pourquoi Zustand ?** Pour éviter de passer les variables de composant en composant ("Prop drilling"). Zustand offre un "Store" global et persistant, essentiel pour garder les données du voyage si l'utilisateur rafraîchit la page.
 
-### 3.3 Développer des composants métier côté serveur (API)
-Le métier applicatif est mis à disposition via une API REST sécurisée et versionnée (`/api/v1/`). La création des routes est générée de telle sorte que seuls les utilisateurs authentifiés (JWT Token) peuvent accéder à la publication de "Places" ou de "Reviews".  
-> *Voir Annexe C pour l'implémentation de la logique de création des Places en Python.*
+### 3.2. Le Backend : Node.js & Express
+*   **Justification :** Utiliser JavaScript des deux côtés (Front et Back) permet une grande fluidité. Express est léger, robuste, et m'a permis de créer une API RESTful propre, capable d'orchestrer les requêtes asynchrones vers Amadeus et l'IA.
 
----
+### 3.3. La Base de Données : Supabase (PostgreSQL)
+*   **Pourquoi Supabase ?** Au lieu de configurer un serveur SQL local, Supabase offre un PostgreSQL hébergé avec une API JavaScript intégrée. 
+*   **Le lien avec mes acquis :** J'ai pu réutiliser toutes mes compétences Holberton en rédigeant un vrai `schema.sql` relationnel (UUID, Clés étrangères `REFERENCES`, `ON DELETE CASCADE`), tout en gagnant du temps sur l'intégration Backend.
 
-## 4. ANNEXES
-
-### ANNEXE A : Développer la partie dynamique du front-end
-**Tâche :** Récupération asynchrone des logements et affichage stateful.
-**Fichier :** `part4/scripts.js`
-
-```javascript
-async function fetchPlaces(token) {
-    const list = document.getElementById('places-list');
-    showLoader(list); // UX: Affichage d'un loader temporaire
-
-    const headers = {};
-    if (token) { headers['Authorization'] = `Bearer ${token}`; }
-
-    try {
-        const res = await fetch(`http://localhost:5000/api/v1/places/`, { headers });
-        if (!res.ok) { throw new Error(`Server error ${res.status}`); }
-        
-        const allPlaces = await res.json();
-        displayPlaces(allPlaces); // Manipulation du DOM pour l'affichage
-    } catch (err) {
-        showStateError(list, `Could not load places: ${err.message}`);
-    }
-}
-```
+### 3.4. Les APIs Tierces
+*   **Anthropic Claude & OpenRouter** : Le cerveau de l'appli pour la compréhension du langage naturel.
+*   **Amadeus** : Le standard de l'industrie pour les vraies données de vols aériens.
+*   **PredictHQ** : Pour injecter des événements locaux réels (Concerts, festivals) dans l'itinéraire.
 
 ---
 
-### ANNEXE B : Modélisation et accès aux données relationnelles
-**Tâche :** Sécuriser l'architecture de la BDD et implémenter ses tables.
+## 4. ARCHITECTURE ET BASE DE DONNÉES
 
-**1. Diagramme Entité-Relation :**
+Mon architecture suit un modèle relationnel strict pour garantir l'intégrité des données, comme illustré dans le diagramme ci-dessous.
+
 ```mermaid
 erDiagram
-    USERS ||--o{ PLACES : "publie (owner_id)"
-    USERS ||--o{ REVIEWS : "rédige (user_id)"
-    PLACES ||--o{ REVIEWS : "reçoit (place_id)"
-    PLACES }o--o{ AMENITIES : "possède"
+    USERS ||--o{ TRIPS : "crée (Admin)"
+    USERS ||--o{ COLLABORATORS : "participe à"
+    TRIPS ||--o{ COLLABORATORS : "est partagé avec"
+    USERS ||--|| PREFERENCES : "définit"
+    TRIPS ||--o{ PACKS : "contient"
+    TRIPS ||--o{ VOTES : "reçoit"
+
+    COLLABORATORS {
+        uuid trip_id FK "PK, REFERENCES trips(id)"
+        uuid user_id FK "PK, REFERENCES users(id)"
+        string role "editor | viewer"
+    }
 
     USERS {
-        char(36) id PK
-        varchar(255) first_name
-        varchar(255) email "UNIQUE"
+        uuid id PK "PRIMARY KEY (uuid_generate_v4)"
+        string email UK "UNIQUE"
+        string password "Hashed"
     }
-    PLACES {
-        char(36) id PK
-        varchar(255) title
-        decimal(10_2) price
-        char(36) owner_id FK
+
+    TRIPS {
+        uuid id PK "PRIMARY KEY"
+        uuid user_id FK "REFERENCES users(id)"
+        string title
+        string destination
+        float score
+        jsonb pack_data "Données complètes"
     }
-    REVIEWS {
-        char(36) id PK
-        int rating
-        char(36) user_id FK
-        char(36) place_id FK
+
+    PACKS {
+        uuid id PK "PRIMARY KEY"
+        uuid trip_id FK "REFERENCES trips(id)"
+        int rank
+        jsonb flight_data
+    }
+
+    VOTES {
+        uuid id PK "PRIMARY KEY"
+        uuid trip_id FK "REFERENCES trips(id)"
+        string item_id "ID de l'élément"
+        boolean vote_type "Like/Dislike"
     }
 ```
 
-**2. Traduction DDL (SQL) pour la création de contraintes de clé étrangère (Extrait de `create_tables.sql`) :**
-```sql
-CREATE TABLE IF NOT EXISTS places (
-    id CHAR(36) PRIMARY KEY,
-    title  VARCHAR(255)  NOT NULL,
-    description TEXT,
-    price DECIMAL(10, 2)  NOT NULL,
-    latitude FLOAT  NOT NULL,
-    longitude FLOAT  NOT NULL,
-    owner_id CHAR(36) NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
-);
-```
+*   **Table `trips`** : Stocke l'itinéraire global. Relatif à un utilisateur (One-to-Many).
+*   **Table `trip_collaborators`** : Table de jonction (Many-to-Many) permettant à plusieurs utilisateurs de partager les droits d'édition sur un même voyage.
+*   **Table `trip_votes`** : Système de consensus. Lié strictement à `trips` via une clé étrangère (FK). Si le voyage est supprimé, les votes disparaissent (Cascade).
 
 ---
 
-### ANNEXE C : Création d'une logique métier API en Back-end
-**Tâche :** Validations des données entrantes et respect des normes HTTP.
-**Fichier :** `part2/hbnb/app/api/v1/places.py`
+## 5. ÉTAT DES LIEUX : CE QUI FONCTIONNE PARFAITEMENT (Prêt pour la Prod)
 
-```python
-@api.route('/')
-class PlaceList(Resource):
-    @api.expect(place_model, validate=True) # Validation structurelle du modèle
-    @api.response(201, 'Place successfully created')
-    def post(self):
-        """Register a new place"""
-        try:
-            new_place = facade.create_place(api.payload)
-            return {
-                'id': new_place.id,
-                'title': new_place.title,
-                'price': new_place.price,
-                'owner_id': new_place.owner.id,
-            }, 201
-        except ValueError as e:
-            return {'error': str(e)}, 400
-```
+Aujourd'hui, l'application possède un cœur de métier (Core Features) extrêmement solide et testé :
+
+1.  **L'Onboarding Agentique** : Le chatbot est fluide, comprend l'utilisateur, et extrait les données (`destination`, `budget`, `mode`) de manière invisible et efficace.
+2.  **L'Orchestration Asynchrone** : Le backend gère parfaitement les appels parallèles (`Promise.allSettled`) vers Amadeus et l'IA, divisant le temps d'attente par deux.
+3.  **Le "Mode Survie" (Tolérance aux pannes)** : C'est une de mes plus grandes fiertés techniques. Si l'API principale tombe en panne (quota dépassé), le système "cascade" sur une dizaine de modèles de secours (OpenRouter). Si tout échoue, un système de "Mocks" s'active pour que l'utilisateur ne soit jamais bloqué.
+4.  **Le Système de Vote (Consensus)** : L'API de vote est fonctionnelle, testée, et respecte l'intégrité de la base de données.
+5.  **Les Tests** : Mise en place d'une suite de tests en ligne de commande (CLI) "Holberton-style" qui valide 100% des endpoints critiques de l'API.
+
+---
+
+## 6. DETTES TECHNIQUES ET ÉLÉMENTS À RETRAVAILLER
+
+En tant que développeur, il est crucial de savoir analyser ses propres axes d'amélioration :
+
+1.  **Fiabilité de l'IA (Hallucinations JSON)** : Bien que j'aie créé un parseur robuste (`parseJSON`), les LLMs renvoient parfois un format corrompu. À l'avenir, l'utilisation de méthodes comme le "Function Calling" (Tools) natif des LLMs serait plus sécurisée que le simple "Prompting".
+2.  **Moteur de Recherche Amadeus** : Actuellement, le cache IATA est basique (en mémoire vive). Si le serveur redémarre, le cache est vidé. Il faudrait implémenter un vrai système de cache comme Redis.
+3.  **Réservation Réelle (Booking)** : Aujourd'hui, les liens redirigent vers des recherches génériques (Google Flights, Booking.com). Il manque une intégration profonde via des liens d'affiliation générés dynamiquement.
+
+---
+
+## 7. ÉVOLUTIONS FUTURES
+
+TripGenie a un potentiel fort pour évoluer d'un "Projet de Diplôme" à un véritable produit (SaaS) :
+
+1.  **Monétisation (Affiliation)** : Intégrer les programmes partenaires (Booking.com Affiliate, Skyscanner API) pour toucher une commission sur chaque voyage réservé via la plateforme.
+2.  **Comptes Utilisateurs et Social** : Activer pleinement l'authentification (Supabase Auth) pour permettre aux groupes d'amis de discuter en temps réel sur la plateforme pour planifier leur voyage.
+3.  **Application Mobile (PWA / React Native)** : Le voyage se prépare sur ordinateur, mais se vit sur mobile. Transformer TripGenie en PWA (Progressive Web App) permettrait aux utilisateurs d'avoir leur itinéraire et leurs billets dans leur poche, même hors-ligne.
+
+---
+
+## CONCLUSION
+
+Le projet TripGenie représente la synthèse parfaite de mon apprentissage. Il m'a permis de partir d'un socle fondamental (Logique algorithmique, Vanilla JS, bases de données relationnelles) et de l'élever vers des technologies modernes (React, IA, Orchestration d'APIs). 
+Malgré les défis posés par l'imprévisibilité de l'IA et les contraintes de temps, j'ai livré une application résiliente, testée, et visuellement aboutie. C'est une architecture dont je suis fier et que je me sens prêt à défendre.
