@@ -13,6 +13,10 @@ router.use(requireAuth);
 
 router.get('/:trip_id', async (req, res) => {
   try {
+    // Vérifie d'abord que le trip appartient à l'user
+    const { data: trip } = await supabase.from('trips').select('id').eq('id', req.params.trip_id).eq('user_id', req.user.id).single();
+    if (!trip) return res.status(403).json({ error: 'Accès non autorisé' });
+
     const { data: packs, error } = await supabase
       .from('packs')
       .select('*')
@@ -28,6 +32,10 @@ router.get('/:trip_id', async (req, res) => {
 
 router.post('/:trip_id/select/:pack_id', async (req, res) => {
   try {
+    // Vérifie d'abord la propriété
+    const { data: trip } = await supabase.from('trips').select('id').eq('id', req.params.trip_id).eq('user_id', req.user.id).single();
+    if (!trip) return res.status(403).json({ error: 'Accès non autorisé' });
+
     // Désélectionne tous les packs du trip
     await supabase.from('packs')
       .update({ selected: false })
@@ -37,6 +45,7 @@ router.post('/:trip_id/select/:pack_id', async (req, res) => {
     const { data: pack, error } = await supabase.from('packs')
       .update({ selected: true })
       .eq('id', req.params.pack_id)
+      .eq('trip_id', req.params.trip_id) // Sécurité supp.
       .select().single();
 
     if (error) throw error;

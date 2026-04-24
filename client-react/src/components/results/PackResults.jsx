@@ -6,6 +6,7 @@ import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, To
 import { useSearchStore } from '../../store'
 import { TabBar, SectionTitle, Stars, ScoreBadge, VerifiedBadge, ModeBadge } from '../ui'
 import PackSkeleton from './PackSkeleton'
+import TripMap from './TripMap'
 
 // ---- Hotel card ----
 function HotelCard({ hotel }) {
@@ -239,6 +240,7 @@ const TABS = [
 export default function PackResults() {
   const { pack, isLoading, mode } = useSearchStore()
   const [activeTab, setActiveTab] = useState('overview')
+  const [focusedLocation, setFocusedLocation] = useState(null)
 
   if (isLoading) {
     return <PackSkeleton />
@@ -247,6 +249,61 @@ export default function PackResults() {
   if (!pack) return null
 
   const d = pack
+
+  // Function to center map on an item
+  const handleLocate = async (name) => {
+    setActiveTab('overview')
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name + ' ' + d.destination)}&limit=1`)
+      const data = await res.json()
+      if (data && data.length > 0) {
+        setFocusedLocation([parseFloat(data[0].lat), parseFloat(data[0].lon)])
+        // Scroll to top to see the map
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    } catch (err) {
+      console.error("Locate error:", err)
+    }
+  }
+
+  // ---- Internal Cards with Locate button ----
+  const LocalHotelCard = ({ hotel }) => (
+    <div className="glass rounded-xl p-4 flex flex-col gap-3">
+      <div className="flex gap-3">
+        <span className="text-2xl">🏨</span>
+        <div className="flex-1">
+          <p className="font-semibold text-sm text-ink dark:text-parchment">{hotel.name}</p>
+          <p className="text-xs text-muted mt-0.5">{hotel.type} · {hotel.stars}★</p>
+          <button 
+            onClick={() => handleLocate(hotel.name)}
+            className="mt-2 text-[10px] uppercase tracking-wider font-bold text-gold hover:text-gold/80 flex items-center gap-1 transition-colors"
+          >
+            📍 Localiser sur la carte
+          </button>
+        </div>
+      </div>
+      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+        <span className="text-xs font-medium text-sage">{hotel.price_per_night}</span>
+        <TagBadge text={hotel.match_reason} />
+      </div>
+    </div>
+  )
+
+  const LocalActivityCard = ({ activity }) => (
+    <div className="glass rounded-xl p-4 flex gap-3">
+      <span className="text-2xl">{activity.emoji || '🎯'}</span>
+      <div className="flex-1">
+        <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
+        <p className="text-xs text-muted mt-0.5">{activity.category}</p>
+        <button 
+          onClick={() => handleLocate(activity.name)}
+          className="mt-1 text-[10px] uppercase tracking-wider font-bold text-gold/60 hover:text-gold flex items-center gap-1 transition-colors"
+        >
+          📍 Carte
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <motion.div id="pack-results" className="mt-10 space-y-5"
@@ -333,16 +390,23 @@ export default function PackResults() {
           transition={{ duration: 0.2 }}>
 
           {activeTab === 'overview' && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {d.hotels?.slice(0, 2).map((h, i) => <HotelCard key={i} hotel={h} />)}
-              {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} />)}
-              {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} />)}
+            <div className="space-y-4">
+              <TripMap 
+                destination={d.destination} 
+                hotels={d.hotels} 
+                focusedLocation={focusedLocation}
+              />
+              <div className="grid sm:grid-cols-2 gap-4">
+                {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
+                {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} />)}
+                {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} />)}
+              </div>
             </div>
           )}
 
           {activeTab === 'hotels' && (
             <div className="grid sm:grid-cols-2 gap-4">
-              {d.hotels?.map((h, i) => <HotelCard key={i} hotel={h} />)}
+              {d.hotels?.map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
             </div>
           )}
 
@@ -360,7 +424,7 @@ export default function PackResults() {
 
           {activeTab === 'activities' && (
             <div className="grid sm:grid-cols-2 gap-3">
-              {d.activities?.map((a, i) => <ActivityCard key={i} activity={a} />)}
+              {d.activities?.map((a, i) => <LocalActivityCard key={i} activity={a} />)}
             </div>
           )}
 

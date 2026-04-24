@@ -48,6 +48,14 @@ Ce document récapitule les technologies utilisées et justifie les choix strat�
 
 ---
 
+## 🛡️ SÉCURITÉ & INFRASTRUCTURE
+- **Proxy Backend** : Architecture sécurisée ne divulguant aucune clé API au client.
+- **Express Rate Limit** : Protection contre l'abus des endpoints IA et contrôle des coûts.
+- **JWT (JSON Web Tokens)** : Authentification sécurisée entre le frontend et l'API.
+- **Supabase RLS** : Sécurisation de l'accès aux données PostgreSQL.
+
+---
+
 ## 🚀 RÉSUMÉ DES AVANTAGES DE CETTE STACK
 1.  **Rapidité de développement :** Full JavaScript (React + Node).
 2.  **Performance :** Architecture asynchrone et build optimisé.

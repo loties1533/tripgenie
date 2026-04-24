@@ -4,6 +4,7 @@
 
 import express from 'express';
 import { optionalAuth } from '../middleware/auth.js';
+import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
 import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
@@ -32,10 +33,11 @@ async function getIata(city) {
 }
 
 // ---- POST /api/ai/analyze ----
-router.post('/analyze', optionalAuth, async (req, res) => {
+router.post('/analyze', aiChatLimiter, optionalAuth, async (req, res) => {
   try {
     const { input } = req.body;
     if (!input?.trim()) return res.status(400).json({ error: 'input requis' });
+    if (input.length > 1000) return res.status(400).json({ error: 'Message trop long (max 1000 car.)' });
 
     const analysis = await analyzeRequest(input);
     res.json({ analysis });
@@ -47,7 +49,7 @@ router.post('/analyze', optionalAuth, async (req, res) => {
 });
 
 // ---- POST /api/ai/destinations ----
-router.post('/destinations', optionalAuth, async (req, res) => {
+router.post('/destinations', aiGenerateLimiter, optionalAuth, async (req, res) => {
   try {
     const { mode, budget, travelers, duration, origin, preferences, departure } = req.body;
     if (!mode) return res.status(400).json({ error: 'mode requis' });
@@ -62,10 +64,11 @@ router.post('/destinations', optionalAuth, async (req, res) => {
 });
 
 // ---- POST /api/ai/onboarding ----
-router.post('/onboarding', optionalAuth, async (req, res) => {
+router.post('/onboarding', aiChatLimiter, optionalAuth, async (req, res) => {
   try {
     const { currentData, userMessage } = req.body;
     if (!userMessage) return res.status(400).json({ error: 'userMessage requis' });
+    if (userMessage.length > 1000) return res.status(400).json({ error: 'Message trop long' });
 
     const result = await chatIntake({ currentData, userMessage });
     res.json(result);
@@ -77,7 +80,7 @@ router.post('/onboarding', optionalAuth, async (req, res) => {
 });
 
 // ---- POST /api/ai/generate ----
-router.post('/generate', optionalAuth, async (req, res) => {
+router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
   try {
     const {
       destination,
@@ -224,10 +227,11 @@ router.post('/generate', optionalAuth, async (req, res) => {
 });
 
 // ---- POST /api/ai/chat ----
-router.post('/chat', optionalAuth, async (req, res) => {
+router.post('/chat', aiChatLimiter, optionalAuth, async (req, res) => {
   try {
     const { message, current_pack, mode, trip_id } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'message requis' });
+    if (message.length > 1000) return res.status(400).json({ error: 'Message trop long' });
 
     const result = await chatModify({
       currentPack: current_pack,
