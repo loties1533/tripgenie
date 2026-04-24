@@ -66,10 +66,20 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 CREATE TABLE IF NOT EXISTS public.trip_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     trip_id UUID NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
-    item_id TEXT NOT NULL, -- ID de l'hôtel, vol ou activité
-    voter_name TEXT,       -- Nom optionnel du votant
-    vote_type BOOLEAN NOT NULL, -- TRUE = Like, FALSE = Dislike
+    item_id TEXT NOT NULL, 
+    voter_name TEXT,       
+    vote_type BOOLEAN NOT NULL, 
     created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ---- TABLE DE RELATION MANY-TO-MANY (COLLABORATEURS) ----
+-- Permet de lier plusieurs utilisateurs à plusieurs voyages
+CREATE TABLE IF NOT EXISTS public.trip_collaborators (
+    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    role TEXT DEFAULT 'editor', -- 'viewer' | 'editor'
+    created_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (trip_id, user_id) -- Clé primaire composée (Style Holberton)
 );
 
 -- ---- INDEX ----
