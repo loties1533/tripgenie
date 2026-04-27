@@ -7,15 +7,25 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+import { z } from 'zod';
 
 const router = express.Router();
 
-// ---- Validation email ----
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const signupSchema = z.object({
+  email: z.string().email('Format d\\'email invalide'),
+  password: z.string().min(8, 'Mot de passe trop court (8 caractères min)').max(128, 'Mot de passe trop long'),
+  name: z.string().optional()
+});
 
-function isValidEmail(email) {
-  return typeof email === 'string' && EMAIL_REGEX.test(email) && email.length <= 254;
-}
+const loginSchema = z.object({
+  email: z.string().email('Email ou mot de passe incorrect'),
+  password: z.string().min(1, 'Email ou mot de passe incorrect')
+});
+
+const updateMeSchema = z.object({
+  name: z.string().optional(),
+  avatar_url: z.string().url('Format URL invalide').optional().or(z.literal(''))
+});
 
 // ---- Helpers ----
 function generateToken(user) {
@@ -34,20 +44,11 @@ function sanitizeUser(user) {
 // ---- POST /api/auth/signup ----
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis' });
+    const validatedData = signupSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      return res.status(400).json({ error: validatedData.error.errors[0].message });
     }
-    if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Format d\'email invalide' });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min)' });
-    }
-    if (password.length > 128) {
-      return res.status(400).json({ error: 'Mot de passe trop long' });
-    }
+    const { email, password, name } = validatedData.data;
 
     const { data: existing } = await supabase
       .from('users')
@@ -92,14 +93,11 @@ router.post('/signup', async (req, res) => {
 // ---- POST /api/auth/login ----
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis' });
-    }
-    if (!isValidEmail(email)) {
+    const validatedData = loginSchema.safeParse(req.body);
+    if (!validatedData.success) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
+    const { email, password } = validatedData.data;
 
     const { data: user, error } = await supabase
       .from('users')
@@ -154,7 +152,11 @@ router.get('/me', requireAuth, async (req, res) => {
 // ---- PUT /api/auth/me ----
 router.put('/me', requireAuth, async (req, res) => {
   try {
-    const { name, avatar_url } = req.body;
+    const validatedData = updateMeSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      return res.status(400).json({ error: validatedData.error.errors[0].message });
+    }
+    const { name, avatar_url } = validatedData.data;
 
     const updates = {};
     if (name)       updates.name       = name.slice(0, 100);
