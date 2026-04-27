@@ -10,8 +10,25 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+import { z } from 'zod';
 
 const router = express.Router();
+
+const signupSchema = z.object({
+  email: z.string().email('Format email invalide'),
+  password: z.string().min(8, 'Mot de passe trop court (8 caractères min)'),
+  name: z.string().optional()
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Format email invalide'),
+  password: z.string().min(1, 'Mot de passe requis')
+});
+
+const updateMeSchema = z.object({
+  name: z.string().optional(),
+  avatar_url: z.string().url('Format URL invalide').optional().or(z.literal(''))
+});
 
 // ---- Helpers ----
 function generateToken(user) {
@@ -30,15 +47,11 @@ function sanitizeUser(user) {
 // ---- POST /api/auth/signup ----
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis' });
+    const validatedData = signupSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      return res.status(400).json({ error: validatedData.error.errors[0].message });
     }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min)' });
-    }
+    const { email, password, name } = validatedData.data;
 
     // Vérifie si l'email existe déjà
     const { data: existing } = await supabase
@@ -87,11 +100,11 @@ router.post('/signup', async (req, res) => {
 // ---- POST /api/auth/login ----
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis' });
+    const validatedData = loginSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      return res.status(400).json({ error: validatedData.error.errors[0].message });
     }
+    const { email, password } = validatedData.data;
 
     // Cherche l'utilisateur
     const { data: user, error } = await supabase
@@ -148,7 +161,11 @@ router.get('/me', requireAuth, async (req, res) => {
 // ---- PUT /api/auth/me ----
 router.put('/me', requireAuth, async (req, res) => {
   try {
-    const { name, avatar_url } = req.body;
+    const validatedData = updateMeSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      return res.status(400).json({ error: validatedData.error.errors[0].message });
+    }
+    const { name, avatar_url } = validatedData.data;
 
     const { data: user, error } = await supabase
       .from('users')
