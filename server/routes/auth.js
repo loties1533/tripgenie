@@ -12,7 +12,7 @@ import { z } from 'zod';
 const router = express.Router();
 
 const signupSchema = z.object({
-  email: z.string().email('Format d\\'email invalide'),
+  email: z.string().email("Format d'email invalide"),
   password: z.string().min(8, 'Mot de passe trop court (8 caractères min)').max(128, 'Mot de passe trop long'),
   name: z.string().optional()
 });
