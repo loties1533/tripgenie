@@ -566,13 +566,21 @@ RAPPEL FINAL : isReady=true dès que tu as origin + travelers + budget + duratio
       isMock: true
     };
   }
-  const raw = await callAI(
-    `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`,
-    undefined,
-    'onboarding'
-  );
-  
-  return parseJSON(raw);
+  try {
+    const raw = await callAI(
+      `${systemPrompt}\n\nMessage utilisateur : "${sanitizeInput(userMessage)}"`,
+      undefined,
+      'onboarding'
+    );
+    return parseJSON(raw);
+  } catch (err) {
+    console.error('⚠️ ChatIntake failed, activation du Mode Survie:', err.message);
+    return {
+      ...Mocks.MOCK_ONBOARDING,
+      response: "Je capte un peu mal mais je continue ! On part sur une base solide, qu'est-ce que tu en penses ?",
+      isMock: true
+    };
+  }
 }
 
 export async function chatModify({ currentPack, userMessage, mode }) {

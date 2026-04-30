@@ -75,10 +75,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🌍 TripGenie server running on http://localhost:${PORT}`);
-  console.log(`   ENV: ${process.env.NODE_ENV}`);
-  console.log(`   Client: ${process.env.CLIENT_URL}\n`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`\n🌍 TripGenie server running on http://localhost:${PORT}`);
+    console.log(`   ENV: ${process.env.NODE_ENV}`);
+    console.log(`   Client: ${process.env.CLIENT_URL}\n`);
+  });
+}
 
 export default app;

@@ -46,7 +46,8 @@ router.post('/signup', async (req, res) => {
   try {
     const validatedData = signupSchema.safeParse(req.body);
     if (!validatedData.success) {
-      return res.status(400).json({ error: validatedData.error.errors[0].message });
+      const firstError = validatedData.error.errors?.[0]?.message || 'Données invalides';
+      return res.status(400).json({ error: firstError });
     }
     const { email, password, name } = validatedData.data;
 
@@ -154,7 +155,8 @@ router.put('/me', requireAuth, async (req, res) => {
   try {
     const validatedData = updateMeSchema.safeParse(req.body);
     if (!validatedData.success) {
-      return res.status(400).json({ error: validatedData.error.errors[0].message });
+      const firstError = validatedData.error.errors?.[0]?.message || 'Données invalides';
+      return res.status(400).json({ error: firstError });
     }
     const { name, avatar_url } = validatedData.data;
 

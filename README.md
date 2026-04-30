@@ -37,10 +37,10 @@ Chaque voyage possède son identifiant unique. Générez un **lien de partage pu
 - **Supabase** : PostgreSQL pour la persistance, Auth pour la sécurité et stockage JSON des packs.
 
 ### Intelligence Artificielle & APIs
-- **Multi-LLM Strategy** : Architecture résiliente basculant entre **Gemini 2.0 Flash**, **Claude 3** et **OpenRouter**.
-- **Tavily API** : Agentic Web Search pour des données fraîches.
-- **Amadeus API** : Recherche de vols réels (Mode Sandbox).
-- **PredictHQ API** : Extraction d'événements locaux (concerts, festivals).
+- **Multi-LLM Strategy** : Architecture résiliente basculant entre **Gemini 2.0 Flash**, **Claude 3.5 Sonnet** et **OpenRouter**.
+- **Tavily API** : Agentic Web Search (RAG) pour des données fraîches (vols, hôtels, activités).
+- **PredictHQ API** : Extraction optionnelle d'événements locaux (concerts, festivals).
+- **Amadeus API** : Support legacy pour la recherche de vols IATA (optionnel).
 
 ---
 
@@ -75,9 +75,21 @@ Assurez-vous d'avoir Node.js (v18+) installé.
    # Terminal 1 : Backend Express
    npm run dev
 
-   # Terminal 2 : Frontend
-   npm run client
+   # Terminal 2 : Frontend (Vite)
+   npm run client:dev
    ```
+
+4. **Tests & Validation**
+   ```bash
+   # Suite de tests complète (Vitest)
+   npm run test:vitest
+   ```
+
+---
+
+## 📖 Documentation Technique
+Pour plus de détails sur les choix technologiques et les justifications pour la certification (Zod, Supabase, JWT, etc.), consultez :
+👉 [**docs/TECH_STACK.md**](docs/TECH_STACK.md)
 
 ---
 

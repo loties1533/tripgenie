@@ -108,38 +108,35 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
     if (!originIata)  iataWarnings.push(`Ville de départ "${origin}" non reconnue, vols réels indisponibles`);
     if (!destIata)    iataWarnings.push(`Destination "${destination}" non reconnue, vols réels indisponibles`);
 
-    // Recherches en parallèle — chacune fail gracieusement
+    // ---- RECHERCHE WEB (Tavily + IA) ----
+    // On remplace Amadeus par SmartSearch pour plus de réalisme et de fiabilité
+    console.log(`✈️ Recherche de vols via SmartSearch (Web) pour ${destination}...`);
+    
     const results = await Promise.allSettled([
-      originIata && destIata
-        ? searchFlights({ origin: originIata, destination: destIata, departureDate: departure, returnDate: return_date, adults: travelers })
-        : Promise.resolve([]),
+      smartFlightSearch({ origin, destination, departure, return_date }),
       searchEvents({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
     ]);
 
-    let flights = results[0].status === 'fulfilled' ? results[0].value : [];
-    if (results[0].status === 'rejected') console.warn('Flights API fallback:', results[0].reason);
+    let aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
+    let flights = [];
 
-    // ---- Fallback SmartSearch (Tavily + IA) si Amadeus est vide ----
-    if (flights.length === 0) {
-      console.log('✈️ Amadeus vide ou indisponible, tentative via SmartSearch (Tavily)...');
-      const aiFlight = await smartFlightSearch({ origin, destination, departure, return_date });
-      if (aiFlight) {
-        flights = [{
-          id: 'AI-SEARCH',
-          price: aiFlight.price * travelers,
-          price_per_person: aiFlight.price,
-          outbound: { 
-            from: origin, to: destination, airline: aiFlight.airline, 
-            departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time, 
-            duration: aiFlight.duration, stops: aiFlight.stops 
-          },
-          return: { 
-            from: destination, to: origin, airline: aiFlight.airline, 
-            departure_time: '18:00', arrival_time: '20:00', // Valeurs probables
-            duration: aiFlight.duration, stops: aiFlight.stops 
-          }
-        }];
-      }
+    if (aiFlight) {
+      flights = [{
+        id: 'AI-SEARCH',
+        price: aiFlight.price * travelers,
+        price_per_person: aiFlight.price,
+        outbound: { 
+          from: origin, to: destination, airline: aiFlight.airline, 
+          departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time, 
+          duration_min: parseInt(aiFlight.duration) * 60 || 180, // Conversion simplifiée
+          stops: aiFlight.stops === "Direct" ? 0 : 1 
+        },
+        return: { 
+          from: destination, to: origin, airline: aiFlight.airline, 
+          departure_time: '18:00', arrival_time: '20:00', 
+          duration_min: 120, stops: 0 
+        }
+      }];
     }
 
     const events = results[1].status === 'fulfilled' ? results[1].value : [];

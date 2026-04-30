@@ -9,7 +9,10 @@
     "dev": "nodemon server/index.js",
     "setup-db": "node scripts/setup-db.js",
     "client:dev": "cd client-react && npm run dev",
-    "client:build": "cd client-react && npm run build"
+    "client:build": "cd client-react && npm run build",
+    "test": "node tests/test_api_v1.js",
+    "test:services": "node tests/test_services.js",
+    "test:vitest": "vitest run tests/api.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
