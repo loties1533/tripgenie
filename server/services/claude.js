@@ -486,41 +486,25 @@ EXTRACTION SÉMANTIQUE GÉNÉRALISÉE
     3. PSYCHOGRAPHIE : Déduis le 'mode' et le 'profile' à partir du vocabulaire employé.
     
     RÈGLES D'OR :
-    - Sois flexible : "une semaine" = duration=7, "une dizaine de jours" = duration=10.
-    - Sois intelligent : "on est 4" implique profile="group" ou "friends" selon le ton.
-    - NE REPOSE JAMAIS une question si l'info peut être déduite sémantiquement.
-    - Si l'utilisateur donne TOUT en un seul message, passe isReady=true immédiatement.
-
-    DÉTECTION AUTOMATIQUE DU STYLE & BUDGET :
-    - Budget "Illimité" / "Unlimited" → budget=15000 (OBLIGATOIRE pour activer le mode LUXE/VIP).
-    - Vocabulaire festif/nocturne (clubs, bars, nuit, rave) → mode="party"
-    - Vocabulaire confort/prestige (luxe, calme, spa, gastronomie, 5*, illimité) → mode="luxury"
-    - Vocabulaire familial (enfants, ados, kids, famille) → mode="group", profile="famille"
-    - Vocabulaire économique (pas cher, routard, auberge, étudiant) → mode="student"
+    - Sois ultra-direct. Si l'utilisateur donne une info, enregistre-la et ne la redemande JAMAIS.
+    - Extraction intelligente : "On est 2" → travelers=2, profile="couple". "1 semaine" → duration=7.
+    - ISREADY : Passe `isReady: true` dès que tu as une destination (même suggérée) + budget + durée + voyageurs.
+    - SUGGESTION : Si la destination manque, propose 2 noms de villes immédiatement dans ta réponse.
 
 ═══════════════════════════════════════
-RÈGLES DE CONVERSATION
-═══════════════════════════════════════
-1. MAX 3 ÉCHANGES avant isReady=true
-2. UNE SEULE question manquante à la fois
-3. Si tu as déjà : origin + travelers + budget + duration + mode → isReady=true IMMÉDIATEMENT sans poser d'autres questions
-4. Ton message doit être court, chaleureux, dynamique (max 2 phrases)
-5. Les chips doivent être PERTINENTES et COURTES (max 3 mots chacune)
-6. NE JAMAIS proposer de destinations dans le chat — c'est le rôle de suggestDestinations
-
-═══════════════════════════════════════
-INFOS MANQUANTES — ORDRE DE PRIORITÉ
-═══════════════════════════════════════
-1. Nombre de voyageurs + profil (solo/couple/amis/famille)
-2. Budget total
-3. Durée + dates approximatives
-4. Ville de départ
-5. Style (si pas évident dans le message)
-
-═══════════════════════════════════════
-DONNÉES DÉJÀ COLLECTÉES — NE PAS REDEMANDER
+DONNÉES ACTUELLES (À NE PAS REDEMANDER)
 ═══════════════════════════════════════
 ${JSON.stringify(currentData)}
+
+═══════════════════════════════════════
+FORMAT RÉPONSE JSON (STRICT)
+═══════════════════════════════════════
+{
+  "response": "Ta phrase courte ici.",
+  "chips": ["Option 1", "Option 2"],
+  "extractedData": { ... },
+  "isReady": false
+}
 
 ═══════════════════════════════════════
 FORMAT RÉPONSE (JSON UNIQUEMENT)
@@ -543,7 +527,7 @@ FORMAT RÉPONSE (JSON UNIQUEMENT)
   "isReady": false
 }
 
-RAPPEL FINAL : isReady=true dès que tu as origin + travelers + budget + duration + mode. Pas besoin de discoveryMode si le contexte est déjà clair.`;
+RAPPEL FINAL : isReady=true dès que tu as destination + travelers + budget + duration. Pas besoin de demander l'origine si l'utilisateur ne le dit pas (on assume un départ de Paris par défaut).`;
 
   const msg = sanitizeInput(userMessage).toLowerCase();
 
