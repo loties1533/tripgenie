@@ -33,14 +33,27 @@ Ce document regroupe les concepts avancés abordés lors de la phase finale du p
 
 ---
 
-## 🔐 Sécurité & Standards 2026
+## 🧪 Tests & Qualité Logicielle
 
-### 1. Variables d'Environnement (Vite)
-*   **VITE_*** : Préfixe obligatoire pour exposer une variable au Frontend.
-*   **Privées** : Les clés API sans préfixe restent sur le serveur Node.js et ne sont jamais visibles dans le navigateur.
+### 1. Vitest (Le standard 2026)
+*   **Pourquoi ?** C'est le remplaçant moderne de Jest. Il est nativement intégré à Vite, ce qui le rend 3x plus rapide.
+*   **Usage** : Tu l'utilises pour valider tes routes API, tes services de calcul (Scoring) et la résilience de ton IA.
 
-### 2. Authentification Stateless (JWT)
-*   Utilisation de JSON Web Tokens pour éviter de stocker des sessions sur le serveur, permettant une meilleure scalabilité horizontale.
+### 2. Tests E2E (Playwright)
+*   Mentionner que la suite logique est d'ajouter Playwright pour simuler de vrais clics utilisateurs dans le navigateur.
 
-### 3. Validation de Données (Zod)
-*   Chaque entrée (formulaire) et chaque sortie (IA) est validée par un schéma Zod. Cela garantit que le code ne traite jamais de données corrompues.
+---
+
+## ⚡ Performance Patterns
+
+### 1. React.memo & Lazy Loading
+*   **Concept** : Utiliser `React.lazy()` et `Suspense` pour ne charger que le code nécessaire à la page affichée.
+*   **Optimisation** : Utiliser `React.memo` sur les composants qui reçoivent beaucoup de props mais ne changent pas souvent (ex: les cartes de destination).
+
+### 2. Hydratation & Rendu
+*   Expliquer que ton application est une **SPA** (Single Page Application) optimisée par Vite pour un temps d'hydratation minimal.
+
+---
+
+## 📊 État Global (Zustand)
+*   **Pourquoi pas Redux ?** Parce que Zustand est plus moderne, n'utilise pas de "Boilerplate" inutile et offre des performances supérieures pour les applications de taille moyenne comme TripGenie.
