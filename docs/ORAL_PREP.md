@@ -8,7 +8,7 @@ Ce document est ta "bible" pour réussir tes deux soutenances. Il contient une d
 Voici l'enregistrement de la génération réelle effectuée sur la branche `mvp-final`.
 *Scénario : Login -> Marrakech -> Mode Relax -> Scoring -> Résultat.*
 
-![Vidéo de la génération en direct](/Users/alexislaubert/.gemini/antigravity/brain/1dd58c78-5ac5-4808-b1b8-dd5b4751aadf/live_generation_v2_fix_1777558996293.webp)
+![Vidéo de la génération en direct](./assets/demo.webp)
 
 ---
 
