@@ -17,8 +17,8 @@ Voici l'enregistrement de la génération réelle effectuée sur la branche `mvp
 ### 1. La résilience Multi-IA
 *   **Argument** : "Le projet ne dépend pas d'un seul fournisseur. J'ai implémenté un système de fallback entre Claude 3, Gemini et OpenRouter, avec un mode de secours (Survival Mode) pour garantir 100% de disponibilité."
 
-### 2. Le RAG (Web Search) vs Hallucinations
-*   **Argument** : "L'IA n'invente rien. Elle utilise l'API Tavily pour lire le web en temps réel (Vols, Hôtels) avant de construire l'itinéraire. C'est une architecture RAG (Retrieval-Augmented Generation)."
+### 2. Le SmartSearch (Tavily) vs Hallucinations
+*   **Argument** : "L'IA n'invente rien. Elle utilise SmartSearch (via Tavily) pour lire le web en temps réel (Vols, Hôtels) avant de construire l'itinéraire. C'est une architecture agentique moderne."
 
 ### 3. La Qualité logicielle (Zod & Tests)
 *   **Argument** : "Chaque donnée est validée par Zod avant d'être traitée. J'ai également mis en place une suite de tests Vitest automatisée couvrant 14 cas critiques (Success/Errors)."
@@ -29,10 +29,13 @@ Voici l'enregistrement de la génération réelle effectuée sur la branche `mvp
 
 | Question | Réponse Stratégique |
 | :--- | :--- |
-| **"Pourquoi Supabase et pas MySQL ?"** | "Pour la puissance de PostgreSQL couplée à la sécurité native du SDK (Anti-injection SQL) et la gestion intégrée de l'authentification JWT." |
-| **"Comment gérez-vous les coûts de l'IA ?"** | "Grâce au système de cache et à l'utilisation de modèles 'Free Tier' sur OpenRouter en priorité, tout en gardant des modèles Premium pour la génération finale." |
+| **"Pourquoi Supabase et pas MySQL ?"** | "Pour la puissance de PostgreSQL couplée à la sécurité native du SDK (Anti-injection SQL) et la gestion intégrée de l'authentification JWT. De plus, PostgreSQL gère nativement le type **JSONB**, ce qui est parfait pour nos packs de voyage complexes." |
+| **"Comment gérez-vous les coûts de l'IA ?"** | "J'ai implémenté un **Rate Limiting** strict côté serveur et j'utilise en priorité des modèles 'Free Tier' sur OpenRouter, avec un système de fallback intelligent pour garantir la gratuité et la disponibilité." |
+| **"Pourquoi un chatbot et pas un formulaire ?"** | "Le formulaire est un frein. L'IA permet d'extraire des intentions complexes (budget, mood) de manière naturelle. C'est l'essence même de l'approche agentique de TripGenie." |
+| **"Pourquoi avoir abandonné les APIs classiques (Amadeus) ?"** | "Pour la flexibilité. Les APIs classiques sont souvent limitées géographiquement et complexes en version d'essai. SmartSearch (Tavily) permet d'avoir des données réelles sur n'importe quel spot dans le monde en une seule passe." |
 | **"Où est le CRUD dans votre projet ?"** | "Il est partout : Gestion des Voyages (Trips), Gestion du Profil (Auth), Système de Votes (Votes) et Sélection finale (Packs)." |
 | **"Comment est calculé le score ?"** | "C'est un algorithme multicritères (Prix, Confort, Activités) dont les coefficients changent dynamiquement selon le mode choisi (Relax, Party, Adventure)." |
+| **"Pourquoi des UUID ?"** | "C'est une mesure de sécurité contre l'énumération d'IDs. Cela empêche un utilisateur malveillant de deviner les IDs d'autres voyages." |
 
 ---
 
