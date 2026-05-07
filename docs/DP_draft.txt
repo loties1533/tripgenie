@@ -1,0 +1,1735 @@
+DOSSIER PROFESSIONNEL (DP)
+​
+​ ​
+​ ​
+​ ​
+​ ​
+
+​
+​
+​
+​
+
+Nom de Naissance
+
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Laubert
+
+Nom d’usage
+Prénom Alexis
+Adresse 2 rue Pablo
+Neruda, 33370
+Artigues
+​
+
+​
+
+​
+
+​
+
+​
+
+Titre professionnel visé
+Titre RNCP 37674 - Développeur Web et Web Mobile
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+MODALITÉ D’ACCÈS :
+​
+
+Validation des Acquis de l’Expérience (VAE)
+
+●​ X Parcours de formation
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+DOSSIER PROFESSIONNEL (DP)
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Présentation du dossier
+Le dossier professionnel (DP) constitue un élément du système de validation du titre
+professionnel. Ce titre est délivré par le Ministère chargé de l’emploi.
+​
+​
+​
+​
+​
+​
+Le DP appartient au candidat. Il le conserve, l’actualise durant son parcours et le présente
+obligatoirement à chaque session d’examen.
+​
+​
+​
+​
+​
+​
+Pour rédiger le DP, le candidat peut être aidé par un formateur ou par un accompagnateur
+VAE. Il est consulté par le jury au moment de la session d’examen.
+
+Pour prendre sa décision, le jury dispose :​
+●​ des résultats de la mise en situation professionnelle complétés, éventuellement, du
+questionnaire professionnel ou de l’entretien professionnel ou de l’entretien technique ou du
+questionnement à partir de productions.
+●​ du Dossier Professionnel (DP) dans lequel le candidat a consigné les preuves de sa pratique
+professionnelle
+●​ des résultats des évaluations passées en cours de formation lorsque le candidat évalué est
+issu d’un parcours de formation
+●​ de l’entretien final (dans le cadre de la session titre).
+[Arrêté du 22 décembre 2015, relatif aux conditions de délivrance des titres professionnels
+du ministère chargé de l’Emploi]
+
+Ce dossier comporte :
+​
+
+​
+➔​ pour chaque activité-type du titre visé, un à trois exemples de pratique professionnelle ;
+➔​ un tableau à renseigner si le candidat souhaite porter à la connaissance du jury la détention
+d’un titre, d’un diplôme, d’un certificat de qualification professionnelle (CQP) ou des attestations
+de formation ;
+➔​ une déclaration sur l’honneur à compléter et à signer ;
+➔​ des documents illustrant la pratique professionnelle du candidat (facultatif)
+➔​ des annexes, si nécessaire.
+
+​
+
+​
+
+​
+
+​
+
+​
+Pour compléter ce dossier, le candidat dispose d’un site web en accès libre sur le site.
+
+​
+​
+​
+
+​
+​
+
+​
+​
+​
+
+​
+​
+​
+
+​
+
+​
+
+http://travail-emploi.gouv.fr/titres-professionnels
+
+​
+​
+
+2
+
+DOSSIER PROFESSIONNEL (DP)
+Sommaire​ ​
+
+​
+
+​
+
+Exemples de pratique professionnelle
+
+Activité-type n°1 : Développer la partie front-end d’une application web ou web mobile p.
+en intégrant les recommandations de sécurité
+➢​ Exemple n°1 : Configurer l'environnement et connecter le front-end à l'API REST
+
+p.
+
+➢​ Exemple n°2 : Maquetter et développer les interfaces utilisateur (HTML/CSS)
+
+p.
+
+➢​ Intitulé de l’exemple n°3
+
+p.
+
+Activité-type n°2 : Développer la partie back-end d’une application web ou web mobile p.
+en intégrant les recommandations de sécurité
+➢​ Exemple n°1 : Mettre en place et sécuriser la base de données relationnelle
+
+p.
+
+(SQLite/SQL)
+
+​
+​
+
+➢​ Exemple n°2 : Développer le back-end sécurisé avec SQLAlchemy ORM et JWT
+
+p.
+
+➢​ Intitulé de l’exemple n°3
+
+p.
+
+Titres, diplômes, CQP, attestations de formation (facultatif)
+
+p.
+
+Déclaration sur l’honneur
+
+p.
+
+Documents illustrant la pratique professionnelle (facultatif)
+
+p.
+
+Annexes (Si le RC le prévoit)
+
+p.
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+3
+
+DOSSIER PROFESSIONNEL (DP)
+​
+
+EXEMPLES DE PRATIQUE
+PROFESSIONNELLE
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+4
+
+DOSSIER PROFESSIONNEL (DP)
+
+​
+
+Activité-type n°1
+
+Développer la partie front-end d’une application web ou web
+mobile en intégrant les recommandations de sécurité
+
+Exemple n°1
+
+Configurer l'environnement et connecter le front-end à l'API
+REST
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :
+Récupération et organisation du projet :
+●​ Clonage du dépôt GitHub et organisation du dossier part4 (index.html, login.html, place.html,
+add_review.html, scripts.js, styles.css).
+●​ Vérification de l'arborescence : pages HTML, fichier JS centralisé (scripts.js) et feuille de
+styles unique (styles.css).
+Configuration de l'environnement Flask (back-end) :
+●​ Définition des variables d'environnement : FLASK_APP=run.py, FLASK_ENV=development.
+●​ Lancement du serveur Flask via flask run (port 5000, rechargement automatique).
+●​ Lancement d'un serveur HTTP Python pour le front-end : python3 -m http.server 8000.
+Connexion front ↔ API :
+●​ Définition de la constante API_BASE = 'http://localhost:5000/api/v1' dans scripts.js.
+●​ Tests des endpoints avec curl avant intégration côté front (GET /places, POST /auth/login…).
+●​ Vérification de la configuration CORS pour autoriser les requêtes cross-origin du front.
+●​ Intégration du token JWT dans les en-têtes Authorization: Bearer <token> pour tous les
+appels protégés.
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+2. Précisez les moyens utilisés :
+●​
+●​
+●​
+●​
+●​
+●​
+
+​
+​
+
+​
+​
+
+Ordinateur personnel sous Linux/macOS, terminal bash
+Flask (serveur back-end en mode développement)
+python3 -m http.server (serveur statique front-end)
+curl pour tests API (GET, POST avec JSON)
+Navigateur web (DevTools — onglets Réseau et Console)
+Git / GitHub pour versioning
+
+​
+​
+
+​
+
+5
+
+DOSSIER PROFESSIONNEL (DP)
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+3. Avec qui avez-vous travaillé ?
+J'ai réalisé cette partie 4 (front-end) en autonomie complète pour le développement de l'interface et
+de la logique dynamique. Les parties précédentes du projet (back-end parts 1, 2 et 3) avaient été
+réalisées en binôme avec Antoine Batts
+
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​
+​ ​
+​
+4. Contexte
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+➤ HOLBERTON SCHOOL
+
+Chantier,atelier,service​
+
+➤ MAQUETTAGE & DÉVELOPPEMENT FRONT-END
+
+Période d’exercice​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Nom de l’entreprise, organisme ou association ​ ​
+
+​
+
+​
+
+​
+
+➤ Du ​ De JANVIER 2025 à AVRIL 2025
+
+5. Informations complémentaires (facultatif)
+Lien GitHub : https://github.com/laubertalexis/holbertonschool-hbnb/tree/main/part4
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Activité-type n°1
+
+Développer la partie front-end d’une application web ou web
+mobile en intégrant les recommandations de sécurité
+
+Exemple n°2
+
+Maquetter et développer les interfaces utilisateur (HTML/CSS)
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :
+Dans le cadre du projet HBnB réalisé à Holberton School, l'objectif était de concevoir une interface
+utilisateur respectant les maquettes fournies, en utilisant HTML5 et CSS3.
+Structuration HTML :
+Création des pages :
+●​ index.html (liste des logements)
+●​ login.html (authentification)
+●​ place.html (détail d'un logement)
+●​ add_review.html (ajout d'avis)
+●​ Utilisation de balises sémantiques (header, main, section, footer)
+
+6
+
+DOSSIER PROFESSIONNEL (DP)
+Mise en place d'un design system :
+●​ Utilisation de variables CSS (couleurs, espacements, typographie)
+●​ Uniformisation du style sur toutes les pages
+Gestion du layout et du responsive :
+●​ Utilisation de Flexbox et CSS Grid
+●​ Approche Mobile First
+●​ Adaptation aux différents formats (mobile, tablette, desktop)
+Développement de composants réutilisables :
+●​ Barre de navigation
+●​ Cartes de logements
+●​ Formulaires stylisés
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+2. Précisez les moyens utilisés :
+●​
+●​
+●​
+●​
+●​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+HTML5 / CSS3
+Visual Studio Code
+Navigateurs web (Chrome, Firefox)
+DevTools pour le debug
+Validateur W3C
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+3. Avec qui avez-vous travaillé ?
+Projet réalisé en autonomie pour la partie front-end (Part 4 du projet HBnB).
+
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​
+​ ​
+​
+4. Contexte
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Nom de l’entreprise, organisme ou association ​ ​
+
+➤ HOLBERTON SCHOOL
+
+7
+
+DOSSIER PROFESSIONNEL (DP)
+Chantier,atelier,service​
+
+➤ Maquetter et développer les interfaces utilisateur (HTML/CSS)
+
+Période d’exercice​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+➤ De De JANVIER 2025 à AVRIL 2025
+
+5. Informations complémentaires (facultatif)
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Activité-type n°2
+
+Développer la partie back-end d’une application web ou web
+mobile en intégrant les recommandations de sécurité
+
+Exemple n°1
+
+Mettre en place et sécuriser la base de données relationnelle
+pour HBnB
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :
+Dans le cadre du projet HBnB, j'ai conçu et implémenté l'architecture de données pour stocker les
+utilisateurs, les lieux, les avis et les équipements.
+●​ Modélisation : Création du diagramme entité-association (ERD) pour définir les relations (ex :
+un utilisateur possède plusieurs lieux, un lieu à plusieurs équipements via une table de
+liaison).
+●​ Implémentation : Configuration de SQLite et écriture des modèles assurant l'intégrité des
+données (clés primaires, clés étrangères ondelete='CASCADE').
+●​ Sécurisation : Mise en place de contraintes d'unicité (email unique) et de validation des
+formats de données au niveau SQL pour éviter toute corruption.
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+2. Précisez les moyens utilisés :
+
+Python 3 / Flask, SQLAlchemy ORM (modèles BaseModel, User, Place, Review, Amenity), SQLite
+(base de données relationnelle), Visual Studio Code, terminal Linux/macOS, Git / GitHub pour le
+versioning, DB Browser for SQLite pour vérifier les tables et les données.
+
+8
+
+DOSSIER PROFESSIONNEL (DP)
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+3. Avec qui avez-vous travaillé ?
+Ce projet (part 3) a été réalisé en binôme avec Antoine Batts dans le cadre de la formation Holberton
+School. Nous avons partagé la conception de l'architecture de données (modélisation ERD, création
+des tables SQL) et l'implémentation des modèles SQLAlchemy. Antoine a notamment contribué à la
+mise en place du repository pattern et au débogage des relations entre entités.
+
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​ ​
+​
+​
+​ ​
+​
+4. Contexte
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+➤ HOLBERTON SCHOOL
+
+Chantier,atelier,service​
+
+➤ BACKEND - BASE DE DONNÉES
+
+Période d’exercice​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Nom de l’entreprise, organisme ou association ​ ​
+
+​
+
+​
+
+​
+
+➤ De De JANVIER 2025 à AVRIL 2025
+
+5. Informations complémentaires (facultatif)
+​
+​
+​
+
+​
+
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+
+Activité-type n°2
+
+Développer la partie back-end d’une application web ou web
+mobile en intégrant les recommandations de sécurité
+
+Exemple n°2
+
+Développer le back-end sécurisé avec SQLAlchemy ORM et
+JWT
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :
+
+Dans le cadre du projet HBnB (part 3), j'ai contribué au développement du back-end sécurisé en
+binôme avec Antoine Batts. L'objectif était de migrer l'application vers une vraie base de données
+relationnelle (SQLite via SQLAlchemy ORM) et d'intégrer une authentification par token JWT
+(flask-jwt-extended).
+
+9
+
+DOSSIER PROFESSIONNEL (DP)
+●​ Migration du repository en mémoire (InMemoryRepository) vers SQLAlchemyRepository :
+toutes les opérations CRUD passent par db.session (add, commit, delete, query).
+●​ Définition des modèles SQLAlchemy (User, Place, Review, Amenity) avec propriétés validées
+(setters), relations (db.relationship, clés étrangères avec ON DELETE CASCADE) et table de
+liaison place_amenity (Many-to-Many).
+●​ Développement du endpoint POST /api/v1/auth/login : vérification des identifiants (email +
+mot de passe haché avec flask-bcrypt), génération du token JWT (identity=user.id, claim
+is_admin) via flask-jwt-extended.
+●​ Protection des routes sensibles avec @jwt_required() : seuls les utilisateurs authentifiés
+peuvent créer des lieux ou publier des avis ; les administrateurs (is_admin=True) bénéficient
+de droits étendus (gestion des utilisateurs).
+●​ Implémentation de la façade HBnBFacade centralisant toute la logique métier (CRUD) pour
+chaque entité via les repositories SQLAlchemy, tests des endpoints avec curl et Postman
+(codes HTTP 200, 201, 401, 403, 404).
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+2. Précisez les moyens utilisés :
+
+Python 3 / Flask, SQLAlchemy ORM, flask-jwt-extended, flask-bcrypt, SQLite, Flask-RESTX
+(documentation Swagger automatique), Visual Studio Code, terminal Linux/macOS, Git / GitHub,
+Postman et curl pour les tests d'API.
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+3. Avec qui avez-vous travaillé ?
+
+Ce projet (part 3) a été réalisé en binôme avec Antoine Batts dans le cadre de la formation Holberton
+School. Nous avons réparti les tâches : j'ai principalement développé les modèles SQLAlchemy
+(User, Place, Review, Amenity, BaseModel) et le système d'authentification JWT, tandis qu'Antoine a
+travaillé sur le repository pattern (SQLAlchemyRepository, UserRepository) et la façade métier. Les
+décisions d'architecture étaient prises collectivement lors de revues de code.
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+​
+
+10
+
+DOSSIER PROFESSIONNEL (DP)
+​ ​
+​
+​ ​
+​
+​
+​ ​
+​
+4. Contexte
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+➤ HOLBERTON SCHOOL
+
+Chantier,atelier,service​
+
+➤ HBNB BACK-END ORM & LOGIQUE MÉTIER
+
+Période d’exercice​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Nom de l’entreprise, organisme ou association ​ ​
+
+​
+
+​
+
+​
+
+➤ De JANVIER 2025 à AVRIL 2025
+
+5. Informations complémentaires (facultatif)
+
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+Titres, diplômes, CQP, attestations de formation
+(facultatif)
+​
+​
+
+​
+
+​
+
+​
+
+Intitulé
+
+​
+
+​
+
+​
+
+Autorité ou organisme
+
+​
+
+Date
+
+​
+
+11
+
+DOSSIER PROFESSIONNEL (DP)
+Déclaration sur l’honneur
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+
+​
+
+​
+
+Je soussigné(e) Alexis Laubert , déclare sur l’honneur que les renseignements fournis dans
+ce dossier sont exacts et que je suis l’auteur(e) des réalisations jointes.
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Fait à Cenon le 27 / 04 / 2026 pour faire valoir ce que de droit.
+​
+
+​
+
+​
+
+​
+
+​
+
+Signature :
+​
+​
+
+​
+​
+
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+
+​
+
+​
+​
+​
+​
+
+​
+​
+​
+​
+
+​
+
+​
+​
+​
+​
+​
+
+​
+
+​
+
+12
+
+DOSSIER PROFESSIONNEL (DP)
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+​
+
+Documents illustrant la pratique professionnelle
+(facultatif)
+​
+​
+
+​
+
+Intitulé
+Annexe 1 : Page d’accueil de mon Github
+Annexe 2 : capture d’écran présentant l’extrait de code du projet XXX
+
+​
+​
+​
+​
+
+​
+​
+​
+
+​
+​
+
+​
+​
+
+​
+
+13
+
+DOSSIER PROFESSIONNEL (DP)
+ANNEXES
+(Si le RC le prévoit)
+​
+
+​
+
+​
+
+​
+
+Annexe 1 : Lien vers mon github
+
+14
+
+
