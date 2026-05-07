@@ -14,7 +14,7 @@
 | 1 | **Chatbot Onboarding (IA)** | `server/routes/ai.js` → `/onboarding` | ✅ OK | ✅ `test_api_v1.js` |
 | 2 | **Génération de Pack (IA + APIs)** | `server/routes/ai.js` → `/generate` | ✅ OK | ⚠️ Test manuel seulement |
 | 3 | **Fallback IA (Mode Survie)** | `server/services/claude.js` | ✅ OK | ✅ `claude.test.js` |
-| 4 | **Recherche de Vols (Amadeus)** | `server/services/amadeus.js` | ⚠️ Partiel | ❌ Pas de test isolé |
+| 4 | **Vols réels (Tavily)** | `server/services/smartSearch.js` | ✅ OK | ✅ Intégré via SmartSearch |
 | 5 | **Événements locaux (PredictHQ)** | `server/services/predicthq.js` | ⚠️ Partiel | ❌ Pas de test isolé |
 | 6 | **Scoring du Pack** | `server/services/scoring.js` | ✅ OK | ✅ `test_services.js` (0.51/10) |
 | 7 | **Système de Votes (Groupe)** | `server/routes/votes.js` | ✅ OK | ✅ `test_api_v1.js` |
@@ -36,7 +36,7 @@ Ces fonctionnalités marchent mais ne sont pas prouvées. Pour le RNCP, **la pre
 - [x] **Test des Votes** : ✅ `test_api_v1.js` → Vote créé avec vrai UUID en base
 
 ### 🟡 PRIORITÉ 2 — Solidifier ce qui est "Partiel"
-- [ ] **Amadeus** : Vérifier que si Amadeus échoue (quota), le fallback SmartSearch s'active. Documenter.
+- [x] **SmartSearch (Tavily)** : Recherche agentique fonctionnelle et intégrée.
 - [ ] **PredictHQ** : Vérifier que si l'API échoue, les événements sont ignorés silencieusement (sans crash).
 
 ### 🟢 PRIORITÉ 3 — Documentation
@@ -57,7 +57,7 @@ Ces fonctionnalités marchent mais ne sont pas prouvées. Pour le RNCP, **la pre
 | **JWT + Bcrypt** | Sécurité | Standards de l'industrie pour auth et hashage |
 | **PostgreSQL (Supabase)** | Base de données | Robustesse SQL + stockage JSONB pour packs IA |
 | **Claude / OpenRouter** | IA | Fallback sur 13 modèles gratuits |
-| **Amadeus** | Vols réels | Standard de l'industrie du voyage |
+| **Tavily (SmartSearch)** | Vols & Données web | Recherche agentique flexible, prix et horaires réels |
 | **PredictHQ** | Événements locaux | Enrichit les packs avec des événements réels |
 
 ---

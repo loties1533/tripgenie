@@ -37,7 +37,7 @@ Le socle initial acquis à Holberton reposait fortement sur le Vanilla JS et le 
 *   **Pourquoi Zustand ?** Pour éviter de passer les variables de composant en composant ("Prop drilling"). Zustand offre un "Store" global et persistant, essentiel pour garder les données du voyage si l'utilisateur rafraîchit la page.
 
 ### 3.2. Le Backend : Node.js & Express
-*   **Justification :** Utiliser JavaScript des deux côtés (Front et Back) permet une grande fluidité. Express est léger, robuste, et m'a permis de créer une API RESTful propre, capable d'orchestrer les requêtes asynchrones vers Amadeus et l'IA.
+*   **Justification :** Utiliser JavaScript des deux côtés (Front et Back) permet une grande fluidité. Express est léger, robuste, et m'a permis de créer une API RESTful propre, capable d'orchestrer les requêtes asynchrones vers Tavily et l'IA.
 
 ### 3.3. La Base de Données : Supabase (PostgreSQL)
 *   **Pourquoi Supabase ?** Au lieu de configurer un serveur SQL local, Supabase offre un PostgreSQL hébergé avec une API JavaScript intégrée. 
@@ -45,7 +45,7 @@ Le socle initial acquis à Holberton reposait fortement sur le Vanilla JS et le 
 
 ### 3.4. Les APIs Tierces
 *   **Anthropic Claude & OpenRouter** : Le cerveau de l'appli pour la compréhension du langage naturel.
-*   **Amadeus** : Le standard de l'industrie pour les vraies données de vols aériens.
+*   **Tavily (Search API)** : Utilisé via SmartSearch pour récupérer des données de vols et d'activités en temps réel sur le web, offrant une plus grande flexibilité que les APIs de voyage classiques (souvent limitées en mode Sandbox).
 *   **PredictHQ** : Pour injecter des événements locaux réels (Concerts, festivals) dans l'itinéraire.
 
 ---
@@ -110,7 +110,7 @@ erDiagram
 Aujourd'hui, l'application possède un cœur de métier (Core Features) extrêmement solide et testé :
 
 1.  **L'Onboarding Agentique** : Le chatbot est fluide, comprend l'utilisateur, et extrait les données (`destination`, `budget`, `mode`) de manière invisible et efficace.
-2.  **L'Orchestration Asynchrone** : Le backend gère parfaitement les appels parallèles (`Promise.allSettled`) vers Amadeus et l'IA, divisant le temps d'attente par deux.
+2.  **L'Orchestration Asynchrone** : Le backend gère parfaitement les appels parallèles (`Promise.allSettled`) vers Tavily et l'IA, divisant le temps d'attente par deux.
 3.  **Le "Mode Survie" (Tolérance aux pannes)** : C'est une de mes plus grandes fiertés techniques. Si l'API principale tombe en panne (quota dépassé), le système "cascade" sur une dizaine de modèles de secours (OpenRouter). Si tout échoue, un système de "Mocks" s'active pour que l'utilisateur ne soit jamais bloqué.
 4.  **Le Système de Vote (Consensus)** : L'API de vote est fonctionnelle, testée, et respecte l'intégrité de la base de données.
 5.  **Les Tests** : Mise en place d'une suite de tests en ligne de commande (CLI) "Holberton-style" qui valide 100% des endpoints critiques de l'API.
@@ -122,7 +122,7 @@ Aujourd'hui, l'application possède un cœur de métier (Core Features) extrême
 En tant que développeur, il est crucial de savoir analyser ses propres axes d'amélioration :
 
 1.  **Fiabilité de l'IA (Hallucinations JSON)** : Bien que j'aie créé un parseur robuste (`parseJSON`), les LLMs renvoient parfois un format corrompu. À l'avenir, l'utilisation de méthodes comme le "Function Calling" (Tools) natif des LLMs serait plus sécurisée que le simple "Prompting".
-2.  **Moteur de Recherche Amadeus** : Actuellement, le cache IATA est basique (en mémoire vive). Si le serveur redémarre, le cache est vidé. Il faudrait implémenter un vrai système de cache comme Redis.
+2.  **Moteur de Recherche SmartSearch** : Actuellement, les résultats de Tavily sont analysés par l'IA en une passe. Il pourrait être intéressant d'implémenter un système de cache comme Redis pour les trajets les plus fréquents.
 3.  **Réservation Réelle (Booking)** : Aujourd'hui, les liens redirigent vers des recherches génériques (Google Flights, Booking.com). Il manque une intégration profonde via des liens d'affiliation générés dynamiquement.
 
 ---

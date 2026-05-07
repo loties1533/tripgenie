@@ -23,9 +23,8 @@ const required = [
 ];
 
 const optional = [
-  'AMADEUS_CLIENT_ID',
-  'AMADEUS_CLIENT_SECRET',
   'PREDICTHQ_API_KEY',
+  'TAVILY_API_KEY',
   'RAPIDAPI_KEY',
   'GOOGLE_PLACES_KEY'
 ];

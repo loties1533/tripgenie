@@ -58,8 +58,8 @@ Voici exactement ce qui se passe quand l'utilisateur utilise ton app. C'est l'hi
 ### Étape 3 : La Génération du Pack (Les APIs)
 Quand le chatbot a assez d'infos, il déclenche la route finale `POST /api/ai/generate`.
 C'est là que le "cerveau" de ton backend s'active :
-1. Il appelle l'API **Amadeus** pour trouver des vrais vols vers Ibiza.
-2. Il appelle l'API **PredictHQ** pour trouver des événements festifs à Ibiza aux bonnes dates.
+1. Il appelle **SmartSearch (via Tavily)** pour effectuer une recherche web agentique et trouver des vols réels.
+2. Il appelle l'API **PredictHQ** pour trouver des événements réels aux bonnes dates.
 3. Il assemble tout ça dans un gros objet JSON qu'on appelle le "Pack".
 
 ### Étape 4 : La Sauvegarde (Supabase)

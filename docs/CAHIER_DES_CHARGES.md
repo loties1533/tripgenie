@@ -63,7 +63,7 @@ TripGenie est une **agence de voyage de poche alimentée par l'IA**. L'utilisate
 
 **Critères d'acceptance :**
 - Le pack contient : au moins 1 vol, 1 hôtel, 3 activités
-- Les vols proviennent de l'API Amadeus (données réelles)
+- Les vols proviennent de SmartSearch (via Tavily, données réelles)
 - Les événements proviennent de l'API PredictHQ (données réelles)
 - Si une API est indisponible, le pack est généré avec les données disponibles
 - Un score de qualité (0-10) est calculé et affiché
@@ -114,7 +114,7 @@ TripGenie est une **agence de voyage de poche alimentée par l'IA**. L'utilisate
 | Base de données | PostgreSQL via Supabase | Robustesse relationnelle + JSONB flexible |
 | Authentification | JWT + Bcrypt.js | Standards industrie |
 | IA | Claude (Anthropic) + OpenRouter | LLM avec fallback multi-modèles |
-| Vols | API Amadeus | Standard de l'industrie du voyage |
+| Vols | Tavily (SmartSearch) | Recherche agentique flexible (données réelles) |
 | Événements | API PredictHQ | Événements locaux en temps réel |
 
 ### 4.2. Modèle de données

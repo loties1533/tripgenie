@@ -18,7 +18,7 @@ L'application repose sur une architecture moderne, séparant clairement le clien
 ### ⚙️ Backend (API Express.js)
 *   **Framework** : Node.js avec Express, structuré selon les standards MVC (Routes, Controllers/Services, Middlewares).
 *   **Sécurité** : Protection par `Helmet`, gestion des CORS stricts, et `express-rate-limit` pour prévenir les abus sur les endpoints d'IA.
-*   **Orchestration d'API (Le Cerveau)** : Le backend agit comme un chef d'orchestre. Il contacte l'IA (Claude/OpenRouter), puis interroge en parallèle Amadeus (Vols) et PredictHQ (Événements) pour enrichir la réponse.
+*   **Orchestration d'API (Le Cerveau)** : Le backend agit comme un chef d'orchestre. Il contacte l'IA (Claude/OpenRouter), puis interroge en parallèle Tavily (Recherche Web agentique) et PredictHQ (Événements) pour enrichir la réponse avec des données réelles et fraîches.
 
 ### 🗄️ Base de Données (Supabase / PostgreSQL)
 La modélisation respecte strictement les standards relationnels enseignés à Holberton School :
@@ -39,8 +39,8 @@ Au lieu d'un formulaire ennuyeux, l'utilisateur discute avec un bot.
 ### B. "Survival Mode" (Résilience et Fallbacks)
 Une des grandes forces techniques de TripGenie est sa tolérance aux pannes (Fault Tolerance) :
 1.  **Cascade de Modèles IA** : Si l'API Claude est épuisée (Erreur 429), le système bascule automatiquement sur un pool de 13 modèles de secours gratuits via OpenRouter (`callOpenRouter`).
-2.  **Fallback d'APIs tierces** : Si Amadeus ne trouve pas de vol, le système utilise `SmartSearch` (Tavily) pour faire une recherche web sémantique et simuler un vol réaliste.
-3.  **Mode Mock** : En cas de coupure totale du réseau IA, l'application charge des données "Mockées" pour garantir qu'un utilisateur (ou le jury) ne soit jamais bloqué sur un écran d'erreur.
+2.  **SmartSearch Agentique** : Au lieu de dépendre d'APIs de voyage rigides, TripGenie utilise Tavily pour effectuer une recherche sémantique sur le web. L'IA extrait ensuite les tarifs et horaires réels, garantissant une flexibilité totale sur les destinations.
+3.  **Mode Mock** : En cas de coupure totale du réseau IA ou des APIs, l'application charge des données "Mockées" pour garantir qu'un utilisateur (ou le jury) ne soit jamais bloqué sur un écran d'erreur.
 
 ### C. Système de Consensus (Votes de Groupe)
 L'application intègre une fonctionnalité sociale permettant à un groupe d'amis de valider un itinéraire.

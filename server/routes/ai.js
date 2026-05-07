@@ -6,7 +6,6 @@ import express from 'express';
 import { optionalAuth } from '../middleware/auth.js';
 import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
-import { searchFlights, cityToIata } from '../services/amadeus.js';
 import { searchEvents } from '../services/predicthq.js';
 import { scorepack } from '../services/scoring.js';
 import { smartFlightSearch } from '../services/smartSearch.js';
@@ -14,23 +13,6 @@ import supabase from '../db/supabase.js';
 
 const router = express.Router();
 
-// Cache IATA en mémoire (évite appels Amadeus redondants)
-// Ex: "Paris" → "CDG", "Tokyo" → "TYO"
-const iataCache = new Map();
-
-async function getIata(city) {
-  if (!city) return null;
-  const key = city.toLowerCase().trim();
-  if (iataCache.has(key)) return iataCache.get(key);
-  try {
-    const code = await cityToIata(city);
-    if (code) iataCache.set(key, code);
-    return code;
-  } catch (err) {
-    console.warn(`[Amadeus IATA] Ignoré pour ${city}: ${err.message}`);
-    return null;
-  }
-}
 
 // ---- POST /api/ai/analyze ----
 router.post('/analyze', aiChatLimiter, optionalAuth, async (req, res) => {
@@ -97,19 +79,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
     if (!departure)           return res.status(400).json({ error: 'date de départ requise' });
     if (!budget || budget <= 0) return res.status(400).json({ error: 'budget invalide' });
 
-    // Résolution IATA en parallèle (avec cache)
-    const [originIata, destIata] = await Promise.all([
-      getIata(origin),
-      getIata(destination)
-    ]);
-
-    // Feedback si codes IATA non trouvés
-    const iataWarnings = [];
-    if (!originIata)  iataWarnings.push(`Ville de départ "${origin}" non reconnue, vols réels indisponibles`);
-    if (!destIata)    iataWarnings.push(`Destination "${destination}" non reconnue, vols réels indisponibles`);
-
     // ---- RECHERCHE WEB (Tavily + IA) ----
-    // On remplace Amadeus par SmartSearch pour plus de réalisme et de fiabilité
+    // On utilise SmartSearch (Tavily) pour plus de réalisme et de fiabilité
     console.log(`✈️ Recherche de vols via SmartSearch (Web) pour ${destination}...`);
     
     const results = await Promise.allSettled([
@@ -179,8 +150,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       ...pack,
       flights_data: flights,
       events_data:  events,
-      score: scoreResult,
-      warnings: iataWarnings.length ? iataWarnings : undefined
+      score: scoreResult
     };
 
     // Sauvegarde si user connecté
@@ -213,8 +183,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       trip_id:       tripId,
       flights_found: flights.length,
       events_found:  events.length,
-      score:         scoreResult.total,
-      warnings:      iataWarnings.length ? iataWarnings : undefined
+      score:         scoreResult.total
     });
 
   } catch (err) {

@@ -337,7 +337,7 @@ export async function assemblePack({ destination, flights, events, mode, profile
     if (!t.destination) t.destination = dest;
   }
 
-  // Vols — données réelles si Amadeus a répondu, sinon estimées
+  // Vols — données réelles si SmartSearch a répondu, sinon estimées
   const volPriceEst = Math.round(budget * 0.15);
   const flightData = flights?.length
     ? [

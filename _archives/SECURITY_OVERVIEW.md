@@ -21,7 +21,7 @@ Chaque requête vers la base de données PostgreSQL (via Supabase) est protégé
 *   **Protection contre l'accès par ID** : Même si un utilisateur connaît l'ID d'un voyage d'autrui, le serveur bloque l'accès car le `user_id` ne correspondra pas.
 
 ## 4. Architecture Backend-Proxy
-*   **Étanchéité des Secrets** : Aucune clé d'API (Claude, Supabase, Amadeus) n'est exposée côté Frontend. 
+*   **Étanchéité des Secrets** : Aucune clé d'API (Claude, Supabase, Tavily) n'est exposée côté Frontend. 
 *   **Communication Sécurisée** : Le Frontend communique exclusivement avec le serveur Express via des en-têtes **Authorization: Bearer [JWT]**.
 *   **Supabase** : Le client Supabase est utilisé exclusivement côté serveur avec des permissions restreintes (Row Level Security).
 

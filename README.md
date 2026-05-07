@@ -39,8 +39,7 @@ Chaque voyage possède son identifiant unique. Générez un **lien de partage pu
 ### Intelligence Artificielle & APIs
 - **Multi-LLM Strategy** : Architecture résiliente basculant entre **Gemini 2.0 Flash**, **Claude 3.5 Sonnet** et **OpenRouter**.
 - **Tavily API** : Agentic Web Search (RAG) pour des données fraîches (vols, hôtels, activités).
-- **PredictHQ API** : Extraction optionnelle d'événements locaux (concerts, festivals).
-- **Amadeus API** : Support legacy pour la recherche de vols IATA (optionnel).
+- **PredictHQ API** : Extraction d'événements locaux réels (concerts, festivals).
 
 ---
 
@@ -49,7 +48,7 @@ Chaque voyage possède son identifiant unique. Générez un **lien de partage pu
 TripGenie est conçu pour ne jamais faillir :
 - **Survival Mode** : Si tous les services d'IA sont saturés, un mode de secours prend le relais avec des destinations "pépites" pré-validées.
 - **JSON Robustness** : Un parser intelligent assure que les réponses de l'IA sont toujours interprétées correctement, même en cas de formatage imparfait.
-- **Timeout Management** : Des garde-fous sur les services tiers (Tavily/Amadeus) garantissent une réponse fluide en moins de 10 secondes.
+- **Timeout Management** : Des garde-fous sur les services tiers (Tavily, PredictHQ) garantissent une réponse fluide en moins de 10 secondes.
 
 ---
 

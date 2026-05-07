@@ -13,7 +13,7 @@ Voici les textes rédigés que vous pouvez copier/coller directement dans votre 
 Dans le cadre de mon projet de certification TripGenie, j'ai développé de A à Z une interface utilisateur moderne et réactive en utilisant React.js. L'objectif était de créer une expérience utilisateur (UX) fluide, capable de gérer des temps d'attente liés à l'intelligence artificielle sans frustrer l'utilisateur.
 - **Développement de composants React isolés :** Création d'une interface de chat (ChatWidget) et de composants d'affichage pour les vols et hébergements (PackCard).
 - **Gestion d'état global avec Zustand :** Implémentation d'un store persistant pour conserver les données de recherche et les conversations, évitant ainsi la perte de données lors du rafraîchissement de la page ("Prop drilling").
-- **Orchestration asynchrone côté client :** Utilisation de l'API `fetch` pour interroger l'API Node.js et intégration de "Skeleton loaders" (animations de chargement dynamiques) pour faire patienter l'utilisateur pendant que le backend orchestre les requêtes IA et Amadeus.
+- **Orchestration asynchrone côté client :** Utilisation de l'API `fetch` pour interroger l'API Node.js et intégration de "Skeleton loaders" (animations de chargement dynamiques) pour faire patienter l'utilisateur pendant que le backend orchestre les requêtes IA et SmartSearch.
 - **Sécurisation :** Assainissement des données reçues de l'API pour éviter les failles XSS et gestion sécurisée des tokens de session.
 
 **2. Précisez les moyens utilisés :**
@@ -41,14 +41,14 @@ J'ai conçu et développé l'intégralité du front-end en autonomie totale.
 **1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :**
 Pour propulser l'application TripGenie, j'ai conçu un back-end robuste en Node.js/Express, dont le rôle principal est d'orchestrer intelligemment des APIs externes tout en garantissant l'intégrité des données en base.
 - **Création d'une API RESTful sécurisée :** Développement de routes Express pour gérer l'authentification, les recherches de voyages, et un système de votes (consensus). 
-- **Orchestration asynchrone d'APIs tierces :** Implémentation de requêtes parallèles (`Promise.allSettled`) vers l'API de vols (Amadeus), d'événements (PredictHQ) et les modèles de langage (Anthropic Claude, OpenRouter) pour réduire de moitié les temps de réponse.
+- **Orchestration asynchrone d'APIs tierces :** Implémentation de requêtes parallèles (`Promise.allSettled`) vers les services de recherche (Tavily/SmartSearch), d'événements (PredictHQ) et les modèles de langage (Anthropic Claude, OpenRouter) pour réduire de moitié les temps de réponse.
 - **Mécanismes de tolérance aux pannes (Mode Survie) :** Mise en place d'un système de "fallback" (bascule automatique) vers des modèles d'IA secondaires ou des données factices (Mocks) en cas d'erreur 429 (quota dépassé) des fournisseurs d'API, garantissant une disponibilité continue.
 - **Interaction Base de données & Sécurité :** Modélisation relationnelle stricte (UUID, ON DELETE CASCADE) et intégration avec PostgreSQL via Supabase. Validation stricte des données entrantes et assainissement (Regex) des réponses JSON capricieuses renvoyées par l'IA.
 
 **2. Précisez les moyens utilisés :**
 - Node.js, Express.js
 - Supabase (PostgreSQL), API JavaScript Supabase
-- APIs externes : Amadeus, PredictHQ, Anthropic (Claude), OpenRouter
+- APIs externes : Tavily (SmartSearch), PredictHQ, Anthropic (Claude), OpenRouter
 - Visual Studio Code, Git / GitHub
 - Postman et scripts CLI pour tester et valider les endpoints à 100%
 

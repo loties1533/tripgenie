@@ -124,7 +124,7 @@ export default function Home() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="mt-16 grid sm:grid-cols-3 gap-6 pb-16">
           {[
-            { emoji: '✈️', title: 'Vols réels',      desc: 'Prix live via Amadeus pour votre date exacte' },
+            { emoji: '✈️', title: 'Vols réels',      desc: 'Prix live via SmartSearch pour votre date exacte' },
             { emoji: '🏨', title: 'Hôtels vérifiés', desc: 'Données réelles Booking.com, notés et photographiés' },
             { emoji: '🎉', title: 'Événements live',  desc: 'Concerts, festivals et sorties sur vos dates' },
           ].map((f, i) => (
