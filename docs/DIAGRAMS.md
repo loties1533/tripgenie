@@ -45,28 +45,29 @@ sequenceDiagram
 Il montre ce que l'utilisateur peut faire sur l'application.
 
 ```mermaid
-usecaseDiagram
-    actor "Utilisateur" as U
-    actor "Administrateur" as A
+graph LR
+    U((Utilisateur))
+    A((Administrateur))
     
-    package TripGenie {
-      usecase "Discuter avec l'IA (Onboarding)" as UC1
-      usecase "Générer un Pack Voyage" as UC2
-      usecase "Voter pour des activités (👍/👎)" as UC3
-      usecase "S'authentifier (JWT)" as UC4
-      usecase "Consulter ses anciens voyages" as UC5
-      usecase "Partager un voyage" as UC6
-    }
+    subgraph TripGenie
+        UC1(Discuter avec l'IA - Onboarding)
+        UC2(Générer un Pack Voyage)
+        UC3(Voter pour des activités 👍/👎)
+        UC4(S'authentifier - JWT)
+        UC5(Consulter ses anciens voyages)
+        UC6(Partager un voyage)
+        UC7(Modérer les contenus)
+    end
     
-    U --> UC1
-    U --> UC2
-    U --> UC3
-    U --> UC4
-    U --> UC5
-    U --> UC6
+    U --- UC1
+    U --- UC2
+    U --- UC3
+    U --- UC4
+    U --- UC5
+    U --- UC6
     
-    A --|> U
-    A --> "Modérer les contenus"
+    A --- UC7
+    A -.-> U
 ```
 
 ---
