@@ -99,9 +99,40 @@ erDiagram
     }
 ```
 
-*   **Table `trips`** : Stocke l'itinéraire global. Relatif à un utilisateur (One-to-Many).
-*   **Table `trip_collaborators`** : Table de jonction (Many-to-Many) permettant à plusieurs utilisateurs de partager les droits d'édition sur un même voyage.
 *   **Table `trip_votes`** : Système de consensus. Lié strictement à `trips` via une clé étrangère (FK). Si le voyage est supprimé, les votes disparaissent (Cascade).
+
+### 4.1. Orchestration du flux (Diagramme de Séquence)
+
+Pour gérer la complexité des appels asynchrones vers l'IA et les APIs de données réelles, j'ai implémenté une orchestration centralisée côté Backend.
+
+```mermaid
+sequenceDiagram
+    participant U as Utilisateur (React)
+    participant S as Serveur Express
+    participant AI as IA (Claude/OpenRouter)
+    participant T as Tavily (SmartSearch)
+    participant P as PredictHQ (Events)
+    participant DB as Supabase (PostgreSQL)
+
+    U->>S: POST /api/ai/generate
+    Note over S: Déclenchement de l'orchestration
+    
+    par Recherche Web & IA
+        S->>T: searchWeb(query)
+        T-->>S: Résultats de recherche (Vols, Hôtels)
+    and Événements
+        S->>P: getEvents(destination)
+        P-->>S: Liste d'événements réels
+    end
+
+    S->>AI: assemblePack(Context + WebData + Events)
+    AI-->>S: JSON structuré (Itinéraire, Tagline)
+    
+    S->>DB: insert into trips (pack_data)
+    DB-->>S: Confirmation (trip_id)
+
+    S-->>U: Pack Complet + trip_id
+```
 
 ---
 

@@ -78,6 +78,7 @@ Ces fonctionnalités marchent mais ne sont pas prouvées. Pour le RNCP, **la pre
 | API sécurisée | Express + JWT + Helmet + Rate Limiting | ✅ |
 | Table Many-to-Many | `trip_collaborators` avec PK composée | ✅ |
 | Tolérance aux pannes | Mode Survie + Cascade de fallbacks IA | ✅ |
+| Conception | Diagrammes de Séquence & Use Case (`docs/DIAGRAMS.md`) | ✅ |
 
 ---
 
