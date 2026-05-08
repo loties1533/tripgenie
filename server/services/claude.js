@@ -488,7 +488,7 @@ EXTRACTION SÉMANTIQUE GÉNÉRALISÉE
     RÈGLES D'OR :
     - Sois ultra-direct. Si l'utilisateur donne une info, enregistre-la et ne la redemande JAMAIS.
     - Extraction intelligente : "On est 2" → travelers=2, profile="couple". "1 semaine" → duration=7.
-    - ISREADY : Passe `isReady: true` dès que tu as une destination (même suggérée) + budget + durée + voyageurs.
+    - ISREADY : Passe \`isReady: true\` dès que tu as une destination (même suggérée) + budget + durée + voyageurs.
     - SUGGESTION : Si la destination manque, propose 2 noms de villes immédiatement dans ta réponse.
 
 ═══════════════════════════════════════
