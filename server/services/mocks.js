@@ -69,14 +69,16 @@ export const MOCK_PACK = {
       items: [
         { time: "14:00", type: "activity", title: "Installation en Penthouse", description: "Accueil au champagne et briefing par votre majordome dédié.", price: "Inclus", duration: "1h" },
         { time: "20:00", type: "food", title: "Dîner Étoilé au SubliMotion", description: "L'expérience gastronomique la plus chère du monde, un voyage sensoriel unique.", price: "1500€", duration: "3h" }
-      ]
+      ],
+      plan_b: "En cas de fatigue, un dîner gastronomique peut être servi en toute intimité sur la terrasse de votre Penthouse."
     },
     { 
       day: 2, title: "Mer Azur & Yachting", subtitle: "Formentera Privée",
       items: [
         { time: "10:00", type: "activity", title: "Yacht Cruise", description: "Départ de la marina sur votre yacht privé vers les eaux turquoises de Formentera.", price: "2500€", duration: "8h" },
         { time: "22:00", type: "activity", title: "Table VIP au Pacha", description: "Accès prioritaire et table réservée au coeur du club le plus mythique du monde.", price: "500€", duration: "Toute la nuit" }
-      ]
+      ],
+      plan_b: "Si la mer est agitée, une visite privée de la vieille ville (Dalt Vila) avec un guide historien exclusif est organisée."
     }
   ],
   isMock: true

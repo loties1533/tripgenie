@@ -168,6 +168,17 @@ function ItineraryDay({ day }) {
                 </div>
               </div>
             ))}
+            
+            {/* Proactive Plan B */}
+            {day.plan_b && (
+              <div className="mt-4 p-3 rounded-xl bg-gold/5 border border-gold/10 flex gap-3">
+                <span className="text-lg">✨</span>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-gold uppercase tracking-wider">Alternative Proactive</p>
+                  <p className="text-xs text-muted leading-relaxed italic">{day.plan_b}</p>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -340,6 +351,12 @@ export default function PackResults() {
           <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
           <p className="text-xs text-muted mt-0.5">{activity.category || 'Culture'}</p>
           <p className="text-xs text-muted/80 mt-1 line-clamp-2 leading-relaxed">{activity.desc || activity.description}</p>
+          {activity.plan_b && (
+            <div className="mt-2 flex items-start gap-1.5 opacity-80">
+              <span className="text-[10px]">✨</span>
+              <p className="text-[10px] text-gold italic leading-tight">Alternative : {activity.plan_b}</p>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex justify-between items-center pt-2 border-t border-white/5">

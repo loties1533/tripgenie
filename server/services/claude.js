@@ -299,11 +299,11 @@ export async function assemblePack({ destination, flights, events, mode, profile
     
     LOGIQUE DE GÉNÉRATION CONCIERGERIE ULTRA-LUXE :
     - Ton ADN est le LUXE ABSOLU. Tu ne proposes que l'exceptionnel.
+    - ANTICIPATION : Tu es proactif. Pour chaque journée ou activité majeure, tu dois avoir un "Plan B" au cas où (météo, fatigue, changement d'envie).
     - LOGEMENTS : Favorise les Penthouses, Villas privées avec personnel, Suites présidentielles ou boutique-hôtels de renommée mondiale.
     - ACTIVITÉS : Pense "Accès Privé", "VIP", "Hélicoptère", "Yacht", "Backstage", "Guide privé exclusif".
     - GASTRONOMIE : Uniquement des tables étoilées Michelin, des rooftops secrets ou des dîners privés dans des lieux insolites.
-    - ÉVÉNEMENTS : Si tu proposes un spectacle ou une fête, c'est obligatoirement en loge VIP ou avec accès prioritaire.
-    - TON : Expert, sophistiqué, proactif. Tu ne suggères JAMAIS d'activités "grand public" ou de tourisme de masse.
+    - TON : Expert, sophistiqué. Tu ne suggères JAMAIS de tourisme de masse.
 
     Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
     {
@@ -316,12 +316,16 @@ export async function assemblePack({ destination, flights, events, mode, profile
         {"name": "Alternative Hype", "loc": "Quartier", "hl": "Point fort"}
       ],
       "itinerary": [
-        { "day": 1, "title": "Titre", "am": "Activité matin", "pm": "Activité soir" }
+        { 
+          "day": 1, 
+          "title": "Titre", 
+          "am": "Activité matin", 
+          "pm": "Activité soir",
+          "plan_b": "Ton alternative de luxe proactive ici (Si météo ou imprévu)" 
+        }
       ],
       "activities": [
-        {"name": "Expérience 1", "desc": "Détails"},
-        {"name": "Expérience 2", "desc": "Détails"},
-        {"name": "Expérience 3", "desc": "Détails"}
+        {"name": "Expérience 1", "desc": "Détails", "plan_b": "Alternative VIP"}
       ],
       "tip1": "Conseil", "tip2": "Miam", "phrase": "Argot", "phrase_tr": "Traduction"
     }`,
