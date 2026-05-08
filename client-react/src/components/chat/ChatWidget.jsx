@@ -298,18 +298,18 @@ export default function ChatWidget() {
       </div>
 
       {/* Input area */}
-      <div className="px-4 pb-4 pt-2 border-t border-parchment-dark dark:border-white/10">
-        <div className="flex gap-2 items-end">
+      <div className="px-4 pb-4 pt-2">
+        <div className="flex gap-2 items-end bg-white/60 dark:bg-ink-light/40 backdrop-blur-md border border-gold/20 rounded-2xl p-1 shadow-inner">
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Décris ton voyage idéal..."
+            placeholder="Confiez-moi vos envies de voyage..."
             rows={1}
-            className="flex-1 resize-none bg-white dark:bg-ink-light/80 border border-parchment-dark dark:border-white/10
-                       rounded-xl px-4 py-3 text-[14px] text-ink dark:text-parchment placeholder:text-muted
-                       focus:outline-none focus:border-gold/50 focus:ring-2 focus:ring-gold/10
+            className="flex-1 resize-none bg-transparent border-none
+                       px-4 py-3 text-[15px] text-ink dark:text-parchment placeholder:text-muted/60
+                       focus:outline-none focus:ring-0
                        transition-all duration-200 max-h-32 overflow-y-auto scroll-hide
                        leading-relaxed"
             style={{ minHeight: '48px' }}

@@ -11,17 +11,19 @@ function Hero() {
     <motion.section
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 1 }}
-      className="relative -mx-4 sm:-mx-8 -mt-8 mb-12 h-[450px] sm:h-[550px] flex items-center justify-center overflow-hidden">
+      transition={{ duration: 1.5, ease: "easeOut" }}
+      className="relative -mx-4 sm:-mx-8 -mt-24 mb-12 h-[70vh] min-h-[500px] flex items-center justify-center overflow-hidden">
       
-      {/* Background Image with Overlay */}
+      {/* Background Image with Cinematic Overlay */}
       <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-ink/30 z-10"></div>
         <img 
           src="/assets/hero.png" 
           alt="Travel Destinations" 
-          className="w-full h-full object-cover scale-105 animate-slow-zoom"
+          className="w-full h-[120%] object-cover scale-105 animate-slow-zoom"
+          style={{ transformOrigin: 'center 30%' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/40 to-ink dark:from-ink/80 dark:via-ink/60 dark:to-ink" />
+        <div className="absolute inset-0 z-20 bg-gradient-to-b from-ink/80 via-transparent to-bg dark:to-ink-deep" />
       </div>
 
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
@@ -29,29 +31,29 @@ function Hero() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-                     bg-gold/20 backdrop-blur-md border border-gold/30 text-gold text-sm font-medium mb-8
-                     animate-float">
+          className="inline-flex items-center gap-2 px-5 py-2 rounded-full
+                     bg-gold/10 backdrop-blur-md border border-gold/20 text-gold-light text-xs font-semibold tracking-widest uppercase mb-10
+                     animate-float shadow-glow-gold">
           <span className="animate-pulse-slow">✦</span>
-          Conciergerie Privée · Voyage Signature
+          Conciergerie Privée
         </motion.div>
 
         <motion.h1 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-6 drop-shadow-lg">
-          Votre Concierge IA
+          className="font-display text-5xl sm:text-7xl lg:text-8xl font-bold text-white leading-[1.05] mb-8 drop-shadow-2xl">
+          L'Excellence,
           <br />
-          <span className="text-gradient-gold italic font-serif">pour des escapades d'exception</span>
+          <span className="text-gradient-gold italic font-serif font-light">à votre service.</span>
         </motion.h1>
 
         <motion.p 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="text-lg sm:text-xl text-parchment/90 max-w-2xl mx-auto leading-relaxed font-light">
-          L'art du voyage sur-mesure, orchestré par l'intelligence. Confiez-nous vos envies, nous créons l'exception.
+          className="text-lg sm:text-2xl text-parchment/80 max-w-2xl mx-auto leading-relaxed font-light tracking-wide">
+          Confiez-nous vos aspirations. Notre intelligence artificielle orchestre vos voyages signatures avec la précision d'un majordome de palace.
         </motion.p>
       </div>
     </motion.section>
@@ -67,32 +69,32 @@ function ChatSection() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.5 }}
-      className="relative">
+      className="relative z-20 max-w-3xl mx-auto -mt-24">
 
       {/* Glow effect derrière le chat */}
-      <div className="absolute inset-0 -m-4 bg-gold/5 blur-2xl rounded-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-gold/10 blur-[100px] rounded-[3rem] pointer-events-none" />
 
-      <div className="relative glass rounded-3xl overflow-hidden border border-gold/20 shadow-card-lg"
-           style={{ height: 520 }}>
-        {/* Chat header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-parchment-dark dark:border-white/10
-                        bg-white/50 dark:bg-ink-light/50">
+      <div className="relative glass-premium rounded-[2.5rem] overflow-hidden shadow-2xl border-t border-gold/30"
+           style={{ height: 560 }}>
+        {/* Chat header Minimalist */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-gold/10
+                        bg-gradient-to-b from-white/40 to-transparent dark:from-ink-light/40">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-gold/20 border border-gold/40 flex items-center justify-center">
-              <span className="text-gold text-sm">✦</span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center shadow-glow-gold">
+              <span className="text-white text-lg">✦</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-ink dark:text-parchment leading-none">TripGenie Concierge</p>
-              <p className="text-xs text-sage flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sage inline-block" />
-                Service Premium · À votre écoute
+              <p className="text-base font-display font-bold text-ink dark:text-parchment leading-none tracking-wide">TripGenie Concierge</p>
+              <p className="text-[10px] uppercase tracking-widest text-gold mt-1.5 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-gold animate-pulse" />
+                À votre écoute
               </p>
             </div>
           </div>
           <button onClick={resetChat}
-            className="text-xs text-muted hover:text-ink dark:hover:text-parchment transition-colors
-                       hover:bg-parchment-dark dark:hover:bg-ink-light px-3 py-1.5 rounded-lg">
-            Nouveau chat
+            className="text-xs font-semibold uppercase tracking-wider text-muted hover:text-gold transition-colors
+                       px-4 py-2 rounded-full border border-transparent hover:border-gold/20 hover:bg-gold/5">
+            Nouvelle Requête
           </button>
         </div>
 

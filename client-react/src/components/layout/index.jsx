@@ -80,9 +80,15 @@ function LogOutIcon() {
 
 export function PageLayout({ children }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative overflow-hidden">
+      <div className="grain-overlay"></div>
+      
+      {/* Ambient Orbs */}
+      <div className="ambient-orb w-[600px] h-[600px] bg-gold/10 -top-40 -left-40"></div>
+      <div className="ambient-orb w-[500px] h-[500px] bg-sky/5 top-1/2 -right-20" style={{ animationDelay: '-5s' }}></div>
+
       <Header />
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 relative z-10">
         {children}
       </main>
     </div>
