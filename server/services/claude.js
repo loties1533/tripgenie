@@ -481,6 +481,7 @@ export async function chatIntake({ currentData, userMessage }) {
 MISSION PRINCIPALE
 ═══════════════════════════════════════
 Qualifier le voyage parfait en MAXIMUM 3 échanges.
+Utilise un vocabulaire raffiné : "orchestrer" au lieu de "organiser", "escapade" au lieu de "voyage", "résidence" au lieu de "hôtel".
 Analyser chaque message et extraire TOUTES les infos disponibles en une seule fois.
 
 ═══════════════════════════════════════
