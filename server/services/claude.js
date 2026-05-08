@@ -437,31 +437,55 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     },
     summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
-    hotels: (t.hotels || []).map((h, i) => ({
-      name: h.name || `Hôtel ${i+1}`,
-      location: h.loc || 'Centre',
-      stars: i === 0 && mode === 'luxury' ? 5 : 4,
-      price_per_night: `${Math.round(heberg/nights/(i+1))}€`,
-      highlights: h.hl || 'Excellent choix',
-      emoji: i === 0 ? '🏨' : '🏩'
-    })),
+    hotels: (t.hotels || []).map((h, i) => {
+      // Pour la démo VIP, on force des prix qui font rêver, ou "Sur Devis"
+      let priceStr = `${Math.round(heberg/nights/(i+1))}€`;
+      if (mode === 'luxury' || mode === 'party') {
+        priceStr = i === 0 ? 'Dès 850€/nuit' : 'Dès 600€/nuit';
+      }
+      return {
+        name: h.name || `Palace ${i+1}`,
+        location: h.loc || 'Emplacement Premium',
+        stars: (mode === 'luxury' || mode === 'party') ? 5 : 4,
+        price_per_night: priceStr,
+        highlights: h.hl || 'Choix du Concierge',
+        emoji: i === 0 ? '💎' : '🛎️',
+        match_reason: h.hl || 'Sélection Signature'
+      }
+    }),
     itinerary: (t.itinerary || []).map(d => ({
       day: d.day,
-      title: d.title || 'Journée découverte',
-      subtitle: mode === 'party' ? 'Vibe & Nightlife' : 'Exploration',
+      title: d.title || 'Journée d\'Exception',
+      subtitle: (mode === 'party' || mode === 'luxury') ? 'VIP Experience' : 'Exploration',
       items: [
-        { time: mode === 'party' ? '14:00' : '10:00', type: 'activity', title: d.am || 'Exploration', description: 'Découverte locale', price: 'gratuit', duration: '3h' },
-        { time: mode === 'party' ? '22:00' : '20:00', type: mode === 'party' ? 'event' : 'food', title: d.pm || 'Soirée', description: 'Moment mémorable', price: '40€', duration: '4h' }
+        { 
+          time: mode === 'party' ? '14:00' : '10:00', 
+          type: 'activity', 
+          title: d.am || 'Exploration VIP', 
+          description: 'Matinée orchestrée par votre majordome.', 
+          price: (mode === 'luxury' || mode === 'party') ? 'Privatisé' : 'Inclus', 
+          duration: '3h',
+          plan_b: d.plan_b
+        },
+        { 
+          time: mode === 'party' ? '22:00' : '20:00', 
+          type: mode === 'party' ? 'event' : 'food', 
+          title: d.pm || 'Dîner Signature', 
+          description: 'Accès exclusif et service sur-mesure.', 
+          price: (mode === 'luxury' || mode === 'party') ? 'Sur Liste' : 'Sur Réservation', 
+          duration: '4h' 
+        }
       ]
     })),
     activities: (t.activities || []).map((a, i) => ({
-      name: a.name || 'Activité',
-      category: i === 2 ? 'Nightlife' : 'Culture',
-      emoji: i === 2 ? '🎉' : '🏛',
-      description: a.desc || 'Incontournable',
+      name: a.name || 'Expérience Inédite',
+      category: i === 2 ? 'Nightlife VIP' : 'Accès Privé',
+      emoji: i === 2 ? '🍾' : (i === 1 ? '🛥️' : '🚁'),
+      description: a.desc || 'Une immersion totale.',
       duration: '3h',
-      price: '30€',
-      best_time: i === 2 ? 'Soir' : 'Matin'
+      price: (mode === 'luxury' || mode === 'party') ? 'Inclus VIP' : 'Dès 150€',
+      best_time: i === 2 ? 'Soir' : 'Matin',
+      plan_b: a.plan_b || null
     })),
     events: eventData,
     budget_breakdown: {
