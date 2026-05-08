@@ -230,10 +230,10 @@ export default function ChatWidget() {
       setTimeout(() => {
         addMessage({
           role:  'bot',
-          text:  'Salut ! Je suis TripGenie ✨ Pour commencer, avec qui pars-tu ?',
-          chips: ['Solo 🎒', 'En couple ❤️', 'Amis 🍻', 'Famille 👨‍👩‍👧']
+          text:  'Bienvenue chez TripGenie Concierge ✨ Je suis votre majordome de voyage dédié. Pour commencer à orchestrer votre escapade, avec qui voyagez-vous ?',
+          chips: ['Voyage Solo 🎒', 'En couple ❤️', 'Amis 🥂', 'Famille 👨‍👩‍👧']
         })
-      }, 600)
+      }, 1000)
     }
   }, [])
 
@@ -340,8 +340,9 @@ export default function ChatWidget() {
 
 function SendIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M14 8L2 2l2 6-2 6 12-6z" fill="currentColor"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
     </svg>
   )
 }

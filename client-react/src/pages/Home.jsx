@@ -30,9 +30,10 @@ function Hero() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-                     bg-gold/20 backdrop-blur-md border border-gold/30 text-gold text-sm font-medium mb-8">
+                     bg-gold/20 backdrop-blur-md border border-gold/30 text-gold text-sm font-medium mb-8
+                     animate-float">
           <span className="animate-pulse-slow">✦</span>
-          Expertise IA · Voyages d'exception
+          Conciergerie Privée · Voyage Signature
         </motion.div>
 
         <motion.h1 
@@ -40,9 +41,9 @@ function Hero() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
           className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-6 drop-shadow-lg">
-          Votre itinéraire parfait,
+          Votre Concierge IA
           <br />
-          <span className="text-gold italic font-serif">créé en secondes</span>
+          <span className="text-gradient-gold italic font-serif">pour des escapades d'exception</span>
         </motion.h1>
 
         <motion.p 
@@ -50,7 +51,7 @@ function Hero() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
           className="text-lg sm:text-xl text-parchment/90 max-w-2xl mx-auto leading-relaxed font-light">
-          Décrivez votre voyage idéal. TripGenie s'occupe du reste : destination, vols, hôtels et activités sur-mesure.
+          L'art du voyage sur-mesure, orchestré par l'intelligence. Confiez-nous vos envies, nous créons l'exception.
         </motion.p>
       </div>
     </motion.section>
@@ -81,10 +82,10 @@ function ChatSection() {
               <span className="text-gold text-sm">✦</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-ink dark:text-parchment leading-none">TripGenie</p>
+              <p className="text-sm font-semibold text-ink dark:text-parchment leading-none">TripGenie Concierge</p>
               <p className="text-xs text-sage flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-sage inline-block" />
-                En ligne · Expert voyage IA
+                Service Premium · À votre écoute
               </p>
             </div>
           </div>
@@ -124,16 +125,16 @@ export default function Home() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="mt-16 grid sm:grid-cols-3 gap-6 pb-16">
           {[
-            { emoji: '✈️', title: 'Vols réels',      desc: 'Prix live via SmartSearch pour votre date exacte' },
-            { emoji: '🏨', title: 'Hôtels vérifiés', desc: 'Données réelles Booking.com, notés et photographiés' },
-            { emoji: '🎉', title: 'Événements live',  desc: 'Concerts, festivals et sorties sur vos dates' },
+            { emoji: '💎', title: 'Curation d\'Exception', desc: 'Une sélection rigoureuse des meilleurs établissements mondiaux' },
+            { emoji: '🤵', title: 'Service Signature',    desc: 'Un assistant dédié qui comprend vos préférences implicites' },
+            { emoji: '✨', title: 'Expériences Uniques',   desc: 'Événements privés et lieux secrets pour un voyage mémorable' },
           ].map((f, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 + i * 0.1 }}
-              className="glass rounded-2xl p-5 text-center group hover:border-gold/30 transition-all duration-300">
-              <div className="text-3xl mb-3">{f.emoji}</div>
-              <h3 className="font-semibold text-ink dark:text-parchment mb-1">{f.title}</h3>
-              <p className="text-sm text-muted leading-relaxed">{f.desc}</p>
+              className="glass-premium rounded-2xl p-6 text-center group hover:border-gold/50 transition-all duration-500 shine-effect">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-500">{f.emoji}</div>
+              <h3 className="font-display text-xl font-bold text-ink dark:text-parchment mb-2 group-hover:text-gold transition-colors">{f.title}</h3>
+              <p className="text-sm text-muted leading-relaxed italic">{f.desc}</p>
             </motion.div>
           ))}
         </motion.section>

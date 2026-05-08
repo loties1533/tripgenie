@@ -46,36 +46,36 @@ export const MOCK_DESTINATIONS = {
 export const MOCK_PACK = {
   destination: "Ibiza",
   country: "Espagne",
-  tagline: "L'île Blanche : Entre Rythme Effréné et Calme Azur",
-  overview: "Ibiza n'est pas qu'une île de fête. C'est un joyau des Baléares où les eaux cristallines rencontrent une architecture bohème-chic. Pour votre groupe, c'est le mix parfait entre luxe décontracté et soirées inoubliables.",
-  weather: { avg_temp: "26°C", conditions: "Soleil radieux", tip: "N'oubliez pas vos lunettes de soleil et une tenue élégante pour le soir." },
-  summary: { total_budget: "8000€", nights: 7, activities_count: 12 },
+  tagline: "L'île Blanche : L'Exclusivité entre Terre et Mer",
+  overview: "Ibiza Redéfinie. Oubliez la foule, nous vous emmenons là où le luxe rencontre l'âme bohème de l'île. Villas privées, accès VIP et expériences secrètes : votre voyage signature commence ici.",
+  weather: { avg_temp: "26°C", conditions: "Soleil radieux", tip: "Prévoyez vos tenues les plus élégantes pour les beach clubs exclusifs." },
+  summary: { total_budget: "12000€", nights: 7, activities_count: 12 },
   activities: [
-    { name: "Plage de Pampelonne", desc: "Le spot mythique pour bronzer et voir du monde." },
-    { name: "Place des Lices", desc: "Partie de pétanque et marché provençal." },
-    { name: "Citadelle de Saint-Tropez", desc: "Vue imprenable sur tout le golfe." }
+    { name: "Charter de Yacht Privé", desc: "Journée exclusive vers Formentera sur un yacht de 25m avec skipper et chef privé." },
+    { name: "Dîner Spectacle au Lío", desc: "La table la plus convoitée de l'île, entre cabaret haut de gamme et gastronomie." },
+    { name: "Coucher de soleil à Es Vedrà", desc: "Accès privé à une plateforme panoramique secrète loin des touristes." }
   ],
   flights: [
-    { from: "BOD", from_city: "Bordeaux", to: "NCE", to_city: "Nice", departure_time: "10:15", arrival_time: "12:00", duration: "1h45", stops: "Direct", airline: "Air France", price_per_person: "145€", type: "outbound" },
-    { from: "NCE", from_city: "Nice", to: "BOD", to_city: "Bordeaux", departure_time: "18:30", arrival_time: "20:15", duration: "1h45", stops: "Direct", airline: "Air France", price_per_person: "145€", type: "return" }
+    { from: "PAR", from_city: "Paris", to: "IBZ", to_city: "Ibiza", departure_time: "10:15", arrival_time: "12:30", duration: "2h15", stops: "Direct", airline: "Air France (Business Class)", price_per_person: "450€", type: "outbound" },
+    { from: "IBZ", from_city: "Ibiza", to: "PAR", to_city: "Paris", departure_time: "18:30", arrival_time: "20:45", duration: "2h15", stops: "Direct", airline: "Air France (Business Class)", price_per_person: "450€", type: "return" }
   ],
   hotels: [
-    { name: "Hôtel Byblos", location: "Centre", stars: 5, price_per_night: "850€", highlights: "La légende de Saint-Tropez, piscine mythique et club Caves du Roy.", emoji: "🏨", match_reason: "Le summum du luxe festif" },
-    { name: "Hôtel de Paris", location: "Port", stars: 5, price_per_night: "550€", highlights: "Rooftop avec piscine transparente et vue sur le port.", emoji: "🏩", match_reason: "Design moderne et vue mer" }
+    { name: "Six Senses Ibiza", location: "Cala Xarraca", stars: 5, price_per_night: "1250€", highlights: "Retraite spirituelle ultra-luxe, spa de renommée mondiale et villas avec piscine privée.", emoji: "💎", match_reason: "Le summum de l'exclusivité et du bien-être" },
+    { name: "Nobu Hotel Ibiza Bay", location: "Talamanca", stars: 5, price_per_night: "950€", highlights: "Design raffiné, restaurants gastronomiques et accès direct à la marina.", emoji: "🏩", match_reason: "Élégance moderne et service signature" }
   ],
   itinerary: [
     { 
-      day: 1, title: "Arrivée & Sunset Chill", subtitle: "Bienvenue sur l'île",
+      day: 1, title: "Arrivée & Transfert Privé", subtitle: "Immersion Immédiate",
       items: [
-        { time: "14:00", type: "activity", title: "Installation au Nobu", description: "Cocktail de bienvenue face à la baie.", price: "Inclus", duration: "1h" },
-        { time: "19:00", type: "food", title: "Dîner au Blue Marlin", description: "Le beach club mythique pour démarrer en douceur.", price: "80€", duration: "3h" }
+        { time: "14:00", type: "activity", title: "Installation en Penthouse", description: "Accueil au champagne et briefing par votre majordome dédié.", price: "Inclus", duration: "1h" },
+        { time: "20:00", type: "food", title: "Dîner Étoilé au SubliMotion", description: "L'expérience gastronomique la plus chère du monde, un voyage sensoriel unique.", price: "1500€", duration: "3h" }
       ]
     },
     { 
-      day: 2, title: "Exploration des Calas", subtitle: "Eaux turquoise",
+      day: 2, title: "Mer Azur & Yachting", subtitle: "Formentera Privée",
       items: [
-        { time: "10:00", type: "activity", title: "Cala Salada", description: "Baignade dans l'une des plus belles criques de l'île.", price: "Gratuit", duration: "4h" },
-        { time: "20:00", type: "activity", title: "Datcha Night", description: "Première immersion dans la vie nocturne locale.", price: "50€", duration: "Toute la nuit" }
+        { time: "10:00", type: "activity", title: "Yacht Cruise", description: "Départ de la marina sur votre yacht privé vers les eaux turquoises de Formentera.", price: "2500€", duration: "8h" },
+        { time: "22:00", type: "activity", title: "Table VIP au Pacha", description: "Accès prioritaire et table réservée au coeur du club le plus mythique du monde.", price: "500€", duration: "Toute la nuit" }
       ]
     }
   ],
