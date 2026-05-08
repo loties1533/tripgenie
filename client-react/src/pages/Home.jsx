@@ -165,15 +165,21 @@ function TripConcepts() {
             onClick={() => handleSelect(c)}
             className="group cursor-pointer relative h-[450px] rounded-3xl overflow-hidden shadow-2xl border border-gold/20 hover:border-gold/60 transition-all duration-500 hover:-translate-y-2">
             
-            {/* Image (On simule avec Unsplash via keyword) */}
+            {/* Image (Images Premium garanties pour la démo) */}
             <div className="absolute inset-0 bg-ink">
               <img 
-                src={`https://source.unsplash.com/800x1200/?${encodeURIComponent(c.image_prompt || c.city + ' luxury')}`} 
+                src={[
+                  "https://images.unsplash.com/photo-1515238152791-8226bf1f6643?auto=format&fit=crop&w=800&q=80",
+                  "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=800&q=80",
+                  "https://images.unsplash.com/photo-1542314831-c6a420325142?auto=format&fit=crop&w=800&q=80",
+                  "https://images.unsplash.com/photo-1563911302283-d2bc129e7570?auto=format&fit=crop&w=800&q=80"
+                ][i % 4]} 
                 alt={c.city} 
                 className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
             </div>
+
 
             {/* Content */}
             <div className="absolute inset-0 p-8 flex flex-col justify-end">
