@@ -344,42 +344,50 @@ export default function PackResults() {
   )
 
   const LocalActivityCard = ({ activity }) => (
-    <div className="glass rounded-xl p-4 flex flex-col gap-3">
-      <div className="flex gap-3">
-        <span className="text-2xl">{activity.emoji || '🎯'}</span>
+    <div className="glass rounded-xl p-5 flex flex-col gap-4 hover:border-gold/40 transition-colors shadow-sm">
+      <div className="flex gap-4">
+        <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center flex-shrink-0 border border-gold/20">
+          <span className="text-2xl">{activity.emoji || '🎯'}</span>
+        </div>
         <div className="flex-1">
-          <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
-          <p className="text-xs text-muted mt-0.5">{activity.category || 'Culture'}</p>
-          <p className="text-xs text-muted/80 mt-1 line-clamp-2 leading-relaxed">{activity.desc || activity.description}</p>
+          <p className="font-display font-bold text-lg text-ink dark:text-parchment leading-tight">{activity.name}</p>
+          <p className="text-xs text-gold font-semibold uppercase tracking-widest mt-1">{activity.category || 'Expérience'}</p>
+          <p className="text-sm text-muted/90 mt-2 leading-relaxed">{activity.desc || activity.description}</p>
           {activity.plan_b && (
-            <div className="mt-2 flex items-start gap-1.5 opacity-80">
-              <span className="text-[10px]">✨</span>
-              <p className="text-[10px] text-gold italic leading-tight">Alternative : {activity.plan_b}</p>
+            <div className="mt-3 p-2 bg-gold/5 rounded-lg border border-gold/10 flex items-start gap-2">
+              <span className="text-sm">✨</span>
+              <div>
+                <p className="text-[10px] text-gold font-bold uppercase tracking-wider">Plan B Proactif</p>
+                <p className="text-xs text-muted italic leading-tight mt-0.5">{activity.plan_b}</p>
+              </div>
             </div>
           )}
         </div>
       </div>
-      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+      <div className="flex justify-between items-center pt-3 border-t border-parchment-dark dark:border-white/10 mt-auto">
         <div className="flex gap-2">
-          <button 
-            onClick={() => handleLocate(activity.name)}
-            className="text-[10px] uppercase tracking-wider font-bold text-gold/60 hover:text-gold flex items-center gap-1 transition-colors"
-          >
-            📍 Carte
-          </button>
           <a 
-            href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] uppercase tracking-wider font-bold text-sage/60 hover:text-sage flex items-center gap-1 transition-colors"
+            className="text-[11px] font-semibold text-ink dark:text-parchment bg-parchment-dark dark:bg-ink-light hover:bg-gold hover:text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
           >
-            ↗ Détails
+            📍 Carte
+          </a>
+          <a 
+            href={`https://www.google.com/search?q=${encodeURIComponent('site officiel ' + activity.name + ' ' + d.destination)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
+          >
+            Réserver ↗
           </a>
         </div>
         <VoteButtons tripId={d.id} itemId={activity.name} />
       </div>
     </div>
   )
+
 
   return (
     <motion.div id="pack-results" className="mt-10 space-y-5"

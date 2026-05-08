@@ -42,10 +42,6 @@ function Message({ msg }) {
             ))}
           </div>
         )}
-        {/* Destinations */}
-        {isBot && msg.destinations?.length > 0 && (
-          <DestinationCards destinations={msg.destinations} />
-        )}
       </div>
     </motion.div>
   )
@@ -75,40 +71,7 @@ function ChipButton({ label, msgId }) {
   )
 }
 
-// ---- Destination suggestion cards ----
-function DestinationCards({ destinations }) {
-  const { addMessage, chatData, setTyping } = useChatStore()
-  const { setLoading, setPack, setField } = useSearchStore()
-
-  const pick = async (dest) => {
-    addMessage({ role: 'user', text: `${dest.city}, ${dest.country}` })
-    addMessage({ role: 'bot', text: `Excellent choix ! 🚀 Je génère ton pack pour **${dest.city}**...` })
-    await launchGeneration(dest.city, chatData, { setLoading, setPack, setField, addMessage, setTyping })
-  }
-
-  return (
-    <div className="flex flex-col gap-2 w-full mt-1">
-      {destinations.slice(0, 3).map((d, i) => (
-        <motion.button key={i} onClick={() => pick(d)}
-          initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.08 }}
-          className="text-left p-3 rounded-xl border border-gold/20 bg-white/60 dark:bg-ink-light/60
-                     hover:border-gold/60 hover:bg-gold/5 transition-all duration-200 group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-medium text-ink dark:text-parchment text-sm">{d.city}</span>
-              <span className="text-muted text-xs ml-1.5">{d.country}</span>
-            </div>
-            <span className="text-xs font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded-full">
-              {d.match_score}%
-            </span>
-          </div>
-          <p className="text-xs text-muted mt-1 line-clamp-1">{d.reason}</p>
-        </motion.button>
-      ))}
-    </div>
-  )
-}
+// L'ancien composant DestinationCards a été supprimé pour faire place à TripConcepts
 
 // ---- Core business logic (outside component to avoid re-creation) ----
 async function processUserMessage(value, ctx) {
@@ -160,11 +123,7 @@ async function suggestDestinations(chatData, ctx) {
     setTyping(false)
     const dests = res.destinations || []
     if (dests.length) {
-      addMessage({
-        role: 'bot',
-        text: `Voilà ${dests.length} destinations parfaites pour vous ✨ Laquelle vous fait rêver ?`,
-        destinations: dests
-      })
+      setField('concepts', dests)
     } else {
       addMessage({ role: 'bot', text: 'Je génère votre pack directement !', chips: [] })
       if (chatData.destination) {

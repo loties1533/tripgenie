@@ -221,25 +221,29 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
 
     const raw = await callAI(
       `CONTEXTE WEB RÉCENT : ${webContext}
-      MISSION : Suggère 3 destinations parfaites pour un voyage en ${month}.
+      MISSION : Suggère 3 "Concepts de Voyage" d'exception pour un séjour en ${month}.
       PROFIL : ${profile}, MODE : ${mode}.
-      BUDGET : ${budget >= 10000 ? 'LUXE / ILLIMITÉ' : budget + '€'}.
+      BUDGET : ${budget >= 10000 ? 'LUXE / ILLIMITÉ' : budget + '€'} (Pour ${travelers} pers).
       
-      STRATÉGIE : 2 destinations CLASSIQUES + 1 destination PÉPITE (Hidden Gem).
-      1. Si BUDGET >= 10000 : Ton ton doit être VIP/Prestigieux. INTERDICTION de parler de "gratuit".
-      2. Si MODE = PARTY : Focus sur la vie nocturne mondiale.
+      STRATÉGIE : Propose 3 options très contrastées (ex: 1. Iconique, 2. Joyau Caché, 3. Tendance).
+      Ton ton doit être VIP/Prestigieux.
       
-      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi ce spot est parfait (Mentionne explicitement si c'est la PÉPITE).", "match_score": 95}]}`,
+      FORMAT JSON : {"destinations": [{"city": "Nom de la ville", "country": "Pays", "tagline": "Accroche luxueuse très courte", "vibe": "Ambiance (ex: Chic & Électrique)", "budget_estimate": "Prix estimé en €", "reason": "Pourquoi c'est l'expérience parfaite", "image_prompt": "Un mot clé anglais pour la photo (ex: monaco luxury yacht)"}]}`,
       undefined,
       'destinations'
     );
     return parseJSON(raw);
   } catch (err) {
     console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', err.message);
-    return Mocks.MOCK_DESTINATIONS;
+    return {
+      destinations: [
+        { city: "Cannes", country: "France", tagline: "Le joyau de la Riviera", vibe: "Glamour & Yachting", budget_estimate: "4500€", reason: "Idéal pour allier fête prestigieuse et luxe méditerranéen.", image_prompt: "cannes croisette luxury" },
+        { city: "Saint-Tropez", country: "France", tagline: "L'iconique village", vibe: "Fête VIP & Plages privées", budget_estimate: "6000€", reason: "La référence absolue pour un week-end romantique et exclusif.", image_prompt: "saint tropez port" },
+        { city: "Ibiza", country: "Espagne", tagline: "L'île blanche", vibe: "Bohème Chic", budget_estimate: "5000€", reason: "Pour des couchers de soleil inoubliables en villa privée.", image_prompt: "ibiza luxury villa sunset" }
+      ]
+    };
   }
 }
-
 
 export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context = 'onboarding') {
   let errors = [];

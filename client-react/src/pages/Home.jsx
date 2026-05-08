@@ -108,21 +108,118 @@ function ChatSection() {
 }
 
 // =============================================
+// TRIP CONCEPTS (Vitrine)
+// =============================================
+function TripConcepts() {
+  const { concepts, setField, setLoading, setPack } = useSearchStore()
+  const { chatData, addMessage, setTyping } = useChatStore()
+
+  if (!concepts) return null
+
+  const handleSelect = async (dest) => {
+    // Relance la génération complète depuis ici
+    setField('concepts', null) // on cache les concepts
+    setLoading(true)
+    addMessage({ role: 'bot', text: `Excellent choix ! 🚀 Je génère ton pack VIP pour **${dest.city}**...` })
+    
+    // Fake the launchGeneration logic here or call an API directly
+    try {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination: dest.city,
+          origin:      chatData.origin || 'Paris',
+          departure:   chatData.departure || new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10),
+          budget:      chatData.budget || 5000,
+          travelers:   chatData.travelers || 2,
+          mode:        chatData.mode || 'luxury'
+        })
+      })
+      const data = await res.json()
+      if (data.pack) {
+        setPack(data.pack, data.trip_id)
+      } else {
+        throw new Error("No pack data")
+      }
+    } catch (err) {
+      setLoading(false)
+      addMessage({ role: 'bot', text: 'Erreur lors de la création du pack. Réessaie !' })
+    }
+  }
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+      className="relative z-20 max-w-6xl mx-auto -mt-24 px-4 pb-20">
+      
+      <div className="text-center mb-10">
+        <h2 className="font-display text-4xl text-ink dark:text-parchment font-bold mb-3">Vos Concepts de Voyage</h2>
+        <p className="text-muted text-lg">Choisissez la toile de fond de votre prochaine aventure.</p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {concepts.map((c, i) => (
+          <motion.div key={i}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.2 }}
+            onClick={() => handleSelect(c)}
+            className="group cursor-pointer relative h-[450px] rounded-3xl overflow-hidden shadow-2xl border border-gold/20 hover:border-gold/60 transition-all duration-500 hover:-translate-y-2">
+            
+            {/* Image (On simule avec Unsplash via keyword) */}
+            <div className="absolute inset-0 bg-ink">
+              <img 
+                src={`https://source.unsplash.com/800x1200/?${encodeURIComponent(c.image_prompt || c.city + ' luxury')}`} 
+                alt={c.city} 
+                className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
+            </div>
+
+            {/* Content */}
+            <div className="absolute inset-0 p-8 flex flex-col justify-end">
+              <span className="text-gold font-bold tracking-widest uppercase text-[10px] mb-2 drop-shadow-md">{c.country}</span>
+              <h3 className="font-display text-4xl text-white font-bold mb-1 leading-none">{c.city}</h3>
+              <p className="text-parchment/80 italic font-serif text-lg mb-4">{c.tagline || c.reason}</p>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted">Budget estimé</p>
+                  <p className="text-gold font-bold text-lg">{c.budget_estimate || 'Sur devis'}</p>
+                </div>
+                <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-gold transition-colors">
+                  ↗
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </motion.section>
+  )
+}
+
+// =============================================
 // HOME PAGE
 // =============================================
 export default function Home() {
-  const { pack, isLoading } = useSearchStore()
+  const { pack, concepts, isLoading } = useSearchStore()
 
   return (
     <PageLayout>
       <Hero />
-      <ChatSection />
       
+      {/* N'afficher le chat que si on n'a ni concepts ni pack */}
+      {!concepts && !pack && !isLoading && <ChatSection />}
+      
+      {/* Afficher les concepts si on en a */}
+      {concepts && !isLoading && <TripConcepts />}
+
+      {/* Afficher le pack une fois généré */}
       {isLoading && <PackSkeleton />}
       {pack && !isLoading && <PackResults />}
 
-      {/* Features section (si pas de pack affiché) */}
-      {!pack && (
+      {/* Features section (si pas de pack ni concepts) */}
+      {!pack && !concepts && (
         <motion.section
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="mt-16 grid sm:grid-cols-3 gap-6 pb-16">

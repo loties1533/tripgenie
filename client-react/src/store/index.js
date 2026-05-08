@@ -18,6 +18,7 @@ export const useSearchStore = create(
       prefs:       [],
 
       // Results
+      concepts:    null,
       pack:        null,
       tripId:      null,
       isLoading:   false,
