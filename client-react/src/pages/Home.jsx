@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
@@ -5,28 +6,92 @@ import PackResults from '../components/results/PackResults'
 import PackSkeleton from '../components/results/PackSkeleton'
 import { useSearchStore, useChatStore } from '../store'
 
+const HERO_SLIDES = [
+  {
+    img: "https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=1920&q=90",
+    city: "Côte d'Azur",
+    label: "L'Excellence méditerranéenne"
+  },
+  {
+    img: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1920&q=90",
+    city: "Maldives",
+    label: "L'île de tous les rêves"
+  },
+  {
+    img: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1920&q=90",
+    city: "Amalfi",
+    label: "L'élégance italienne"
+  },
+  {
+    img: "https://images.unsplash.com/photo-1559494007-9f5847c49d94?auto=format&fit=crop&w=1920&q=90",
+    city: "Mykonos",
+    label: "La fête en blanc et or"
+  },
+  {
+    img: "https://images.unsplash.com/photo-1499856844078-53e0f0c4ee5c?auto=format&fit=crop&w=1920&q=90",
+    city: "Paris",
+    label: "L'éternel raffinement"
+  }
+]
+
 // ---- Hero section ----
 function Hero() {
+  const [current, setCurrent] = useState(0)
+  const [fading, setFading] = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFading(true)
+      setTimeout(() => {
+        setCurrent(prev => (prev + 1) % HERO_SLIDES.length)
+        setFading(false)
+      }, 800)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const slide = HERO_SLIDES[current]
+
   return (
     <motion.section
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1.5, ease: "easeOut" }}
-      className="relative -mx-4 sm:-mx-8 -mt-24 mb-12 h-[70vh] min-h-[500px] flex items-center justify-center overflow-hidden">
-      
-      {/* Background Image with Cinematic Overlay */}
+      className="relative -mx-4 sm:-mx-8 -mt-24 mb-12 h-[90vh] min-h-[600px] flex items-center justify-center overflow-hidden">
+
+      {/* Slideshow Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-ink/30 z-10"></div>
-        <img 
-          src="/assets/hero.png" 
-          alt="Travel Destinations" 
-          className="w-full h-[120%] object-cover scale-105 animate-slow-zoom"
-          style={{ transformOrigin: 'center 30%' }}
+        <img
+          key={current}
+          src={slide.img}
+          alt={slide.city}
+          className={`w-full h-full object-cover scale-105 animate-slow-zoom transition-opacity duration-[800ms] ${fading ? 'opacity-0' : 'opacity-100'}`}
+          style={{ transformOrigin: 'center 40%' }}
         />
-        <div className="absolute inset-0 z-20 bg-gradient-to-b from-ink/80 via-transparent to-bg dark:to-ink-deep" />
+        {/* Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/30 to-ink/60 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink/40 via-transparent to-ink/40 z-10" />
       </div>
 
-      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+      {/* Slide Indicators */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+        {HERO_SLIDES.map((_, i) => (
+          <button key={i} onClick={() => setCurrent(i)}
+            className={`h-0.5 rounded-full transition-all duration-500 ${i === current ? 'w-8 bg-gold' : 'w-3 bg-white/30'}`}
+          />
+        ))}
+      </div>
+
+      {/* Current Location Label */}
+      <motion.div
+        key={current + 'label'}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className="absolute top-1/2 left-8 z-20 -rotate-90 origin-left hidden lg:block">
+        <span className="text-[10px] uppercase tracking-[0.3em] text-white/50 font-semibold">{slide.city}</span>
+      </motion.div>
+
+      {/* Content */}
+      <div className="relative z-20 text-center px-4 max-w-5xl mx-auto">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -38,27 +103,41 @@ function Hero() {
           Conciergerie Privée
         </motion.div>
 
-        <motion.h1 
-          initial={{ y: 20, opacity: 0 }}
+        <motion.h1
+          initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="font-display text-5xl sm:text-7xl lg:text-8xl font-bold text-white leading-[1.05] mb-8 drop-shadow-2xl">
+          className="font-display text-5xl sm:text-7xl lg:text-[6rem] font-bold text-white leading-[1.0] mb-8 drop-shadow-2xl">
           L'Excellence,
           <br />
           <span className="text-gradient-gold italic font-serif font-light">à votre service.</span>
         </motion.h1>
 
-        <motion.p 
+        <motion.p
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="text-lg sm:text-2xl text-parchment/80 max-w-2xl mx-auto leading-relaxed font-light tracking-wide">
-          Confiez-nous vos aspirations. Notre intelligence artificielle orchestre vos voyages signatures avec la précision d'un majordome de palace.
+          className="text-xl sm:text-2xl text-parchment/70 max-w-2xl mx-auto leading-relaxed font-light tracking-wide">
+          {slide.label}
         </motion.p>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-10 flex justify-center">
+          <button
+            onClick={() => document.getElementById('chat-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="flex items-center gap-2 text-parchment/70 hover:text-gold text-sm tracking-widest uppercase transition-colors animate-bounce-slow">
+            <span>Commencer</span>
+            <span className="text-lg">↓</span>
+          </button>
+        </motion.div>
       </div>
     </motion.section>
   )
 }
+
 
 // ---- Chat section ----
 function ChatSection() {
@@ -69,7 +148,7 @@ function ChatSection() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.5 }}
-      className="relative z-20 max-w-3xl mx-auto -mt-24">
+      className="relative z-20 max-w-3xl mx-auto -mt-24" id="chat-section">
 
       {/* Glow effect derrière le chat */}
       <div className="absolute inset-0 bg-gold/10 blur-[100px] rounded-[3rem] pointer-events-none" />

@@ -242,3 +242,20 @@
   0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
   100% { transform: translate(50px, -50px) scale(1.2); opacity: 0.6; }
 }
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+.animate-bounce-slow {
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+/* ---- Pulse slow ---- */
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-slow {
+  animation: pulseSlow 3s ease-in-out infinite;
+}
