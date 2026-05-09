@@ -189,10 +189,10 @@ export default function ChatWidget() {
       setTimeout(() => {
         addMessage({
           role:  'bot',
-          text:  'Bienvenue chez TripGenie Concierge ✨ C\'est un honneur de vous accompagner. Pour que je puisse orchestrer une expérience à votre image, dites-moi : avec qui partagez-vous ce voyage ?',
-          chips: ['Évasion en Solitaire 🎒', 'Escapade Romantique ❤️', 'Retraite entre Pairs 🍻', 'Voyage de Famille 👨‍👩‍👧']
+          text:  'Bienvenue. ✦ Je suis votre Concierge Privé TripGenie. Quelques questions suffisent pour orchestrer une expérience à la hauteur de vos aspirations. Quelle est l\'occasion de cette escapade ?',
+          chips: ['Duo Romantique 💑', 'Entre Amis 🥂', 'En Famille 👨‍👩‍👧', 'Solo & Liberté 🌍']
         })
-      }, 1000)
+      }, 800)
     }
   }, [])
 
