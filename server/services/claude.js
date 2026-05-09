@@ -227,8 +227,9 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
       
       STRATÉGIE : Propose 3 options très contrastées (ex: 1. Iconique, 2. Joyau Caché, 3. Tendance).
       Ton ton doit être VIP/Prestigieux.
+      IMPORTANT : budget_estimate doit être un vrai montant en chiffres et symbole euro (ex: "4 500€" ou "12 000€"). JAMAIS de symboles répétés type "€€€".
       
-      FORMAT JSON : {"destinations": [{"city": "Nom de la ville", "country": "Pays", "tagline": "Accroche luxueuse très courte", "vibe": "Ambiance (ex: Chic & Électrique)", "budget_estimate": "Prix estimé en €", "reason": "Pourquoi c'est l'expérience parfaite", "image_prompt": "Un mot clé anglais pour la photo (ex: monaco luxury yacht)"}]}`,
+      FORMAT JSON : {"destinations": [{"city": "Nom de la ville", "country": "Pays", "tagline": "Accroche luxueuse très courte", "vibe": "Ambiance (ex: Chic & Électrique)", "budget_estimate": "4 500€", "reason": "Pourquoi c'est l'expérience parfaite", "image_prompt": "Un mot clé anglais pour la photo (ex: monaco luxury yacht)"}]}`,
       undefined,
       'destinations'
     );
@@ -477,16 +478,43 @@ const divers    = budget - vols - heberg - activites - resto - trans;
         }
       ]
     })),
-    activities: (t.activities || []).map((a, i) => ({
-      name: a.name || 'Expérience Inédite',
-      category: i === 2 ? 'Nightlife VIP' : 'Accès Privé',
-      emoji: i === 2 ? '🍾' : (i === 1 ? '🛥️' : '🚁'),
-      description: a.desc || 'Une immersion totale.',
-      duration: '3h',
-      price: (mode === 'luxury' || mode === 'party') ? 'Inclus VIP' : 'Dès 150€',
-      best_time: i === 2 ? 'Soir' : 'Matin',
-      plan_b: a.plan_b || null
-    })),
+    activities: (t.activities || []).map((a) => {
+      // Déduire la catégorie et l'emoji depuis le nom de l'activité
+      const name = (a.name || '').toLowerCase();
+      let category = 'Accès Privé';
+      let emoji = '✦';
+
+      if (name.match(/club|boite|nuit|soirée|soiree|nightclub|vip|casino|bar|lounge|dj|rave|party/)) {
+        category = 'Nightlife VIP'; emoji = '🍾';
+      } else if (name.match(/yacht|bateau|voile|croisière|croisiere|mer|island|barque/)) {
+        category = 'Nautique Privé'; emoji = '🛥️';
+      } else if (name.match(/helico|hélicopt|vol|avion|survol/)) {
+        category = 'Transfert Signature'; emoji = '🚁';
+      } else if (name.match(/spa|massage|bien.être|bienetre|soin|hammam|therme|zen|detox/)) {
+        category = 'Bien-Être'; emoji = '🌿';
+      } else if (name.match(/restaurant|diner|dîner|gastronomie|chef|table|repas|brunch/)) {
+        category = 'Gastronomie'; emoji = '🍽️';
+      } else if (name.match(/golf|tennis|sport|polo|surf|ski|chasse|pêche|peche/)) {
+        category = 'Sport & Loisirs'; emoji = '🏆';
+      } else if (name.match(/safari|nature|randonnée|randonnee|trek|plage|beach|villa/)) {
+        category = 'Nature Exclusive'; emoji = '🌴';
+      } else if (name.match(/musée|musee|art|galerie|culture|opéra|opera|theatre/)) {
+        category = 'Culture & Art'; emoji = '🎭';
+      } else if (name.match(/shopping|boutique|mode|maison|luxe|bijou/)) {
+        category = 'Shopping Signature'; emoji = '💎';
+      }
+
+      return {
+        name: a.name || 'Expérience Inédite',
+        category,
+        emoji,
+        description: a.desc || 'Une immersion totale.',
+        duration: '3h',
+        price: (mode === 'luxury' || mode === 'party') ? 'Inclus VIP' : 'Dès 150€',
+        best_time: category === 'Nightlife VIP' ? 'Soir' : 'Matin / Après-midi',
+        plan_b: a.plan_b || null
+      }
+    }),
     events: eventData,
     budget_breakdown: {
       vols:`${vols}€`, hebergement:`${heberg}€`, activites:`${activites}€`,
