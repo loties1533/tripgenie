@@ -305,23 +305,70 @@ export default function Home() {
 
       {/* Features section (si pas de pack ni concepts) */}
       {!pack && !concepts && (
-        <motion.section
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-          className="mt-16 grid sm:grid-cols-3 gap-6 pb-16">
-          {[
-            { emoji: '💎', title: 'Curation d\'Exception', desc: 'Une sélection rigoureuse des meilleurs établissements mondiaux' },
-            { emoji: '🤵', title: 'Service Signature',    desc: 'Un assistant dédié qui comprend vos préférences implicites' },
-            { emoji: '✨', title: 'Expériences Uniques',   desc: 'Événements privés et lieux secrets pour un voyage mémorable' },
-          ].map((f, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + i * 0.1 }}
-              className="glass-premium rounded-2xl p-6 text-center group hover:border-gold/50 transition-all duration-500 shine-effect">
-              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-500">{f.emoji}</div>
-              <h3 className="font-display text-xl font-bold text-ink dark:text-parchment mb-2 group-hover:text-gold transition-colors">{f.title}</h3>
-              <p className="text-sm text-muted leading-relaxed italic">{f.desc}</p>
-            </motion.div>
-          ))}
-        </motion.section>
+        <>
+          {/* Section titre */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+            className="text-center mt-20 mb-12">
+            <p className="text-[10px] uppercase tracking-widest text-gold font-semibold mb-3">Notre Savoir-Faire</p>
+            <h2 className="font-display text-4xl text-ink dark:text-parchment font-bold">L'Art de Voyager Autrement</h2>
+          </motion.div>
+
+          {/* 3 Cartes immersives avec images de fond */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+            className="grid sm:grid-cols-3 gap-4 pb-24">
+            {[
+              {
+                img: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+                label: "Hébergements",
+                title: "Résidences d'Exception",
+                desc: "Penthouses, villas privées et suites présidentielles sélectionnées par nos experts.",
+                badge: "5★ & Boutique"
+              },
+              {
+                img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
+                label: "Gastronomie",
+                title: "Tables Étoilées",
+                desc: "De Paris à Tokyo, nos concierges réservent les tables les plus convoitées du monde.",
+                badge: "Michelin & Secret"
+              },
+              {
+                img: "https://images.unsplash.com/photo-1519690889869-e705e59f72e1?auto=format&fit=crop&w=800&q=80",
+                label: "Nightlife",
+                title: "Accès VIP Exclusifs",
+                desc: "Clubs privés, soirées sur invitation et casinos fermés au grand public.",
+                badge: "Sur Liste"
+              }
+            ].map((f, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 + i * 0.15 }}
+                className="group relative h-[360px] rounded-2xl overflow-hidden cursor-pointer">
+
+                {/* Image fond */}
+                <img src={f.img} alt={f.title}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent group-hover:via-ink/20 transition-all duration-500" />
+
+                {/* Badge */}
+                <div className="absolute top-5 left-5">
+                  <span className="text-[9px] uppercase tracking-widest font-bold text-gold bg-ink/60 backdrop-blur-sm px-3 py-1 rounded-full border border-gold/20">
+                    {f.badge}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="absolute inset-0 p-7 flex flex-col justify-end">
+                  <p className="text-[9px] uppercase tracking-widest text-gold/80 font-semibold mb-1">{f.label}</p>
+                  <h3 className="font-display text-2xl text-white font-bold mb-2 leading-tight">{f.title}</h3>
+                  <p className="text-white/60 text-sm leading-relaxed font-light">{f.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </>
       )}
     </PageLayout>
   )

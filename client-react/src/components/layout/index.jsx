@@ -91,6 +91,65 @@ export function PageLayout({ children }) {
       <main className="max-w-5xl mx-auto px-4 py-6 relative z-10">
         {children}
       </main>
+
+      {/* Footer Premium */}
+      <footer className="relative mt-24 border-t border-gold/10 overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-ink dark:bg-ink-deep" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/80 to-ink" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+
+        <div className="relative max-w-5xl mx-auto px-8 py-16">
+          {/* Top footer */}
+          <div className="grid md:grid-cols-3 gap-12 mb-16">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
+                  <span className="text-white text-sm">✦</span>
+                </div>
+                <span className="font-display font-bold text-white text-lg">TripGenie</span>
+              </div>
+              <p className="text-white/40 text-sm leading-relaxed font-light">
+                L'intelligence artificielle au service de l'exception. Chaque voyage orchestré avec la précision d'un majordome de palace.
+              </p>
+            </div>
+
+            {/* Destinations */}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gold font-semibold mb-5">Destinations Signatures</p>
+              <ul className="space-y-2.5">
+                {['Côte d\'Azur', 'Ibiza', 'Mykonos', 'Amalfi', 'Maldives', 'Saint-Tropez'].map(d => (
+                  <li key={d} className="text-white/40 hover:text-gold text-sm transition-colors cursor-pointer">{d}</li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Expériences */}
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gold font-semibold mb-5">Expériences</p>
+              <ul className="space-y-2.5">
+                {['Yachting Privé', 'Dîners Étoilés', 'Soirées VIP', 'Casinos Exclusifs', 'Villas Privées', 'Jets Privés'].map(e => (
+                  <li key={e} className="text-white/40 hover:text-gold text-sm transition-colors cursor-pointer">{e}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
+
+          {/* Bottom footer */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-white/20 text-xs font-light tracking-wider">
+              © 2025 TripGenie ✦ Conciergerie Privée — Tous droits réservés
+            </p>
+            <p className="text-white/15 text-xs font-serif italic">
+              "Le vrai luxe n'a pas de prix, il a une valeur."
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
