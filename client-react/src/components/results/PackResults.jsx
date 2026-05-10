@@ -319,22 +319,32 @@ export default function PackResults() {
 
   // ---- Internal Cards with Locate & Vote button ----
   const LocalHotelCard = ({ hotel }) => (
-    <div className="glass rounded-xl p-4 flex flex-col gap-3">
+    <div className="glass rounded-xl p-4 flex flex-col gap-3 group hover:border-gold/30 transition-colors">
       <div className="flex gap-3">
-        <span className="text-2xl">🏨</span>
+        <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center text-2xl border border-gold/20">🏨</div>
         <div className="flex-1">
           <p className="font-semibold text-sm text-ink dark:text-parchment">{hotel.name}</p>
-          <p className="text-xs text-muted mt-0.5">{hotel.type} · {hotel.stars}★</p>
-          <button 
-            onClick={() => handleLocate(hotel.name)}
-            className="mt-2 text-[10px] uppercase tracking-wider font-bold text-gold hover:text-gold/80 flex items-center gap-1 transition-colors"
-          >
-            📍 Localiser sur la carte
-          </button>
+          <p className="text-xs text-muted mt-0.5">{hotel.location} · {hotel.stars}★</p>
+          <div className="flex gap-2 mt-2">
+            <button 
+              onClick={() => handleLocate(hotel.name)}
+              className="text-[10px] uppercase tracking-wider font-bold text-gold hover:text-gold/80 flex items-center gap-1 transition-colors"
+            >
+              📍 Carte
+            </button>
+            <a 
+              href={hotel.url || `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' ' + d.destination)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] uppercase tracking-wider font-bold text-sage hover:text-sage/80 flex items-center gap-1 transition-colors"
+            >
+              Réserver ↗
+            </a>
+          </div>
         </div>
       </div>
-      <div className="flex justify-between items-center pt-2 border-t border-white/5">
-        <span className="text-xs font-medium text-sage">{hotel.price_per_night}</span>
+      <div className="flex justify-between items-center pt-2 border-t border-parchment-dark dark:border-white/10">
+        <span className="text-xs font-bold text-gold">{hotel.price_per_night}</span>
         <div className="flex items-center gap-3">
           <VoteButtons tripId={d.id} itemId={hotel.name} />
           <TagBadge text={hotel.match_reason} />

@@ -289,11 +289,19 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date }) {
+export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration }) {
   const dest   = sanitizeInput(destination);
-  const nights = departure && return_date
-    ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
-    : Math.max(Math.round(budget / 250), 2);
+  
+  // Calcul des nuits : priorité aux dates, puis à la durée explicite, puis défaut intelligent (4 nuits)
+  let nights = 4;
+  if (departure && return_date) {
+    nights = Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1);
+  } else if (duration) {
+    nights = parseInt(duration);
+  } else {
+    // Si vraiment rien, on estime par le budget mais on capte à 14 nuits max pour éviter le bug "60 jours"
+    nights = Math.min(Math.max(Math.round(budget / 500), 2), 14);
+  }
     
   const budgetPerPers = Math.round(budget / travelers);
   
@@ -451,7 +459,8 @@ const divers    = budget - vols - heberg - activites - resto - trans;
         price_per_night: priceStr,
         highlights: h.hl || 'Choix du Concierge',
         emoji: i === 0 ? '💎' : '🛎️',
-        match_reason: h.hl || 'Sélection Signature'
+        match_reason: h.hl || 'Sélection Signature',
+        url: `https://www.google.com/search?q=${encodeURIComponent(h.name + ' ' + dest + ' official site')}`
       }
     }),
     itinerary: (t.itinerary || []).map(d => ({
@@ -539,13 +548,9 @@ TON OBJECTIF : Collecter ces 4 informations ESSENTIELLES, dans cet ordre, en 2-3
 3. BUDGET TOTAL : en euros (pour le groupe entier)
 4. DATE DE DÉPART : mois ou date précise
 
-RÈGLES DE CONVERSATION :
-- Tu ne poses qu'UNE SEULE question par message. Jamais deux.
-- Quand tu as une info, tu NE LA REDEMANDES JAMAIS. Passe à la suivante.
-- Sois chaleureux, élégant et direct. Max 2 phrases par réponse.
-- Propose toujours des "chips" (boutons rapides) pour faciliter la réponse.
-- Déduis intelligemment : "on est 4 amis" → travelers=4, profile="amis". "fin juillet" → departure="2025-07-28".
+- Déduis intelligemment : "on est 4 amis" → travelers=4, profile="amis". "fin juillet" → departure="2025-07-28". "une semaine" → duration=7.
 - Si l'utilisateur donne plusieurs infos en un seul message, extrait-les toutes et passe à la question manquante suivante.
+- IMPORTANT : Si l'utilisateur donne une durée (ex: "une semaine", "10 jours"), remplis le champ "duration" avec le chiffre.
 
 LOGIQUE D'AVANCEMENT :
 - Si tu as (groupe + personnes + budget + départ) → isReady: TRUE immédiatement.
@@ -564,7 +569,7 @@ ${!currentData?.travelers ? '→ PRIORITÉ 2 : Combien de personnes voyagent ?' 
 ${!currentData?.budget ? '→ PRIORITÉ 3 : Quel budget avez-vous en tête pour cette escapade ? + chips [2 000€, 5 000€, 10 000€, Surprise-moi]' : '✅ Budget connu'}
 ${!currentData?.departure ? '→ PRIORITÉ 4 : Quelle est votre fenêtre de dates idéale ? + chips [Ce weekend, Dans 1 mois, Cet été, Fin d\'année]' : '✅ Date connue'}
 
-FORMAT DE RÉPONSE (JSON STRICT, aucun texte avant/après) :
+FORMAT DE RÉPONSE (JSON STRICT, aucun texte après/avant) :
 {
   "response": "Ta réponse élégante en 1-2 phrases.",
   "chips": ["Option 1", "Option 2", "Option 3"],
@@ -573,7 +578,7 @@ FORMAT DE RÉPONSE (JSON STRICT, aucun texte avant/après) :
     "profile": null,
     "mode": "luxury",
     "budget": null,
-    "duration": 4,
+    "duration": null,
     "origin": "Paris",
     "departure": null,
     "interests": []

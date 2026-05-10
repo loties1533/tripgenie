@@ -68,6 +68,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       origin      = 'Paris',
       departure,
       return_date,
+      duration,
       travelers   = 2,
       budget,
       mode        = 'party',
@@ -121,7 +122,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       travelers,
       budget,
       departure,
-      return_date
+      return_date,
+      duration
   });
 
     // ---- Scoring réel via scoring.js ----
