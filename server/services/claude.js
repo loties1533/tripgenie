@@ -4,6 +4,8 @@
 
 import 'dotenv/config';
 import { searchWeb } from './tools/webSearch.js';
+import { getRealWeather } from '../services/weather.js';
+import { getDestinationPhoto } from '../services/photo.js';
 import * as Mocks from './mocks.js';
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY?.trim() || null;
@@ -455,6 +457,29 @@ export async function assemblePack({ destination, flights, events, hotels, mode,
   const trans = Math.round(budget * ratio.trans);
   const divers = budget - vols - heberg - activites - resto - trans;
 
+  const hotelsWithPhotos = await Promise.all((hotels?.length ? hotels : (t.hotels || [])).map(async (h, i) => {
+    // Pour la démo VIP, on force des prix qui font rêver, ou "Sur Devis"
+    let priceStr = `${Math.round(heberg / nights / travelers)}€/nuit`;
+    if (mode === 'luxury' || mode === 'party') {
+      priceStr = i === 0 ? 'Dès 850€/nuit' : 'Dès 600€/nuit';
+    }
+    
+    // On cherche une photo spécifique de l'hôtel
+    const hotelPhoto = await getDestinationPhoto(`${h.name} ${dest}`);
+
+    return {
+      name: h.name || `Palace ${i + 1}`,
+      location: h.loc || 'Emplacement Premium',
+      stars: h.stars || ((mode === 'luxury' || mode === 'party') ? 5 : 4),
+      price_per_night: priceStr,
+      highlights: h.hl || 'Choix du Concierge',
+      emoji: i === 0 ? '💎' : '🛎️',
+      match_reason: h.hl || 'Sélection Signature',
+      url: `https://www.google.com/search?q=${encodeURIComponent(h.name + ' ' + dest + ' official site')}`,
+      photo_url: hotelPhoto
+    }
+  }));
+
   // Structure finale construite côté serveur
   return {
     destination: dest,
@@ -471,23 +496,7 @@ export async function assemblePack({ destination, flights, events, hotels, mode,
     },
     summary: { total_budget: `${budget}€`, nights, activities_count: (t.activities || []).length },
     flights: flightData,
-    hotels: (hotels?.length ? hotels : (t.hotels || [])).map((h, i) => {
-      // Pour la démo VIP, on force des prix qui font rêver, ou "Sur Devis"
-      let priceStr = `${Math.round(heberg / nights / (i + 1))}€`;
-      if (mode === 'luxury' || mode === 'party') {
-        priceStr = i === 0 ? 'Dès 850€/nuit' : 'Dès 600€/nuit';
-      }
-      return {
-        name: h.name || `Palace ${i + 1}`,
-        location: h.loc || 'Emplacement Premium',
-        stars: h.stars || ((mode === 'luxury' || mode === 'party') ? 5 : 4),
-        price_per_night: priceStr,
-        highlights: h.hl || 'Choix du Concierge',
-        emoji: i === 0 ? '💎' : '🛎️',
-        match_reason: h.hl || 'Sélection Signature',
-        url: `https://www.google.com/search?q=${encodeURIComponent(h.name + ' ' + dest + ' official site')}`
-      }
-    }),
+    hotels: hotelsWithPhotos,
     itinerary: (t.itinerary || []).map(d => ({
       day: d.day,
       title: d.title || 'Journée d\'Exception',
