@@ -8,6 +8,7 @@ import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
 import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../services/smartSearch.js';
 import { scorepack } from '../services/scoring.js';
+import { getRealWeather } from '../services/weather.js';
 import supabase from '../db/supabase.js';
 
 const router = express.Router();
@@ -86,7 +87,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
     const results = await Promise.allSettled([
       smartFlightSearch({ origin, destination, departure, return_date }),
       smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
-      smartHotelSearch({ location: destination, mode })
+      smartHotelSearch({ location: destination, mode }),
+      getRealWeather(destination)
     ]);
 
     let aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -115,6 +117,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
 
     const hotelsFromWeb = results[2].status === 'fulfilled' ? results[2].value : [];
+    const realWeather = results[3].status === 'fulfilled' ? results[3].value : null;
 
     // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
@@ -127,7 +130,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       budget,
       departure,
       return_date,
-      duration
+      duration,
+      realWeather
   });
 
     // ---- Scoring réel via scoring.js ----

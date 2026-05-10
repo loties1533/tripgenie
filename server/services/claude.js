@@ -289,7 +289,7 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration }) {
+export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather }) {
   const dest   = sanitizeInput(destination);
   
   // Calcul des nuits : priorité aux dates, puis à la durée explicite, puis défaut intelligent (4 nuits)
@@ -462,9 +462,11 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
     overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
     weather: {
-      avg_temp:   t.weather?.temp || '20°C',
-      conditions: t.weather?.cond || 'Ensoleillé',
-      tip:        t.weather?.tip  || 'Prévoyez des couches'
+      avg_temp:   realWeather?.temp || t.weather?.temp || '20°C',
+      conditions: realWeather?.cond || t.weather?.cond || 'Ensoleillé',
+      tip:        t.weather?.tip  || 'Prévoyez des couches',
+      humidity:   realWeather?.humidity,
+      wind:       realWeather?.wind
     },
     summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
