@@ -289,7 +289,7 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration }) {
+export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration }) {
   const dest   = sanitizeInput(destination);
   
   // Calcul des nuits : priorité aux dates, puis à la durée explicite, puis défaut intelligent (4 nuits)
@@ -351,10 +351,32 @@ export async function assemblePack({ destination, flights, events, mode, profile
     t = parseJSON(textRaw);
   } catch (err) {
     console.warn('Fallback IA activé suite à un problème (ex: Quotas ou JSON malformé).', err.message);
-    t = Mocks.MOCK_PACK; // Utilisation du Mock ultra-complet pour Ibiza
     
-    // On remplace juste le nom de la ville si c'était différent
-    if (!t.destination) t.destination = dest;
+    // Au lieu de retourner Ibiza, on crée un squelette basé sur la ville réelle
+    t = {
+      country: "Destination",
+      tagline: `Découvrez les secrets de ${dest}`,
+      overview: `Un voyage d'exception orchestré sur mesure à ${dest}. Profitez du luxe et de l'exclusivité.`,
+      weather: { temp: "24°C", cond: "Ensoleillé", tip: "Tenue chic décontractée" },
+      hotels: hotels?.length ? hotels : [
+        { name: `Grand Palace ${dest}`, loc: "Centre", hl: "Vue panoramique" },
+        { name: `Boutique Hôtel ${dest}`, loc: "Vieille ville", hl: "Design exclusif" }
+      ],
+      itinerary: Array.from({ length: Math.min(nights, 3) }).map((_, i) => ({
+        day: i + 1,
+        title: i === 0 ? "Arrivée & Prestige" : (i === 1 ? "Exploration Exclusive" : "Détente & Gastronomie"),
+        am: i === 0 ? "Accueil VIP et transfert" : "Visite privée des joyaux cachés",
+        pm: i === 0 ? "Cocktail au rooftop" : "Dîner signature face à la mer",
+        plan_b: "Votre majordome ajustera l'itinéraire selon vos envies du moment."
+      })),
+      activities: [
+        { name: "Expérience Signature", desc: "Une immersion totale dans le luxe local.", plan_b: "Alternative VIP disponible." },
+        { name: "Accès Privilège", desc: "Découvrez des lieux fermés au public.", plan_b: "Transfert privé inclus." }
+      ],
+      tip1: "Réservez vos tables 48h à l'avance.",
+      tip2: "Privilégiez les transferts en berline privée.",
+      phrase: "Santé !", phrase_tr: "Cheers !"
+    };
   }
 
   // Vols — données réelles si SmartSearch a répondu, sinon estimées
@@ -446,7 +468,7 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     },
     summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
-    hotels: (t.hotels || []).map((h, i) => {
+    hotels: (hotels?.length ? hotels : (t.hotels || [])).map((h, i) => {
       // Pour la démo VIP, on force des prix qui font rêver, ou "Sur Devis"
       let priceStr = `${Math.round(heberg/nights/(i+1))}€`;
       if (mode === 'luxury' || mode === 'party') {
@@ -455,7 +477,7 @@ const divers    = budget - vols - heberg - activites - resto - trans;
       return {
         name: h.name || `Palace ${i+1}`,
         location: h.loc || 'Emplacement Premium',
-        stars: (mode === 'luxury' || mode === 'party') ? 5 : 4,
+        stars: h.stars || ((mode === 'luxury' || mode === 'party') ? 5 : 4),
         price_per_night: priceStr,
         highlights: h.hl || 'Choix du Concierge',
         emoji: i === 0 ? '💎' : '🛎️',

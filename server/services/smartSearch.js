@@ -88,3 +88,45 @@ export async function smartEventsSearch({ location, dateFrom, dateTo, mode }) {
     return [];
   }
 }
+/**
+ * Recherche des hôtels de luxe via le Web (Tavily) + extraction IA
+ */
+export async function smartHotelSearch({ location, mode }) {
+  try {
+    let query = `best luxury 5 star hotels and boutiques in ${location}`;
+    if (mode === 'student') query = `best hostels and affordable hotels in ${location}`;
+
+    // 1. Recherche Web
+    const webContext = await searchWeb(query);
+    if (!webContext) return [];
+
+    // 2. Extraction par l'IA
+    const prompt = `
+      Voici des résultats de recherche web récents pour des hébergements à ${location} :
+      ${webContext}
+
+      Extraire les 2 meilleurs hôtels.
+      Retourne UNIQUEMENT un tableau JSON strict au format suivant :
+      [
+        {
+          "name": "Nom de l'hôtel",
+          "loc": "Quartier ou Rue",
+          "hl": "Point fort (ex: Piscine à débordement, Vue Tour Eiffel)",
+          "stars": 5
+        }
+      ]
+    `;
+
+    const resRaw = await callAI(prompt, undefined, 'destinations');
+    try {
+      const parsed = JSON.parse(resRaw.replace(/```json/g, '').replace(/```/g, '').trim());
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (parseErr) {
+      console.error('Erreur parsing JSON Hotels:', parseErr);
+      return [];
+    }
+  } catch (err) {
+    console.error('SmartHotelSearch error:', err.message);
+    return [];
+  }
+}
