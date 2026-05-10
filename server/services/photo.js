@@ -1,24 +1,29 @@
-import axios from 'axios';
+import { searchWeb } from './tools/webSearch.js';
+import { callAI } from './claude.js';
 
 /**
- * Récupère une photo HD de la destination via Unsplash
+ * Récupère une photo HD de la destination via Tavily + Extraction IA
+ * Plus besoin de clé Unsplash !
  */
 export async function getDestinationPhoto(query) {
-  const key = process.env.UNSPLASH_ACCESS_KEY;
-  
-  // Si pas de clé, on utilise l'URL source publique (limité mais fonctionne)
-  if (!key) {
-    return `https://source.unsplash.com/featured/?${encodeURIComponent(query)},luxury`;
-  }
-
   try {
-    const res = await axios.get(`https://api.unsplash.com/search/photos`, {
-      params: { query: `${query} luxury`, per_page: 1, orientation: 'landscape' },
-      headers: { Authorization: `Client-ID ${key}` }
-    });
-    return res.data.results[0]?.urls?.regular || null;
+    const webQuery = `high quality luxury travel photography ${query} unsplash image url`;
+    const webContext = await searchWeb(webQuery);
+    if (!webContext) return `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`;
+
+    const prompt = `
+      Voici des résultats pour une recherche d'image de ${query} :
+      ${webContext}
+
+      Trouve une URL d'image Unsplash (commençant par https://images.unsplash.com/) qui correspond bien à la destination.
+      Retourne UNIQUEMENT l'URL brute. Si aucune n'est trouvée, retourne l'URL par défaut ci-dessous.
+      Défaut : https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80
+    `;
+
+    const resRaw = await callAI(prompt, undefined, 'destinations');
+    const url = resRaw.trim();
+    return url.startsWith('http') ? url : `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`;
   } catch (err) {
-    console.error('Unsplash API error:', err.message);
-    return null;
+    return `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`;
   }
 }

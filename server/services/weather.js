@@ -1,25 +1,38 @@
-import axios from 'axios';
+import { searchWeb } from './tools/webSearch.js';
+import { callAI } from './claude.js';
 
 /**
- * Récupère la météo réelle via OpenWeatherAPI
+ * Récupère la météo réelle via Tavily (Recherche Web) + Extraction IA
+ * Évite d'avoir besoin d'une clé OpenWeather
  */
 export async function getRealWeather(city) {
-  const key = process.env.OPENWEATHER_API_KEY;
-  if (!key) return null;
-
   try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&lang=fr&appid=${key}`;
-    const res = await axios.get(url);
-    
-    return {
-      temp: `${Math.round(res.data.main.temp)}°C`,
-      cond: res.data.weather[0].description,
-      icon: res.data.weather[0].icon,
-      humidity: res.data.main.humidity,
-      wind: `${Math.round(res.data.wind.speed * 3.6)} km/h`
-    };
+    const query = `météo actuelle à ${city} température conditions humidité vent`;
+    const webContext = await searchWeb(query);
+    if (!webContext) return null;
+
+    const prompt = `
+      Voici des infos météo pour ${city} :
+      ${webContext}
+
+      Extrais les données suivantes au format JSON :
+      {
+        "temp": "22°C",
+        "cond": "Partiellement nuageux",
+        "humidity": 65,
+        "wind": "15 km/h"
+      }
+      Retourne UNIQUEMENT le JSON.
+    `;
+
+    const resRaw = await callAI(prompt, undefined, 'destinations');
+    try {
+      return JSON.parse(resRaw.replace(/```json/g, '').replace(/```/g, '').trim());
+    } catch {
+      return null;
+    }
   } catch (err) {
-    console.error('Weather API error:', err.message);
+    console.error('Weather via Tavily error:', err.message);
     return null;
   }
 }

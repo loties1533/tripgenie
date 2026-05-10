@@ -405,9 +405,14 @@ export default function PackResults() {
       transition={{ duration: 0.5, ease: 'easeOut' }}>
 
       {/* Hero banner */}
-      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold">
-        <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky/5 pointer-events-none" />
-        <div className="relative">
+      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold h-[260px] flex items-end">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img src={d.photo_url} alt={d.destination} className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[20s]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-parchment via-parchment/60 to-transparent dark:from-ink dark:via-ink/60 dark:to-transparent" />
+        </div>
+
+        <div className="relative z-10 w-full">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">

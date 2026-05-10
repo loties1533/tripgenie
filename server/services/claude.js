@@ -289,7 +289,7 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather }) {
+export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
   const dest   = sanitizeInput(destination);
   
   // Calcul des nuits : priorité aux dates, puis à la durée explicite, puis défaut intelligent (4 nuits)
@@ -461,6 +461,7 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     country:     t.country || 'Destination',
     tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
     overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
+    photo_url:   realPhoto  || `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`,
     weather: {
       avg_temp:   realWeather?.temp || t.weather?.temp || '20°C',
       conditions: realWeather?.cond || t.weather?.cond || 'Ensoleillé',

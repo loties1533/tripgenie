@@ -9,6 +9,7 @@ import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatInta
 import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../services/smartSearch.js';
 import { scorepack } from '../services/scoring.js';
 import { getRealWeather } from '../services/weather.js';
+import { getDestinationPhoto } from '../services/photo.js';
 import supabase from '../db/supabase.js';
 
 const router = express.Router();
@@ -88,7 +89,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       smartFlightSearch({ origin, destination, departure, return_date }),
       smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
       smartHotelSearch({ location: destination, mode }),
-      getRealWeather(destination)
+      getRealWeather(destination),
+      getDestinationPhoto(destination)
     ]);
 
     let aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -118,6 +120,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
 
     const hotelsFromWeb = results[2].status === 'fulfilled' ? results[2].value : [];
     const realWeather = results[3].status === 'fulfilled' ? results[3].value : null;
+    const realPhoto = results[4].status === 'fulfilled' ? results[4].value : null;
 
     // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
@@ -131,7 +134,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
       departure,
       return_date,
       duration,
-      realWeather
+      realWeather,
+      realPhoto
   });
 
     // ---- Scoring réel via scoring.js ----
