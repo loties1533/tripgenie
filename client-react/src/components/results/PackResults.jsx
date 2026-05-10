@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import axios from 'axios'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
@@ -317,6 +319,25 @@ export default function PackResults() {
     window.open(waUrl, '_blank')
   }
 
+  const [isBooking, setIsBooking] = useState(false)
+  const handleBooking = async () => {
+    try {
+      setIsBooking(true)
+      const response = await axios.post('/api/payments/create-checkout-session', {
+        pack: d,
+        tripId: d.id
+      })
+      if (response.data.url) {
+        window.location.href = response.data.url
+      }
+    } catch (err) {
+      console.error('Booking error:', err)
+      toast.error('Veuillez ajouter votre clé Stripe Secret dans le fichier .env pour activer la réservation.')
+    } finally {
+      setIsBooking(false)
+    }
+  }
+
   // ---- Internal Cards with Locate & Vote button ----
   const LocalHotelCard = ({ hotel }) => (
     <div className="glass rounded-xl p-4 flex flex-col gap-3 group hover:border-gold/30 transition-colors">
@@ -431,14 +452,23 @@ export default function PackResults() {
               </h2>
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
             </div>
-            <div className="flex gap-4 text-center">
-              <div className="glass rounded-xl px-4 py-2">
-                <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
-                <p className="text-xs text-muted">nuits</p>
-              </div>
-              <div className="glass rounded-xl px-4 py-2">
-                <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
-                <p className="text-xs text-muted">budget</p>
+            <div className="flex flex-col items-end gap-3">
+              <button 
+                onClick={handleBooking}
+                disabled={isBooking}
+                className="bg-gold hover:bg-gold/80 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-glow-gold hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+              >
+                {isBooking ? 'Ouverture...' : '💳 Réserver ce Pack'}
+              </button>
+              <div className="flex gap-4 text-center">
+                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
+                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
+                  <p className="text-xs text-muted uppercase tracking-tighter">nuits</p>
+                </div>
+                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
+                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
+                  <p className="text-xs text-muted uppercase tracking-tighter">budget</p>
+                </div>
               </div>
             </div>
           </div>

@@ -6,9 +6,9 @@ import 'dotenv/config';
 import { searchWeb } from './tools/webSearch.js';
 import * as Mocks from './mocks.js';
 
-const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
-const AI_TIMEOUT_MS  = 45_000;
+const AI_TIMEOUT_MS = 45_000;
 
 console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER === 'ollama' ? 'Ollama' : process.env.AI_PROVIDER === 'openrouter' ? 'OpenRouter' : process.env.AI_PROVIDER === 'gemini' ? 'Gemini' : ANTHROPIC_KEY ? 'Claude' : '⚠️ AUCUN'}`);
 
@@ -39,7 +39,7 @@ export function parseJSON(raw) {
     .trim();
 
   const start = str.indexOf('{');
-  const end   = str.lastIndexOf('}');
+  const end = str.lastIndexOf('}');
   if (start !== -1 && end !== -1) str = str.slice(start, end + 1);
 
   try {
@@ -73,15 +73,15 @@ async function callClaude(systemPrompt, userPrompt) {
   const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         ANTHROPIC_KEY,
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4000,
-      system:     systemPrompt,
-      messages:   [{ role: 'user', content: userPrompt }]
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
     })
   });
   const data = await res.json();
@@ -111,17 +111,17 @@ async function callOpenRouter(systemPrompt, userPrompt) {
       const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Content-Type':  'application/json',
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'HTTP-Referer':  'http://localhost:3001',
-          'X-Title':       'TripGenie'
+          'HTTP-Referer': 'http://localhost:3001',
+          'X-Title': 'TripGenie'
         },
         body: JSON.stringify({
           model,
           max_tokens: 4000,
           messages: [
             { role: 'system', content: systemPrompt + "\n\nCRITICAL: REPONDS UNIQUEMENT EN JSON VALIDE. PAS DE TEXTE AVANT OU APRES. TON OUTPUT SERA PARSE DIRECTEMENT PAR UN SCRIPT." },
-            { role: 'user',   content: userPrompt }
+            { role: 'user', content: userPrompt }
           ]
         })
       });
@@ -171,11 +171,11 @@ async function callOllama(systemPrompt, userPrompt) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model:    process.env.OLLAMA_MODEL || 'gemma2:9b',
-      stream:   false,
+      model: process.env.OLLAMA_MODEL || 'gemma2:9b',
+      stream: false,
       messages: [
-        { role: 'system',  content: systemPrompt },
-        { role: 'user',    content: userPrompt   }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ]
     })
   }, 60_000)
@@ -202,17 +202,17 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
   try {
     const intStr = interests?.join(', ') || 'voyage';
     const moodStr = moods?.join(', ') || '';
-    
+
     // Détection du mois pour la saisonnalité
     const month = departure ? new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(departure)) : 'actuellement';
-    
+
     // Construction de la recherche ultra-ciblée
     let query = `Meilleures destinations ${mode} pour ${profile} en ${month}. `;
     if (mode === 'party') {
       query += `Focus sur la vie nocturne, clubs underground, festivals, ambiance électrique et branchée. `;
     }
     query += `Budget total ${budget}€ pour ${travelers} personnes. Intérêts: ${intStr} ${moodStr}.`;
-    
+
     if (discoveryMode === 'hidden_gem') {
       query += ` Cherche des pépites cachées, pas les destinations ultra-touristiques habituelles.`;
     }
@@ -259,10 +259,10 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
     try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${e.message}`); }
   }
   if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
-    try { 
-      return await callGemini(systemPrompt, userPrompt); 
-    } catch (e) { 
-      errors.push(`Gemini: ${e.message}`); 
+    try {
+      return await callGemini(systemPrompt, userPrompt);
+    } catch (e) {
+      errors.push(`Gemini: ${e.message}`);
     }
   }
 
@@ -280,9 +280,9 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
   // 5. Mode survie
   console.error('❌ AI FAILURES LOG:', JSON.stringify(errors, null, 2));
   console.error(`🚨 TOUS LES SERVICES IA ÉPUISÉS. Activation du Mode Survie (${context}).`);
-  if (context === 'onboarding')   return JSON.stringify(Mocks.MOCK_ONBOARDING);
+  if (context === 'onboarding') return JSON.stringify(Mocks.MOCK_ONBOARDING);
   if (context === 'destinations') return JSON.stringify(Mocks.MOCK_DESTINATIONS);
-  if (context === 'pack')         return JSON.stringify(Mocks.MOCK_PACK);
+  if (context === 'pack') return JSON.stringify(Mocks.MOCK_PACK);
   return JSON.stringify({ response: "Service temporairement limité. Réessayez dans 1 minute.", isMock: true });
 }
 
@@ -290,8 +290,8 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
 export async function assemblePack({ destination, flights, events, hotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
-  const dest   = sanitizeInput(destination);
-  
+  const dest = sanitizeInput(destination);
+
   // Calcul des nuits : priorité aux dates, puis à la durée explicite, puis défaut intelligent (4 nuits)
   let nights = 4;
   if (departure && return_date) {
@@ -302,9 +302,9 @@ export async function assemblePack({ destination, flights, events, hotels, mode,
     // Si vraiment rien, on estime par le budget mais on capte à 14 nuits max pour éviter le bug "60 jours"
     nights = Math.min(Math.max(Math.round(budget / 500), 2), 14);
   }
-    
+
   const budgetPerPers = Math.round(budget / travelers);
-  
+
   // Appel IA — Instructions ultra-ciblées
   const textRaw = await callAI(
     `Tu es le concierge privé de TripGenie. Destination : ${dest}. 
@@ -351,7 +351,7 @@ export async function assemblePack({ destination, flights, events, hotels, mode,
     t = parseJSON(textRaw);
   } catch (err) {
     console.warn('Fallback IA activé suite à un problème (ex: Quotas ou JSON malformé).', err.message);
-    
+
     // Au lieu de retourner Ibiza, on crée un squelette basé sur la ville réelle
     t = {
       country: "Destination",
@@ -383,102 +383,102 @@ export async function assemblePack({ destination, flights, events, hotels, mode,
   const volPriceEst = Math.round(budget * 0.15);
   const flightData = flights?.length
     ? [
-        {
-          from:             flights[0].outbound?.from || 'CDG',
-          from_city:        'Paris',
-          to:               flights[0].outbound?.to || 'XXX',
-          to_city:          dest,
-          departure_time:   (flights[0].outbound?.departure_time || '').slice(11, 16) || '10:30',
-          arrival_time:     (flights[0].outbound?.arrival_time   || '').slice(11, 16) || '12:00',
-          duration:         `${Math.floor((flights[0].outbound?.duration_min || 90) / 60)}h${String((flights[0].outbound?.duration_min || 90) % 60).padStart(2,'0')}`,
-          stops:            flights[0].outbound?.stops === 0 ? 'Direct' : `${flights[0].outbound?.stops} escale(s)`,
-          airline:          flights[0].outbound?.airline || 'Air France',
-          price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
-          type:             'outbound'
-        },
-        flights[0].return ? {
-          from:             flights[0].return?.from || 'XXX',
-          from_city:        dest,
-          to:               flights[0].return?.to || 'CDG',
-          to_city:          'Paris',
-          departure_time:   (flights[0].return?.departure_time || '').slice(11, 16) || '18:00',
-          arrival_time:     (flights[0].return?.arrival_time   || '').slice(11, 16) || '20:00',
-          duration:         `${Math.floor((flights[0].return?.duration_min || 90) / 60)}h${String((flights[0].return?.duration_min || 90) % 60).padStart(2,'0')}`,
-          stops:            flights[0].return?.stops === 0 ? 'Direct' : `${flights[0].return?.stops} escale(s)`,
-          airline:          flights[0].return?.airline || 'Air France',
-          price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
-          type:             'return'
-        } : null
-      ].filter(Boolean)
+      {
+        from: flights[0].outbound?.from || 'CDG',
+        from_city: 'Paris',
+        to: flights[0].outbound?.to || 'XXX',
+        to_city: dest,
+        departure_time: (flights[0].outbound?.departure_time || '').slice(11, 16) || '10:30',
+        arrival_time: (flights[0].outbound?.arrival_time || '').slice(11, 16) || '12:00',
+        duration: `${Math.floor((flights[0].outbound?.duration_min || 90) / 60)}h${String((flights[0].outbound?.duration_min || 90) % 60).padStart(2, '0')}`,
+        stops: flights[0].outbound?.stops === 0 ? 'Direct' : `${flights[0].outbound?.stops} escale(s)`,
+        airline: flights[0].outbound?.airline || 'Air France',
+        price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
+        type: 'outbound'
+      },
+      flights[0].return ? {
+        from: flights[0].return?.from || 'XXX',
+        from_city: dest,
+        to: flights[0].return?.to || 'CDG',
+        to_city: 'Paris',
+        departure_time: (flights[0].return?.departure_time || '').slice(11, 16) || '18:00',
+        arrival_time: (flights[0].return?.arrival_time || '').slice(11, 16) || '20:00',
+        duration: `${Math.floor((flights[0].return?.duration_min || 90) / 60)}h${String((flights[0].return?.duration_min || 90) % 60).padStart(2, '0')}`,
+        stops: flights[0].return?.stops === 0 ? 'Direct' : `${flights[0].return?.stops} escale(s)`,
+        airline: flights[0].return?.airline || 'Air France',
+        price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
+        type: 'return'
+      } : null
+    ].filter(Boolean)
     : [
-        { from:'CDG', from_city:'Paris', to:'XXX', to_city:dest, departure_time:'10:30', arrival_time:'12:00', duration:'1h30', stops:'Direct', airline:'Air France', price_per_person:`${volPriceEst}€`, type:'outbound' },
-        { from:'XXX', from_city:dest,   to:'CDG', to_city:'Paris', departure_time:'18:00', arrival_time:'19:30', duration:'1h30', stops:'Direct', airline:'Air France', price_per_person:`${volPriceEst}€`, type:'return'   }
-      ];
+      { from: 'CDG', from_city: 'Paris', to: 'XXX', to_city: dest, departure_time: '10:30', arrival_time: '12:00', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'outbound' },
+      { from: 'XXX', from_city: dest, to: 'CDG', to_city: 'Paris', departure_time: '18:00', arrival_time: '19:30', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'return' }
+    ];
 
   // Événements — réels ou génériques
   const eventData = events?.length
     ? events.slice(0, 3).map(e => ({
-        name:        e.title,
-        category:    e.category,
-        date:        (e.start || '').slice(0, 10) || 'Pendant votre séjour',
-        venue:       e.venue || 'Centre ville',
-        description: e.description || ''
-      }))
-    : [{ name:`Soirée à ${dest}`, category:'Nightlife', date:'Pendant votre séjour', venue:'Centre ville', description:'Animation locale garantie' }];
+      name: e.title,
+      category: e.category,
+      date: (e.start || '').slice(0, 10) || 'Pendant votre séjour',
+      venue: e.venue || 'Centre ville',
+      description: e.description || ''
+    }))
+    : [{ name: `Soirée à ${dest}`, category: 'Nightlife', date: 'Pendant votre séjour', venue: 'Centre ville', description: 'Animation locale garantie' }];
 
   // Budget
-   // Répartition intelligente selon le mode
-const BUDGET_RATIOS = {
-  party:   { vols: 0.25, heberg: 0.25, activites: 0.25, resto: 0.12, trans: 0.08 },
-  student: { vols: 0.35, heberg: 0.30, activites: 0.10, resto: 0.15, trans: 0.05 },
-  luxury:  { vols: 0.20, heberg: 0.45, activites: 0.20, resto: 0.10, trans: 0.03 },
-  group:   { vols: 0.30, heberg: 0.35, activites: 0.15, resto: 0.12, trans: 0.05 },
-  relax:   { vols: 0.22, heberg: 0.40, activites: 0.15, resto: 0.13, trans: 0.07 },
-  surprise:{ vols: 0.28, heberg: 0.32, activites: 0.18, resto: 0.13, trans: 0.06 },
-};
+  // Répartition intelligente selon le mode
+  const BUDGET_RATIOS = {
+    party: { vols: 0.25, heberg: 0.25, activites: 0.25, resto: 0.12, trans: 0.08 },
+    student: { vols: 0.35, heberg: 0.30, activites: 0.10, resto: 0.15, trans: 0.05 },
+    luxury: { vols: 0.20, heberg: 0.45, activites: 0.20, resto: 0.10, trans: 0.03 },
+    group: { vols: 0.30, heberg: 0.35, activites: 0.15, resto: 0.12, trans: 0.05 },
+    relax: { vols: 0.22, heberg: 0.40, activites: 0.15, resto: 0.13, trans: 0.07 },
+    surprise: { vols: 0.28, heberg: 0.32, activites: 0.18, resto: 0.13, trans: 0.06 },
+  };
 
-const ratio  = BUDGET_RATIOS[mode] || BUDGET_RATIOS.party;
-const vols      = Math.round(budget * ratio.vols);
+  const ratio = BUDGET_RATIOS[mode] || BUDGET_RATIOS.party;
+  const vols = Math.round(budget * ratio.vols);
 
-// Réalisme Hôtels : Plafonnement si le prix par nuit devient indécent pour la destination
-// On estime un prix max par nuit raisonnable par personne (ex: 200€ en moyenne)
-const maxPpn = mode === 'luxury' ? 800 : 250;
-let heberg = Math.round(budget * ratio.heberg);
-const ppn = heberg / nights / travelers;
+  // Réalisme Hôtels : Plafonnement si le prix par nuit devient indécent pour la destination
+  // On estime un prix max par nuit raisonnable par personne (ex: 200€ en moyenne)
+  const maxPpn = mode === 'luxury' ? 800 : 250;
+  let heberg = Math.round(budget * ratio.heberg);
+  const ppn = heberg / nights / travelers;
 
-if (ppn > maxPpn) {
-  heberg = maxPpn * nights * travelers;
-}
+  if (ppn > maxPpn) {
+    heberg = maxPpn * nights * travelers;
+  }
 
-const activites = Math.round(budget * ratio.activites);
-const resto     = Math.round(budget * ratio.resto);
-const trans     = Math.round(budget * ratio.trans);
-const divers    = budget - vols - heberg - activites - resto - trans;
+  const activites = Math.round(budget * ratio.activites);
+  const resto = Math.round(budget * ratio.resto);
+  const trans = Math.round(budget * ratio.trans);
+  const divers = budget - vols - heberg - activites - resto - trans;
 
   // Structure finale construite côté serveur
   return {
     destination: dest,
-    country:     t.country || 'Destination',
-    tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
-    overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
-    photo_url:   realPhoto  || `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`,
+    country: t.country || 'Destination',
+    tagline: t.tagline || `${dest}, votre prochaine aventure`,
+    overview: t.overview || `Découvrez ${dest} sous son meilleur jour.`,
+    photo_url: realPhoto || `https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80`,
     weather: {
-      avg_temp:   realWeather?.temp || t.weather?.temp || '20°C',
+      avg_temp: realWeather?.temp || t.weather?.temp || '20°C',
       conditions: realWeather?.cond || t.weather?.cond || 'Ensoleillé',
-      tip:        t.weather?.tip  || 'Prévoyez des couches',
-      humidity:   realWeather?.humidity,
-      wind:       realWeather?.wind
+      tip: t.weather?.tip || 'Prévoyez des couches',
+      humidity: realWeather?.humidity,
+      wind: realWeather?.wind
     },
-    summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
+    summary: { total_budget: `${budget}€`, nights, activities_count: (t.activities || []).length },
     flights: flightData,
     hotels: (hotels?.length ? hotels : (t.hotels || [])).map((h, i) => {
       // Pour la démo VIP, on force des prix qui font rêver, ou "Sur Devis"
-      let priceStr = `${Math.round(heberg/nights/(i+1))}€`;
+      let priceStr = `${Math.round(heberg / nights / (i + 1))}€`;
       if (mode === 'luxury' || mode === 'party') {
         priceStr = i === 0 ? 'Dès 850€/nuit' : 'Dès 600€/nuit';
       }
       return {
-        name: h.name || `Palace ${i+1}`,
+        name: h.name || `Palace ${i + 1}`,
         location: h.loc || 'Emplacement Premium',
         stars: h.stars || ((mode === 'luxury' || mode === 'party') ? 5 : 4),
         price_per_night: priceStr,
@@ -493,22 +493,22 @@ const divers    = budget - vols - heberg - activites - resto - trans;
       title: d.title || 'Journée d\'Exception',
       subtitle: (mode === 'party' || mode === 'luxury') ? 'VIP Experience' : 'Exploration',
       items: [
-        { 
-          time: mode === 'party' ? '14:00' : '10:00', 
-          type: 'activity', 
-          title: d.am || 'Exploration VIP', 
-          description: 'Matinée orchestrée par votre majordome.', 
-          price: (mode === 'luxury' || mode === 'party') ? 'Privatisé' : 'Inclus', 
+        {
+          time: mode === 'party' ? '14:00' : '10:00',
+          type: 'activity',
+          title: d.am || 'Exploration VIP',
+          description: 'Matinée orchestrée par votre majordome.',
+          price: (mode === 'luxury' || mode === 'party') ? 'Privatisé' : 'Inclus',
           duration: '3h',
           plan_b: d.plan_b
         },
-        { 
-          time: mode === 'party' ? '22:00' : '20:00', 
-          type: mode === 'party' ? 'event' : 'food', 
-          title: d.pm || 'Dîner Signature', 
-          description: 'Accès exclusif et service sur-mesure.', 
-          price: (mode === 'luxury' || mode === 'party') ? 'Sur Liste' : 'Sur Réservation', 
-          duration: '4h' 
+        {
+          time: mode === 'party' ? '22:00' : '20:00',
+          type: mode === 'party' ? 'event' : 'food',
+          title: d.pm || 'Dîner Signature',
+          description: 'Accès exclusif et service sur-mesure.',
+          price: (mode === 'luxury' || mode === 'party') ? 'Sur Liste' : 'Sur Réservation',
+          duration: '4h'
         }
       ]
     })),
@@ -551,12 +551,12 @@ const divers    = budget - vols - heberg - activites - resto - trans;
     }),
     events: eventData,
     budget_breakdown: {
-      vols:`${vols}€`, hebergement:`${heberg}€`, activites:`${activites}€`,
-      restauration:`${resto}€`, transports:`${trans}€`, divers:`${divers}€`, total:`${budget}€`
+      vols: `${vols}€`, hebergement: `${heberg}€`, activites: `${activites}€`,
+      restauration: `${resto}€`, transports: `${trans}€`, divers: `${divers}€`, total: `${budget}€`
     },
     tips: [
       { title: 'Conseil pratique', content: t.tip1 || 'Réservez à l\'avance' },
-      { title: 'Sur place',        content: t.tip2 || 'Explorez les quartiers locaux' }
+      { title: 'Sur place', content: t.tip2 || 'Explorez les quartiers locaux' }
     ],
     local_phrases: [
       { phrase: t.phrase || 'Santé !', translation: t.phrase_tr || 'Cheers !' }
@@ -611,17 +611,15 @@ FORMAT DE RÉPONSE (JSON STRICT, aucun texte après/avant) :
   "isReady": false
 }`;
 
-
+  console.log(`💬 Message Utilisateur: "${userMessage}"`);
 
   const msg = sanitizeInput(userMessage).toLowerCase();
 
-  // Cas spécial pour sortir de la boucle du Mode Survie
-  if (msg.includes('montre-moi')) {
-    const profile = currentData?.profile || Mocks.MOCK_ONBOARDING.extractedData.profile;
+  // Mode Survie / Debug rapide
+  if (msg.includes('montre-moi') || msg.includes('on y va')) {
     return {
-      response: "C'est parti pour le voyage Signature TripGenie ! ✨",
+      response: "C'est parti ! Je prépare votre itinéraire signature...",
       isReady: true,
-      extractedData: { ...Mocks.MOCK_ONBOARDING.extractedData, profile },
       isMock: true
     };
   }
@@ -679,8 +677,8 @@ export async function chatModify({ currentPack, userMessage, mode }) {
   const raw = await callAI(
     `${systemPrompt}\n\nMessage de l'utilisateur : "${sanitizeInput(userMessage)}"`
   );
-  
- const result = parseJSON(raw)
+
+  const result = parseJSON(raw)
   if (result.chips) result.chips = normalizeChips(result.chips)
   return result
 }
