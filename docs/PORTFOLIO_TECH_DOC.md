@@ -193,19 +193,52 @@ sequenceDiagram
 
 ---
 
-## 5. Spécifications API REST (Internes & Externes)
+## 5. Spécifications API (Externes & Internes)
 
-### API Externes
-*   **Tavily AI** : Agent de recherche web pour les données fraîches.
-*   **Claude 3.5 Sonnet** : Logique de conciergerie et structuration JSON.
-*   **Unsplash** : API de visuels haute résolution.
-
-### Points d'entrée Internes
-| Méthode | Path | Description |
+### API Externes & Justifications
+| Service | Rôle | Justification du choix |
 | :--- | :--- | :--- |
-| POST | `/api/auth/login` | Connexion utilisateur (JWT). |
-| POST | `/api/ai/generate` | Orchestration de l'IA et génération du pack. |
-| GET | `/api/trips` | Historique des voyages sauvegardés. |
+| **Claude 3.5 Sonnet** | LLM Orchestrator | Supériorité dans le respect des schémas JSON stricts et finesse de la conciergerie VIP. |
+| **Tavily AI** | Web Search Agent | Optimisé pour l'IA, il retourne des données structurées (Vols, Hôtels) sans le "bruit" des moteurs classiques. |
+| **Unsplash API** | Visual Assets | Accès à une bibliothèque de photos haute résolution libre de droits via recherche sémantique. |
+| **Supabase** | BaaS (DB & Auth) | Infrastructure PostgreSQL robuste et système d'authentification prêt à l'emploi (Sécurité). |
+
+### Endpoints de l'API Interne (TripGenie API)
+
+#### 1. Authentification
+*   **POST** `/api/auth/login`
+    *   **Input** : `{ "email": "user@example.com", "password": "securepassword" }`
+    *   **Output** : `{ "user": { "id": "uuid", "email": "..." }, "token": "JWT_STRING" }`
+*   **POST** `/api/auth/register`
+    *   **Input** : `{ "email": "...", "password": "..." }`
+    *   **Output** : `{ "message": "User created successfully" }`
+
+#### 2. Intelligence Artificielle & Génération
+*   **POST** `/api/ai/generate`
+    *   **Input** : `{ "prompt": "Un week-end à Monaco avec un budget de 5000€" }`
+    *   **Output** : Un objet **Pack** contenant :
+        ```json
+        {
+          "destination": "Monaco",
+          "itinerary": [...],
+          "hotels": [{ "name": "Hôtel de Paris", "price": "1200€", "photo_url": "..." }],
+          "flights": { "outbound": "...", "return": "..." },
+          "weather": { "temp": "22°C", "condition": "Sunny" }
+        }
+        ```
+
+#### 3. Gestion des Voyages (Persistance)
+*   **GET** `/api/trips`
+    *   **Input** : Aucun (Token JWT en Header)
+    *   **Output** : `[{ "id": "uuid", "destination": "...", "pack_data": {...}, "created_at": "..." }]`
+*   **POST** `/api/trips`
+    *   **Input** : `{ "pack_data": { ... } }`
+    *   **Output** : `{ "id": "uuid", "status": "saved" }`
+
+#### 4. Social & Préférences
+*   **POST** `/api/votes`
+    *   **Input** : `{ "trip_id": "uuid", "item_id": "hotel_1", "type": "hotel" }`
+    *   **Output** : `{ "status": "voted" }`
 
 ---
 
