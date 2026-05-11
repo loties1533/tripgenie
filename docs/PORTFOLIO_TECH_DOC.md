@@ -81,10 +81,39 @@ classDiagram
     AIService --> DBService : "Persistance des packs"
 ```
 
-### Schéma de Données (Supabase)
-*   **Table `users`** : Gestion des comptes et sessions.
-*   **Table `trips`** : Stockage des packs (format JSONB pour une flexibilité maximale des itinéraires).
-*   **Table `votes`** : Enregistrement des préférences utilisateurs.
+### Conception de la Base de Données (Modèle Entité-Relation)
+Le choix de **PostgreSQL** a été fait pour garantir l'intégrité des données et la flexibilité du stockage des itinéraires via le type `JSONB`.
+
+```mermaid
+erDiagram
+    USER ||--o{ TRIP : "organise"
+    USER ||--o{ VOTE : "émet"
+    TRIP ||--o{ VOTE : "reçoit"
+
+    USER {
+        uuid id PK
+        string email
+        string password_hash
+        timestamp created_at
+    }
+
+    TRIP {
+        uuid id PK
+        uuid user_id FK
+        string destination
+        jsonb pack_data "Contenu de l'itinéraire IA"
+        timestamp created_at
+    }
+
+    VOTE {
+        bigint id PK
+        uuid user_id FK
+        uuid trip_id FK
+        string item_id "ID de l'hôtel ou activité"
+        string type "hotel | activity"
+        timestamp created_at
+    }
+```
 
 ---
 
