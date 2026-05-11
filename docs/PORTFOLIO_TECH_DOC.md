@@ -131,11 +131,9 @@ erDiagram
 
 ---
 
-## 4. Diagrammes de Séquence (Flux Principal)
+## 4. Diagrammes de Séquence (Flux Principaux)
 
 ### Cas d'Usage 1 : Génération d'un Itinéraire Signature (IA Agentique)
-Ce flux illustre l'interaction entre l'utilisateur, l'orchestrateur IA et les agents de recherche web.
-
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur
@@ -155,8 +153,6 @@ sequenceDiagram
 ```
 
 ### Cas d'Usage 2 : Authentification Utilisateur (JWT & Supabase)
-Ce flux montre la sécurisation de l'accès via le service d'authentification.
-
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur
@@ -173,8 +169,6 @@ sequenceDiagram
 ```
 
 ### Cas d'Usage 3 : Sauvegarde d'un Voyage (Persistance)
-Ce flux illustre la persistance des données générées dans la base de données relationnelle.
-
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur
@@ -206,55 +200,47 @@ sequenceDiagram
 ### Endpoints de l'API Interne (TripGenie API)
 
 #### 1. Authentification
-*   **POST** `/api/auth/login`
-    *   **Input** : `{ "email": "user@example.com", "password": "securepassword" }`
-    *   **Output** : `{ "user": { "id": "uuid", "email": "..." }, "token": "JWT_STRING" }`
-*   **POST** `/api/auth/register`
-    *   **Input** : `{ "email": "...", "password": "..." }`
-    *   **Output** : `{ "message": "User created successfully" }`
+*   **POST** `/api/auth/login` : `{ "email": "...", "password": "..." }` -> `{ "user": {...}, "token": "..." }`
+*   **POST** `/api/auth/register` : `{ "email": "...", "password": "..." }` -> `{ "message": "Success" }`
 
 #### 2. Intelligence Artificielle & Génération
 *   **POST** `/api/ai/generate`
-    *   **Input** : `{ "prompt": "Un week-end à Monaco avec un budget de 5000€" }`
-    *   **Output** : Un objet **Pack** contenant :
-        ```json
-        {
-          "destination": "Monaco",
-          "itinerary": [...],
-          "hotels": [{ "name": "Hôtel de Paris", "price": "1200€", "photo_url": "..." }],
-          "flights": { "outbound": "...", "return": "..." },
-          "weather": { "temp": "22°C", "condition": "Sunny" }
-        }
-        ```
+    *   **Input** : `{ "prompt": "..." }`
+    *   **Output** : JSON structuré contenant Itinéraire, Hôtels, Vols et Météo.
 
 #### 3. Gestion des Voyages (Persistance)
-*   **GET** `/api/trips`
-    *   **Input** : Aucun (Token JWT en Header)
-    *   **Output** : `[{ "id": "uuid", "destination": "...", "pack_data": {...}, "created_at": "..." }]`
-*   **POST** `/api/trips`
-    *   **Input** : `{ "pack_data": { ... } }`
-    *   **Output** : `{ "id": "uuid", "status": "saved" }`
-
-#### 4. Social & Préférences
-*   **POST** `/api/votes`
-    *   **Input** : `{ "trip_id": "uuid", "item_id": "hotel_1", "type": "hotel" }`
-    *   **Output** : `{ "status": "voted" }`
+*   **GET** `/api/trips` : Retourne la liste des voyages sauvegardés de l'utilisateur.
+*   **POST** `/api/trips` : Sauvegarde un nouveau pack voyage dans Supabase.
 
 ---
 
-## 6. Plans SCM & QA
+## 6. Plans SCM & Assurance Qualité (QA)
 
-### SCM (Git Flow)
-*   **Branches** : Utilisation de branches de fonctionnalités (`feat/`) fusionnées vers `main` après validation.
-*   **Commits** : Norme *Conventional Commits* pour une traçabilité claire.
+### Gestion du Code Source (SCM)
+Le projet utilise **Git** pour le contrôle de version, avec une stratégie de branchement rigoureuse :
 
-### QA (Assurance Qualité)
-*   **Tests** : Validation manuelle des flux critiques et tests de structure JSON via Vitest.
-*   **Outils** : Postman pour le debug API et ESLint pour la qualité de code.
+*   **Branches principales** :
+    *   `main` : Code stable prêt pour la production.
+    *   `develop` : Branche d'intégration pour les tests de pré-production.
+*   **Branches de fonctionnalités** :
+    *   `feat/*` : Chaque nouvelle tâche est développée sur une branche dédiée (ex: `feat/ai-orchestrator`) avant d'être fusionnée via une Pull Request.
+*   **Code Review** : Toutes les demandes d'extraction vers la branche `develop` font l'objet d'une revue systématique.
+
+### Stratégie d'Assurance Qualité (QA)
+La fiabilité du système repose sur une approche de tests multi-niveaux :
+
+*   **Tests Unitaires (Vitest)** : Validation isolée de la logique métier (calculs de budget, formatage des données IA).
+*   **Tests d'API (Postman)** : Utilisation de collections Postman pour vérifier la conformité des réponses JSON.
+*   **Tests Manuels** : Validation systématique des flux critiques (User Journey) : Connexion -> Chat -> Génération -> Sauvegarde.
+
+### Pipeline de Déploiement (CI/CD)
+1.  **Local** : Développement et tests unitaires.
+2.  **Staging** : Déploiement automatique de `develop` sur un environnement de test.
+3.  **Production** : Déploiement de `main` après validation finale.
 
 ---
 
 ## 7. Justifications Techniques
-*   **Tavily AI** : Choisi pour sa capacité à fournir des résultats web structurés, éliminant les hallucinations sur les prix et les disponibilités.
-*   **Claude 3.5** : Meilleur modèle actuel pour le "JSON Output", crucial pour le rendu frontend sans erreurs.
-*   **Supabase** : Solution BaaS performante permettant de se concentrer sur l'IA plutôt que sur l'infrastructure DB.
+*   **Tavily AI** : Élimine les hallucinations sur les prix et disponibilités grâce à la recherche web en temps réel.
+*   **Claude 3.5** : Meilleur modèle actuel pour le "JSON Output" strict.
+*   **Supabase** : Solution BaaS performante permettant de se concentrer sur l'IA plutôt que sur l'infrastructure.
