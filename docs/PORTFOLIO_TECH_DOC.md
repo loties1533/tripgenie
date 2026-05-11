@@ -240,7 +240,11 @@ La fiabilité du système repose sur une approche de tests multi-niveaux :
 
 ---
 
-## 7. Justifications Techniques
-*   **Tavily AI** : Élimine les hallucinations sur les prix et disponibilités grâce à la recherche web en temps réel.
-*   **Claude 3.5** : Meilleur modèle actuel pour le "JSON Output" strict.
-*   **Supabase** : Solution BaaS performante permettant de se concentrer sur l'IA plutôt que sur l'infrastructure.
+## 7. Justifications Techniques & Décisions d'Architecture
+
+*   **Tavily AI (Recherche Agentique)** : Choisi pour résoudre le problème majeur des LLM : l'obsolescence des données. En couplant Claude 3.5 à Tavily, le système accède à des prix et disponibilités en temps réel, garantissant la fiabilité du MVP.
+*   **Claude 3.5 (Orchestration)** : Ce modèle a été retenu pour sa supériorité dans le "Reasoning" et sa capacité à produire du code JSON structuré sans erreurs, indispensable pour la stabilité du Frontend.
+*   **Supabase (Infrastructure PostgreSQL)** : 
+    *   **Choix stratégique** : Plutôt que de consacrer du temps à la maintenance d'un serveur DB Linux, le choix s'est porté sur une solution managée pour garantir une sécurité maximale (Authentification JWT, Chiffrement des données au repos).
+    *   **Respect des fondamentaux** : Bien que le service soit managé, la **conception relationnelle** (MCD/MLD) a été entièrement réalisée à la main (Schéma ERD). L'utilisation de PostgreSQL standard garantit la portabilité totale du projet vers n'importe quel autre hébergeur SQL si nécessaire.
+    *   **Sécurité** : L'utilisation de Supabase Auth permet de respecter les standards de sécurité actuels (OAuth2, Sessions sécurisées), une priorité absolue pour une application gérant des itinéraires personnels.
