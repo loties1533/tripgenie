@@ -1,107 +1,176 @@
-# TripGenie - Documentation Technique (MVP)
-**Étape 3 : Spécifications & Architecture**
-
-## 1. User Stories & Maquettes (Priorisation MoSCoW)
-
-### Must Have (Indispensable)
-*   **En tant qu'utilisateur**, je veux discuter avec un assistant IA pour définir mon profil de voyageur, afin d'obtenir des recommandations personnalisées.
-*   **En tant qu'utilisateur**, je veux voir un itinéraire complet (vols, hôtels, activités) en données réelles, afin de planifier mon voyage concrètement.
-*   **En tant qu'utilisateur**, je veux pouvoir m'inscrire et me connecter, afin de sauvegarder mes voyages préférés.
-
-### Should Have (Important)
-*   **En tant qu'utilisateur**, je veux voir la météo en direct de ma destination, afin de savoir quoi mettre dans ma valise.
-*   **En tant qu'utilisateur**, je veux voir des photos HD de ma destination et des hôtels, pour m'immerger dans l'expérience.
-
-### Could Have (Bonus)
-*   **En tant qu'utilisateur**, je veux pouvoir voter pour mes hôtels préférés, afin d'affiner mes choix futurs.
-*   **En tant qu'utilisateur**, je veux pouvoir payer une réservation via Stripe, pour finaliser mon projet de voyage.
+# TripGenie - Documentation Technique Détaillée (MVP)
+**Étape 3 : Spécifications & Architecture Éclatées**
+**Auteur :** Alexis Loties (Projet Solo)
 
 ---
 
-## 2. Architecture du Système
+## 1. User Stories & Maquettes (Format MoSCoW)
 
-### Diagramme de Haut Niveau (Mermaid)
+### Must Have
+*   **Story 1** : En tant qu'utilisateur, je veux exprimer mes envies de voyage en langage naturel au bot, afin qu'il comprenne mon profil sans formulaires complexes.
+*   **Story 2** : En tant qu'utilisateur, je veux un itinéraire chiffré (vols/hôtels/activités) basé sur des données réelles du web, pour garantir la faisabilité de mon séjour.
+*   **Story 3** : En tant qu'utilisateur, je veux pouvoir m'authentifier de manière sécurisée (JWT), afin de retrouver mes sélections sur n'importe quel appareil.
+
+### Should Have
+*   **Story 4** : En tant qu'utilisateur, je veux voir la météo en temps réel et des photos HD via API, pour valider l'esthétique et le confort de la destination.
+*   **Story 5** : En tant qu'utilisateur, je veux recevoir un lien de partage WhatsApp pour mon itinéraire, afin de le montrer à mes proches.
+
+---
+
+## 2. Architecture du Système (Full-Stack)
+
+### Diagramme d'Infrastructure
 ```mermaid
-graph TD
-    User((Utilisateur)) <--> Client[Frontend - React/Vite]
-    Client <--> Server[Backend - Node.js/Express]
-    Server <--> AI[Orchestrateur IA - Claude 3.5]
-    Server <--> Web[Agentic Search - Tavily]
-    Server <--> DB[(Base de données - Supabase)]
-    Server <--> Pay[Stripe API]
-    AI <--> Web
+graph LR
+    subgraph Client_Side
+        React[React / Vite]
+        Zustand[Zustand State Management]
+    end
+
+    subgraph Backend_Side
+        Express[Express.js Server]
+        Auth[JWT Middleware]
+        Logic[Business Logic & Scoring]
+    end
+
+    subgraph External_Services
+        Claude[Claude 3.5 AI]
+        Tavily[Tavily Agentic Search]
+        Unsplash[Unsplash HD Photos]
+        Stripe[Stripe Payments]
+    end
+
+    subgraph Data_Storage
+        Supabase[(PostgreSQL / Supabase)]
+    end
+
+    React <--> Express
+    Express <--> Auth
+    Express <--> Logic
+    Logic <--> Claude
+    Logic <--> Tavily
+    Logic <--> Unsplash
+    Express <--> Stripe
+    Auth <--> Supabase
+    Logic <--> Supabase
 ```
 
 ---
 
-## 3. Conception des Composants & Base de Données
+## 3. Conception Technique (Classes & Data)
 
-### Schéma de Base de Données (Supabase/PostgreSQL)
-*   **Table `users`** : `id`, `email`, `password_hash`, `created_at`.
-*   **Table `trips`** : `id`, `user_id`, `destination`, `pack_data` (JSONB), `created_at`.
-*   **Table `votes`** : `id`, `user_id`, `trip_id`, `item_id`, `type` (hotel/activity).
+### Diagramme de Classes UML (Backend Services)
+```mermaid
+classDiagram
+    class AIService {
+        +assemblePack(data)
+        +chatIntake(message)
+        +callAI(prompt)
+    }
+    class SearchService {
+        +smartFlightSearch(params)
+        +smartHotelSearch(params)
+        +smartEventsSearch(params)
+    }
+    class WeatherService {
+        +getRealWeather(city)
+    }
+    class ScoringService {
+        +scorePack(pack)
+        +calculateBudget(ratio)
+    }
 
-### Composants Frontend (React)
-*   `ChatWidget` : Gère l'interaction fluide avec l'assistant.
-*   `PackResults` : Affiche l'itinéraire généré (Hero, Météo, Vols, Hôtels).
-*   `HotelCard` : Affiche les détails et la photo HD d'un hôtel.
+    AIService --> SearchService : "utilise"
+    AIService --> WeatherService : "enrichit"
+    AIService --> ScoringService : "valide"
+```
+
+### Schéma de Base de Données Détaillé
+| Table | Colonne | Type | Contrainte |
+| :--- | :--- | :--- | :--- |
+| **users** | `id` | UUID | PK, Unique |
+| | `email` | VARCHAR | Unique, Not Null |
+| | `password_hash` | TEXT | Not Null |
+| **trips** | `id` | UUID | PK |
+| | `user_id` | UUID | FK -> users.id |
+| | `destination` | VARCHAR | Not Null |
+| | `pack_data` | JSONB | Stocke l'itinéraire complet |
+| | `created_at` | TIMESTAMP | Default NOW() |
+| **votes** | `id` | BIGINT | PK |
+| | `trip_id` | UUID | FK -> trips.id |
+| | `item_id` | VARCHAR | ID de l'hôtel ou activité |
 
 ---
 
-## 4. Diagrammes de Séquence (Interaction Clé)
+## 4. Diagrammes de Séquence (Flux Critiques)
 
-### Cas : Génération d'un voyage
+### Interaction 1 : Génération de l'Itinéraire IA
 ```mermaid
 sequenceDiagram
-    User->>Frontend: Entre sa demande (ex: "New York")
-    Frontend->>Server: POST /api/ai/generate
-    Server->>Tavily: Recherche (Vols, Météo, Hôtels)
-    Tavily-->>Server: Données brutes Web
-    Server->>Claude: Injection données + Prompt
-    Claude-->>Server: Itinéraire structuré (JSON)
-    Server->>Supabase: Sauvegarde du Trip
-    Server-->>Frontend: Pack Voyage Final
-    Frontend-->>User: Affiche le Pack avec Photos HD
+    participant U as Utilisateur
+    participant F as Frontend
+    participant B as Backend
+    participant T as Tavily AI
+    participant C as Claude LLM
+
+    U->>F: Soumet sa demande
+    F->>B: POST /api/ai/generate
+    B->>T: Recherche Web (Hôtels, Vols, Météo)
+    T-->>B: JSON Data (Réel)
+    B->>C: Prompting avec Injection Web Data
+    C-->>B: Itinéraire structuré
+    B->>B: Scoring & Calcul Budgets
+    B-->>F: Pack Voyage Complet
+    F-->>U: Affichage Immédiat
+```
+
+### Interaction 2 : Tunnel de Paiement (Stripe)
+```mermaid
+sequenceDiagram
+    participant U as Utilisateur
+    participant F as Frontend
+    participant B as Backend
+    participant S as Stripe API
+
+    U->>F: Clique sur "Réserver ce Pack"
+    F->>B: POST /api/payments/create-session
+    B->>S: createCheckoutSession(amount, metadata)
+    S-->>B: session_id & checkout_url
+    B-->>F: redirection_url
+    F->>U: Redirige vers Page de Paiement
+    U->>S: Saisie coordonnées bancaires
+    S-->>F: Retourne vers /payment-success
 ```
 
 ---
 
-## 5. Spécifications API
+## 5. Spécifications API REST
 
-### API Externes
-*   **Tavily AI** : Recherche web temps réel pour éviter les hallucinations.
-*   **Anthropic (Claude)** : Cerveau de l'application (LLM).
-*   **Unsplash** : Récupération dynamique de photos HD.
-*   **Stripe** : Gestion des paiements sécurisés.
-
-### Points d'entrée Internes (API REST)
-| Méthode | Path | Input | Output | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| POST | `/api/ai/generate` | `JSON {destination, budget, ...}` | `JSON Pack` | Génère un voyage complet via l'IA. |
-| GET | `/api/trips` | `Token Auth` | `Array Trips` | Récupère les voyages sauvegardés de l'utilisateur. |
-| POST | `/api/payments/create-session` | `tripId, amount` | `Stripe URL` | Initialise un tunnel de paiement. |
+### Endpoints Internes
+*   `POST /api/auth/register` : Création de compte.
+*   `POST /api/auth/login` : Authentification et retour du JWT.
+*   `POST /api/ai/generate` : Déclenchement de l'intelligence agentique.
+*   `GET /api/trips` : Récupération de l'historique utilisateur.
+*   `POST /api/payments/create-checkout-session` : Initialisation de la transaction.
 
 ---
 
-## 6. Stratégies SCM & QA
+## 6. Plans SCM & Assurance Qualité (QA)
 
-### SCM (Source Control Management)
-*   **Outil** : Git & GitHub.
-*   **Stratégie de Branches** : 
-    *   `main` : Code stable pour la production.
-    *   `develop` : Branche d'intégration des fonctionnalités.
-    *   `feat/*` : Branches dédiées pour chaque nouvelle feature.
-*   **Code Review** : Pull Requests obligatoires avant fusion dans `develop`.
+### Gestion du Code (SCM)
+*   **Workflow** : GitHub Flow simplifié (Main + Feature Branches).
+*   **Commits** : Conventionnel (feat:, fix:, docs:, chore:).
+*   **Review** : Auto-review systématique et tests de non-régression avant push.
 
-### QA (Assurance Qualité)
-*   **Tests Unitaires** : Vitest pour la logique de calcul de budget et scoring.
-*   **Tests API** : Postman pour valider les endpoints.
-*   **Linting** : ESLint pour garantir la qualité du code JS.
+### Stratégie de Tests (QA)
+*   **Unit Testing** : Vitest pour les algorithmes de scoring (garantir que le budget total ne dépasse jamais le max utilisateur).
+*   **API Testing** : Utilisation de Postman pour valider la structure des réponses JSON.
+*   **E2E (Exploratoire)** : Tests manuels des flux critiques (Chat -> Génération -> Réservation).
 
 ---
 
 ## 7. Justifications Techniques
-*   **React/Vite** : Choisi pour la rapidité de développement et la fluidité de l'interface (SPA).
-*   **Node/Express** : Pour sa gestion asynchrone performante des appels API multiples (Tavily, Claude, Unsplash).
-*   **Tavily over PredictHQ** : Tavily permet une recherche web agentique beaucoup plus flexible et "Real-Time" pour un concierge de luxe.
-*   **Supabase** : Permet d'avoir une DB PostgreSQL robuste avec une gestion d'authentification intégrée en un temps record.
+1.  **Node.js (Single Threaded Event Loop)** : Idéal pour gérer des dizaines d'appels API en parallèle (Tavily, Unsplash, Claude) sans bloquer le serveur.
+2.  **Claude 3.5 Sonnet** : Choisi pour sa supériorité dans le respect des formats JSON stricts par rapport à GPT-4.
+3.  **Tavily AI** : Utilisation pour le "RAG" (Retrieval Augmented Generation) en temps réel, évitant les hallucinations sur les prix des vols et la météo.
+4.  **Tailwind CSS** : Pour une UI ultra-premium avec un temps de développement réduit, crucial en projet solo.
