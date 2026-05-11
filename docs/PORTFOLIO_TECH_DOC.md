@@ -57,29 +57,43 @@ graph TD
 
 ---
 
-## 3. Conception Technique (Classes & Base de Données)
+## 3. Conception Technique (Composants & Classes)
 
-### Diagramme de Services (Backend)
+### Architecture des Classes (Backend - Node.js)
+Le backend est structuré en services modulaires. Voici les classes clés qui pilotent la logique métier :
+
 ```mermaid
 classDiagram
     class AIService {
-        +chatIntake(message)
-        +assemblePack(webData)
-        +generateItinerary(prompt)
+        +assemblePack(webData: Object) : Object
+        +chatIntake(message: String) : String
+        +generateItinerary(prompt: String) : String
     }
     class SearchAgent {
-        +searchFlights(query)
-        +searchHotels(query)
-        +searchEvents(query)
+        +searchFlights(query: String) : Array
+        +searchHotels(query: String) : Array
+        +searchEvents(query: String) : Array
     }
     class DBService {
-        +saveTrip(userId, data)
-        +getTrips(userId)
+        +saveTrip(userId: UUID, data: Object) : Promise
+        +getTrips(userId: UUID) : Array
     }
 
     AIService --> SearchAgent : "Récupère les données réelles"
     AIService --> DBService : "Persistance des packs"
 ```
+
+*   **AIService** : C'est le cerveau de l'application. Sa méthode `assemblePack` fusionne les données web avec le contexte utilisateur.
+*   **SearchAgent** : Gère l'interface avec Tavily AI. Ses méthodes extraient les meilleurs prix et disponibilités en temps réel.
+*   **DBService** : Gère les interactions avec Supabase pour la lecture/écriture sécurisée des données.
+
+### Composants de l'Interface (Frontend - React)
+L'UI est découpée en composants autonomes pour garantir une expérience fluide :
+
+*   **ChatWidget** : Interface de dialogue. Il capture les besoins de l'utilisateur et affiche les réponses de l'IA.
+*   **ResultsView** : Orchestre l'affichage du pack voyage. Il utilise des "sub-components" pour rendre les cartes d'hôtels et de vols.
+*   **TripCard** : Affiche les détails HD d'une suggestion (Unsplash) et gère l'état local des votes utilisateur.
+*   **AuthLayout** : Gère les formulaires de connexion/inscription via le provider Supabase.
 
 ### Conception de la Base de Données (Modèle Entité-Relation)
 Le choix de **PostgreSQL** a été fait pour garantir l'intégrité des données et la flexibilité du stockage des itinéraires via le type `JSONB`.
