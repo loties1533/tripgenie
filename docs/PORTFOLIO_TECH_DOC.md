@@ -37,7 +37,6 @@ graph LR
         Claude[Claude 3.5 AI]
         Tavily[Tavily Agentic Search]
         Unsplash[Unsplash HD Photos]
-        Stripe[Stripe Payments]
     end
 
     subgraph Data_Storage
@@ -50,7 +49,6 @@ graph LR
     Logic <--> Claude
     Logic <--> Tavily
     Logic <--> Unsplash
-    Express <--> Stripe
     Auth <--> Supabase
     Logic <--> Supabase
 ```
@@ -124,24 +122,6 @@ sequenceDiagram
     F-->>U: Affichage Immédiat
 ```
 
-### Interaction 2 : Tunnel de Paiement (Stripe)
-```mermaid
-sequenceDiagram
-    participant U as Utilisateur
-    participant F as Frontend
-    participant B as Backend
-    participant S as Stripe API
-
-    U->>F: Clique sur "Réserver ce Pack"
-    F->>B: POST /api/payments/create-session
-    B->>S: createCheckoutSession(amount, metadata)
-    S-->>B: session_id & checkout_url
-    B-->>F: redirection_url
-    F->>U: Redirige vers Page de Paiement
-    U->>S: Saisie coordonnées bancaires
-    S-->>F: Retourne vers /payment-success
-```
-
 ---
 
 ## 5. Spécifications API REST
@@ -151,7 +131,6 @@ sequenceDiagram
 *   `POST /api/auth/login` : Authentification et retour du JWT.
 *   `POST /api/ai/generate` : Déclenchement de l'intelligence agentique.
 *   `GET /api/trips` : Récupération de l'historique utilisateur.
-*   `POST /api/payments/create-checkout-session` : Initialisation de la transaction.
 
 ---
 
@@ -165,7 +144,7 @@ sequenceDiagram
 ### Stratégie de Tests (QA)
 *   **Unit Testing** : Vitest pour les algorithmes de scoring (garantir que le budget total ne dépasse jamais le max utilisateur).
 *   **API Testing** : Utilisation de Postman pour valider la structure des réponses JSON.
-*   **E2E (Exploratoire)** : Tests manuels des flux critiques (Chat -> Génération -> Réservation).
+*   **E2E (Exploratoire)** : Tests manuels des flux critiques (Chat -> Génération).
 
 ---
 
