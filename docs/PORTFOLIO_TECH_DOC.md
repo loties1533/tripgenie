@@ -133,7 +133,9 @@ erDiagram
 
 ## 4. Diagrammes de Séquence (Flux Principal)
 
-### Génération d'un Itinéraire Signature
+### Cas d'Usage 1 : Génération d'un Itinéraire Signature (IA Agentique)
+Ce flux illustre l'interaction entre l'utilisateur, l'orchestrateur IA et les agents de recherche web.
+
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur
@@ -142,14 +144,51 @@ sequenceDiagram
     participant T as Tavily Agent
     participant C as Claude AI
 
-    U->>F: "Je veux un week-end à Monaco"
+    U->>F: Soumet son besoin (ex: "Monaco VIP")
     F->>B: POST /api/ai/generate
-    B->>T: Recherche Web (Météo, Hôtels 5*, Vols)
+    B->>T: Recherche Web (Météo, Hôtels, Vols)
     T-->>B: Données réelles extraites
     B->>C: Prompting + Context Web
     C-->>B: Itinéraire structuré (JSON)
-    B-->>F: Pack Voyage VIP
-    F-->>U: Affichage des résultats & Photos HD
+    B-->>F: Pack Voyage Complet
+    F-->>U: Rendu visuel & Photos HD
+```
+
+### Cas d'Usage 2 : Authentification Utilisateur (JWT & Supabase)
+Ce flux montre la sécurisation de l'accès via le service d'authentification.
+
+```mermaid
+sequenceDiagram
+    participant U as Utilisateur
+    participant F as Frontend
+    participant B as Backend
+    participant S as Supabase Auth
+
+    U->>F: Saisit ses identifiants
+    F->>B: POST /api/auth/login
+    B->>S: Vérification credentials
+    S-->>B: Retourne User & JWT Token
+    B-->>F: HTTP 200 + Token
+    F-->>U: Redirection vers Dashboard
+```
+
+### Cas d'Usage 3 : Sauvegarde d'un Voyage (Persistance)
+Ce flux illustre la persistance des données générées dans la base de données relationnelle.
+
+```mermaid
+sequenceDiagram
+    participant U as Utilisateur
+    participant F as Frontend
+    participant B as Backend
+    participant DB as Supabase DB
+
+    U->>F: Clique sur "Sauvegarder"
+    F->>B: POST /api/trips (avec JWT)
+    B->>B: Validation du Token
+    B->>DB: INSERT INTO trips (user_id, pack_data)
+    DB-->>B: Confirmation (Record créé)
+    B-->>F: Succès (Trip ID retourné)
+    F-->>U: Feedback visuel (Notification)
 ```
 
 ---
