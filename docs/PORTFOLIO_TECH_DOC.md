@@ -24,18 +24,36 @@
 
 ---
 
-## 2. Architecture du Système
+## 2. Architecture du Système (MVP)
 
-### Diagramme d'Infrastructure
+### Diagramme de Haut Niveau & Flux de Données
 ```mermaid
 graph TD
     User((Utilisateur)) <--> Frontend[React / Vite]
     Frontend <--> Backend[Node.js / Express]
-    Backend <--> AI_Engine[Orchestrateur Claude 3.5]
-    Backend <--> Search_Agent[Tavily Web Search Agent]
+    
+    %% Services Internes
     Backend <--> DB[(Supabase / PostgreSQL)]
-    AI_Engine <--> Search_Agent
+    Backend <--> Auth[Supabase Auth / JWT]
+
+    %% API Externes
+    Backend <--> AI[Anthropic - Claude 3.5]
+    Backend <--> Search[Tavily - Web Search Agent]
+    Backend <--> Photos[Unsplash API - Photos HD]
+    Backend <--> Payments[Stripe API - Réservations]
+
+    %% Flux internes complexes
+    AI -.-> |Demande de données fraîches| Search
+    Search -.-> |Retourne Vols/Hôtels/Météo| AI
 ```
+
+### Description du Flux de Données
+1.  **Interaction Utilisateur** : L'utilisateur envoie une requête via le `Frontend`.
+2.  **Orchestration Backend** : Le `Backend` vérifie l'identité via `Supabase Auth`.
+3.  **Intelligence Agentique** : Le `Backend` sollicite `Claude 3.5` qui orchestre une recherche via `Tavily` pour obtenir des données réelles (météo, vols, hôtels).
+4.  **Enrichissement Visuel** : Le `Backend` récupère des visuels via `Unsplash` pour chaque destination.
+5.  **Persistance** : Le pack final est stocké dans la `DB (Supabase)` pour consultation ultérieure.
+6.  **Transaction (Optionnel)** : Le flux se termine par une session `Stripe` pour la validation de la réservation.
 
 ---
 
