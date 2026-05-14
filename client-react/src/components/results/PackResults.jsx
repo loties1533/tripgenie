@@ -76,8 +76,10 @@ function HotelCard({ hotel }) {
 
 // ---- Flight card ----
 function FlightCard({ flight, tripId, destination }) {
-  const isReturn = flight.type === 'return'
-  const bookingUrl = `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(flight.to_city || destination)}%20from%20${encodeURIComponent(flight.from_city)}`
+  const isReturn  = flight.type === 'return'
+  const bookingUrl = flight.links?.skyscanner
+    || flight.links?.kayak
+    || `https://www.skyscanner.fr/transport/flights/${encodeURIComponent(flight.from_city || 'Paris')}/${encodeURIComponent(flight.to_city || destination)}/`
 
   return (
     <motion.div initial={{ opacity: 0, x: isReturn ? 8 : -8 }} animate={{ opacity: 1, x: 0 }}
@@ -121,7 +123,7 @@ function FlightCard({ flight, tripId, destination }) {
             rel="noopener noreferrer"
             className="text-[10px] font-bold text-sage hover:underline flex items-center gap-0.5"
           >
-            Réserver ↗
+            Skyscanner ↗
           </a>
         </div>
       </div>
@@ -233,6 +235,9 @@ function BudgetChart({ breakdown }) {
 
 // ---- Event card ----
 function EventCard({ event }) {
+  const bookingUrl = event.booking_url || event.links?.viator || event.links?.getyourguide
+    || `https://www.viator.com/fr-FR/search?text=${encodeURIComponent((event.name || '') + ' ' + (event.venue || ''))}`
+
   return (
     <div className="flex gap-3 p-3 glass rounded-xl">
       <div className="w-10 h-10 bg-coral/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎭</div>
@@ -240,6 +245,10 @@ function EventCard({ event }) {
         <p className="font-medium text-sm text-ink dark:text-parchment truncate">{event.name}</p>
         <p className="text-xs text-muted mt-0.5">{event.date} · {event.venue}</p>
         {event.description && <p className="text-xs text-muted mt-1 line-clamp-2">{event.description}</p>}
+        <a href={bookingUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-block mt-2 text-[10px] font-bold text-sage hover:underline">
+          Réserver / Infos ↗
+        </a>
       </div>
     </div>
   )
@@ -353,14 +362,20 @@ export default function PackResults() {
             >
               📍 Carte
             </button>
-            <a 
-              href={hotel.url || `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' ' + d.destination)}`}
+            <a
+              href={hotel.booking_url || hotel.links?.booking || `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.name + ' ' + d.destination)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[10px] uppercase tracking-wider font-bold text-sage hover:text-sage/80 flex items-center gap-1 transition-colors"
             >
-              Réserver ↗
+              Booking ↗
             </a>
+            {hotel.links?.google && (
+              <a href={hotel.links.google} target="_blank" rel="noopener noreferrer"
+                className="text-[10px] uppercase tracking-wider font-bold text-muted hover:text-gold flex items-center gap-1 transition-colors">
+                Google ↗
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -405,13 +420,13 @@ export default function PackResults() {
           >
             📍 Carte
           </a>
-          <a 
-            href={`https://www.google.com/search?q=${encodeURIComponent('site officiel ' + activity.name + ' ' + d.destination)}`}
+          <a
+            href={activity.links?.viator || activity.links?.getyourguide || `https://www.viator.com/fr-FR/search?text=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
           >
-            Réserver ↗
+            Viator ↗
           </a>
         </div>
         <VoteButtons tripId={d.id} itemId={activity.name} />
@@ -429,7 +444,7 @@ export default function PackResults() {
       <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold h-[260px] flex items-end">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <img src={d.photo_url} alt={d.destination} className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[20s]" />
+          {(d.photo || d.photo_url) && <img src={d.photo || d.photo_url} alt={d.destination} className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[20s]" />}
           <div className="absolute inset-0 bg-gradient-to-t from-parchment via-parchment/60 to-transparent dark:from-ink dark:via-ink/60 dark:to-transparent" />
         </div>
 
