@@ -4,6 +4,7 @@ node_modules/
 *.log
 dist/
 .vercel/
-.npm-cache/hbnb-main/
 
+# npm cache — peu importe où il se trouve dans l'arbo
+**/.npm-cache/
 .npm-cache/

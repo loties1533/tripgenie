@@ -5,7 +5,7 @@
 import express from 'express';
 import { optionalAuth } from '../middleware/auth.js';
 import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
-import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude.js';
+import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude/index.js';
 import { scorepack } from '../services/scoring.js';
 import { smartFlightSearch, smartEventsSearch } from '../services/smartSearch.js';
 import supabase from '../db/supabase.js';
