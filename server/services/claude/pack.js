@@ -30,7 +30,7 @@ const BUDGET_RATIOS = {
  * @param {number}   [params.duration]   - durée en jours (si pas de dates)
  * @returns {Promise<import('../../types.js').Pack>}
  */
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
+export async function assemblePack({ destination, flights, events, hotels: realHotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
   const dest = sanitizeInput(destination);
 
   let nights = 4;
@@ -178,13 +178,15 @@ export async function assemblePack({ destination, flights, events, mode, profile
     photo: realPhoto || null,
     summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
-    hotels: (t.hotels || []).map((h, i) => ({
+    hotels: (realHotels?.length ? realHotels : t.hotels || []).map((h, i) => ({
       name:           h.name || `Hôtel ${i+1}`,
-      location:       h.loc  || 'Centre',
-      stars:          i === 0 && mode === 'luxury' ? 5 : 4,
-      price_per_night:`${Math.round(heberg/nights/(i+1))}€`,
-      highlights:     h.hl || 'Excellent choix',
-      emoji:          i === 0 ? '🏨' : '🏩'
+      location:       h.loc  || h.location || 'Centre',
+      stars:          h.stars || (i === 0 && mode === 'luxury' ? 5 : 4),
+      price_per_night: h.price_per_night ? `${h.price_per_night}€` : `${Math.round(heberg/nights/(i+1))}€`,
+      highlights:     h.hl || h.highlights || 'Excellent choix',
+      emoji:          i === 0 ? '🏨' : '🏩',
+      links:          h.links || null,
+      booking_url:    h.booking_url || null
     })),
     itinerary: (t.itinerary || []).map(d => ({
       day:      d.day,
@@ -204,7 +206,11 @@ export async function assemblePack({ destination, flights, events, mode, profile
       price:     '30€',
       best_time: i === 2 ? 'Soir' : 'Matin'
     })),
-    events: eventData,
+    events: eventData.map(e => ({
+      ...e,
+      links: e.links || null,
+      booking_url: e.booking_url || null
+    })),
     budget_breakdown: {
       vols:`${vols}€`, hebergement:`${heberg}€`, activites:`${activites}€`,
       restauration:`${resto}€`, transports:`${trans}€`, divers:`${divers}€`, total:`${budget}€`

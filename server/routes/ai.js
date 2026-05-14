@@ -7,7 +7,7 @@ import { optionalAuth } from '../middleware/auth.js';
 import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude/index.js';
 import { scorepack } from '../services/scoring.js';
-import { smartFlightSearch, smartEventsSearch } from '../services/smartSearch.js';
+import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../services/smartSearch.js';
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
 import supabase from '../db/supabase.js';
@@ -87,6 +87,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
     const results = await Promise.allSettled([
       smartFlightSearch({ origin, destination, departure, return_date }),
       smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
+      smartHotelSearch({ location: destination, mode }),
       getRealWeather(destination),
       getDestinationPhoto(destination)
     ]);
@@ -113,15 +114,17 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
       }];
     }
 
-    const events     = results[1].status === 'fulfilled' ? results[1].value : [];
-    const realWeather = results[2].status === 'fulfilled' ? results[2].value : null;
-    const realPhoto   = results[3].status === 'fulfilled' ? results[3].value : null;
+    const events      = results[1].status === 'fulfilled' ? results[1].value : [];
+    const realHotels  = results[2].status === 'fulfilled' ? results[2].value : [];
+    const realWeather = results[3].status === 'fulfilled' ? results[3].value : null;
+    const realPhoto   = results[4].status === 'fulfilled' ? results[4].value : null;
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
 
     const pack = await assemblePack({
       destination,
       flights,
       events,
+      hotels: realHotels,
       mode,
       travelers,
       budget,

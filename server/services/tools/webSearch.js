@@ -35,17 +35,15 @@ export async function searchWeb(query) {
 
     const data = await response.json();
     
-    // Concaténer le contenu des résultats de recherche sous forme de "Contexte Web"
     let contextStr = "==== CONTEXTE WEB RECENT ====\n";
     if (data.results && data.results.length > 0) {
       data.results.forEach((r, idx) => {
-        contextStr += `[Source ${idx+1}: ${r.title}] : ${r.content}\n`;
+        contextStr += `[Source ${idx+1}: ${r.title}] (URL: ${r.url}) : ${r.content}\n`;
       });
     } else {
       contextStr += "Pas de résultats récents.\n";
     }
     contextStr += "=============================\n";
-    
     return contextStr;
   } catch (err) {
     console.error('❌ Echec du Web Search :', err.message);
