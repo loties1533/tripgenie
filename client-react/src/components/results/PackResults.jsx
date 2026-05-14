@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import axios from 'axios'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
@@ -168,6 +170,17 @@ function ItineraryDay({ day }) {
                 </div>
               </div>
             ))}
+            
+            {/* Proactive Plan B */}
+            {day.plan_b && (
+              <div className="mt-4 p-3 rounded-xl bg-gold/5 border border-gold/10 flex gap-3">
+                <span className="text-lg">✨</span>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-gold uppercase tracking-wider">Alternative Proactive</p>
+                  <p className="text-xs text-muted leading-relaxed italic">{day.plan_b}</p>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -306,24 +319,53 @@ export default function PackResults() {
     window.open(waUrl, '_blank')
   }
 
+  const [isBooking, setIsBooking] = useState(false)
+  const handleBooking = async () => {
+    try {
+      setIsBooking(true)
+      const response = await axios.post('/api/payments/create-checkout-session', {
+        pack: d,
+        tripId: d.id
+      })
+      if (response.data.url) {
+        window.location.href = response.data.url
+      }
+    } catch (err) {
+      console.error('Booking error:', err)
+      toast.error('Veuillez ajouter votre clé Stripe Secret dans le fichier .env pour activer la réservation.')
+    } finally {
+      setIsBooking(false)
+    }
+  }
+
   // ---- Internal Cards with Locate & Vote button ----
   const LocalHotelCard = ({ hotel }) => (
-    <div className="glass rounded-xl p-4 flex flex-col gap-3">
+    <div className="glass rounded-xl p-4 flex flex-col gap-3 group hover:border-gold/30 transition-colors">
       <div className="flex gap-3">
-        <span className="text-2xl">🏨</span>
+        <div className="w-12 h-12 bg-gold/10 rounded-xl flex items-center justify-center text-2xl border border-gold/20">🏨</div>
         <div className="flex-1">
           <p className="font-semibold text-sm text-ink dark:text-parchment">{hotel.name}</p>
-          <p className="text-xs text-muted mt-0.5">{hotel.type} · {hotel.stars}★</p>
-          <button 
-            onClick={() => handleLocate(hotel.name)}
-            className="mt-2 text-[10px] uppercase tracking-wider font-bold text-gold hover:text-gold/80 flex items-center gap-1 transition-colors"
-          >
-            📍 Localiser sur la carte
-          </button>
+          <p className="text-xs text-muted mt-0.5">{hotel.location} · {hotel.stars}★</p>
+          <div className="flex gap-2 mt-2">
+            <button 
+              onClick={() => handleLocate(hotel.name)}
+              className="text-[10px] uppercase tracking-wider font-bold text-gold hover:text-gold/80 flex items-center gap-1 transition-colors"
+            >
+              📍 Carte
+            </button>
+            <a 
+              href={hotel.url || `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' ' + d.destination)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] uppercase tracking-wider font-bold text-sage hover:text-sage/80 flex items-center gap-1 transition-colors"
+            >
+              Réserver ↗
+            </a>
+          </div>
         </div>
       </div>
-      <div className="flex justify-between items-center pt-2 border-t border-white/5">
-        <span className="text-xs font-medium text-sage">{hotel.price_per_night}</span>
+      <div className="flex justify-between items-center pt-2 border-t border-parchment-dark dark:border-white/10">
+        <span className="text-xs font-bold text-gold">{hotel.price_per_night}</span>
         <div className="flex items-center gap-3">
           <VoteButtons tripId={d.id} itemId={hotel.name} />
           <TagBadge text={hotel.match_reason} />
@@ -333,30 +375,43 @@ export default function PackResults() {
   )
 
   const LocalActivityCard = ({ activity }) => (
-    <div className="glass rounded-xl p-4 flex flex-col gap-3">
-      <div className="flex gap-3">
-        <span className="text-2xl">{activity.emoji || '🎯'}</span>
+    <div className="glass rounded-xl p-5 flex flex-col gap-4 hover:border-gold/40 transition-colors shadow-sm">
+      <div className="flex gap-4">
+        <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center flex-shrink-0 border border-gold/20">
+          <span className="text-2xl">{activity.emoji || '🎯'}</span>
+        </div>
         <div className="flex-1">
-          <p className="font-semibold text-sm text-ink dark:text-parchment">{activity.name}</p>
-          <p className="text-xs text-muted mt-0.5">{activity.category || 'Culture'}</p>
-          <p className="text-xs text-muted/80 mt-1 line-clamp-2 leading-relaxed">{activity.desc || activity.description}</p>
+          <p className="font-display font-bold text-lg text-ink dark:text-parchment leading-tight">{activity.name}</p>
+          <p className="text-xs text-gold font-semibold uppercase tracking-widest mt-1">{activity.category || 'Expérience'}</p>
+          <p className="text-sm text-muted/90 mt-2 leading-relaxed">{activity.desc || activity.description}</p>
+          {activity.plan_b && (
+            <div className="mt-3 p-2 bg-gold/5 rounded-lg border border-gold/10 flex items-start gap-2">
+              <span className="text-sm">✨</span>
+              <div>
+                <p className="text-[10px] text-gold font-bold uppercase tracking-wider">Plan B Proactif</p>
+                <p className="text-xs text-muted italic leading-tight mt-0.5">{activity.plan_b}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+      <div className="flex justify-between items-center pt-3 border-t border-parchment-dark dark:border-white/10 mt-auto">
         <div className="flex gap-2">
-          <button 
-            onClick={() => handleLocate(activity.name)}
-            className="text-[10px] uppercase tracking-wider font-bold text-gold/60 hover:text-gold flex items-center gap-1 transition-colors"
-          >
-            📍 Carte
-          </button>
           <a 
-            href={`https://www.google.com/search?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] uppercase tracking-wider font-bold text-sage/60 hover:text-sage flex items-center gap-1 transition-colors"
+            className="text-[11px] font-semibold text-ink dark:text-parchment bg-parchment-dark dark:bg-ink-light hover:bg-gold hover:text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
           >
-            ↗ Détails
+            📍 Carte
+          </a>
+          <a 
+            href={`https://www.google.com/search?q=${encodeURIComponent('site officiel ' + activity.name + ' ' + d.destination)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
+          >
+            Réserver ↗
           </a>
         </div>
         <VoteButtons tripId={d.id} itemId={activity.name} />
@@ -364,15 +419,21 @@ export default function PackResults() {
     </div>
   )
 
+
   return (
     <motion.div id="pack-results" className="mt-10 space-y-5"
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}>
 
       {/* Hero banner */}
-      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold">
-        <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-sky/5 pointer-events-none" />
-        <div className="relative">
+      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold h-[260px] flex items-end">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img src={d.photo_url} alt={d.destination} className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[20s]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-parchment via-parchment/60 to-transparent dark:from-ink dark:via-ink/60 dark:to-transparent" />
+        </div>
+
+        <div className="relative z-10 w-full">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -391,14 +452,23 @@ export default function PackResults() {
               </h2>
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
             </div>
-            <div className="flex gap-4 text-center">
-              <div className="glass rounded-xl px-4 py-2">
-                <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
-                <p className="text-xs text-muted">nuits</p>
-              </div>
-              <div className="glass rounded-xl px-4 py-2">
-                <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
-                <p className="text-xs text-muted">budget</p>
+            <div className="flex flex-col items-end gap-3">
+              <button 
+                onClick={handleBooking}
+                disabled={isBooking}
+                className="bg-gold hover:bg-gold/80 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-glow-gold hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+              >
+                {isBooking ? 'Ouverture...' : '💳 Réserver ce Pack'}
+              </button>
+              <div className="flex gap-4 text-center">
+                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
+                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
+                  <p className="text-xs text-muted uppercase tracking-tighter">nuits</p>
+                </div>
+                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
+                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
+                  <p className="text-xs text-muted uppercase tracking-tighter">budget</p>
+                </div>
               </div>
             </div>
           </div>

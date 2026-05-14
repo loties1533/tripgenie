@@ -42,10 +42,6 @@ function Message({ msg }) {
             ))}
           </div>
         )}
-        {/* Destinations */}
-        {isBot && msg.destinations?.length > 0 && (
-          <DestinationCards destinations={msg.destinations} />
-        )}
       </div>
     </motion.div>
   )
@@ -75,40 +71,7 @@ function ChipButton({ label, msgId }) {
   )
 }
 
-// ---- Destination suggestion cards ----
-function DestinationCards({ destinations }) {
-  const { addMessage, chatData, setTyping } = useChatStore()
-  const { setLoading, setPack, setField } = useSearchStore()
-
-  const pick = async (dest) => {
-    addMessage({ role: 'user', text: `${dest.city}, ${dest.country}` })
-    addMessage({ role: 'bot', text: `Excellent choix ! 🚀 Je génère ton pack pour **${dest.city}**...` })
-    await launchGeneration(dest.city, chatData, { setLoading, setPack, setField, addMessage, setTyping })
-  }
-
-  return (
-    <div className="flex flex-col gap-2 w-full mt-1">
-      {destinations.slice(0, 3).map((d, i) => (
-        <motion.button key={i} onClick={() => pick(d)}
-          initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.08 }}
-          className="text-left p-3 rounded-xl border border-gold/20 bg-white/60 dark:bg-ink-light/60
-                     hover:border-gold/60 hover:bg-gold/5 transition-all duration-200 group">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-medium text-ink dark:text-parchment text-sm">{d.city}</span>
-              <span className="text-muted text-xs ml-1.5">{d.country}</span>
-            </div>
-            <span className="text-xs font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded-full">
-              {d.match_score}%
-            </span>
-          </div>
-          <p className="text-xs text-muted mt-1 line-clamp-1">{d.reason}</p>
-        </motion.button>
-      ))}
-    </div>
-  )
-}
+// L'ancien composant DestinationCards a été supprimé pour faire place à TripConcepts
 
 // ---- Core business logic (outside component to avoid re-creation) ----
 async function processUserMessage(value, ctx) {
@@ -160,11 +123,7 @@ async function suggestDestinations(chatData, ctx) {
     setTyping(false)
     const dests = res.destinations || []
     if (dests.length) {
-      addMessage({
-        role: 'bot',
-        text: `Voilà ${dests.length} destinations parfaites pour vous ✨ Laquelle vous fait rêver ?`,
-        destinations: dests
-      })
+      setField('concepts', dests)
     } else {
       addMessage({ role: 'bot', text: 'Je génère votre pack directement !', chips: [] })
       if (chatData.destination) {
@@ -230,10 +189,10 @@ export default function ChatWidget() {
       setTimeout(() => {
         addMessage({
           role:  'bot',
-          text:  'Salut ! Je suis TripGenie ✨ Pour commencer, avec qui pars-tu ?',
-          chips: ['Solo 🎒', 'En couple ❤️', 'Amis 🍻', 'Famille 👨‍👩‍👧']
+          text:  'Bienvenue. ✦ Je suis votre Concierge Privé TripGenie. Quelques questions suffisent pour orchestrer une expérience à la hauteur de vos aspirations. Quelle est l\'occasion de cette escapade ?',
+          chips: ['Duo Romantique 💑', 'Entre Amis 🥂', 'En Famille 👨‍👩‍👧', 'Solo & Liberté 🌍']
         })
-      }, 600)
+      }, 800)
     }
   }, [])
 
@@ -298,18 +257,18 @@ export default function ChatWidget() {
       </div>
 
       {/* Input area */}
-      <div className="px-4 pb-4 pt-2 border-t border-parchment-dark dark:border-white/10">
-        <div className="flex gap-2 items-end">
+      <div className="px-4 pb-4 pt-2">
+        <div className="flex gap-2 items-end bg-white/60 dark:bg-ink-light/40 backdrop-blur-md border border-gold/20 rounded-2xl p-1 shadow-inner">
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Décris ton voyage idéal..."
+            placeholder="Confiez-moi vos envies de voyage..."
             rows={1}
-            className="flex-1 resize-none bg-white dark:bg-ink-light/80 border border-parchment-dark dark:border-white/10
-                       rounded-xl px-4 py-3 text-[14px] text-ink dark:text-parchment placeholder:text-muted
-                       focus:outline-none focus:border-gold/50 focus:ring-2 focus:ring-gold/10
+            className="flex-1 resize-none bg-transparent border-none
+                       px-4 py-3 text-[15px] text-ink dark:text-parchment placeholder:text-muted/60
+                       focus:outline-none focus:ring-0
                        transition-all duration-200 max-h-32 overflow-y-auto scroll-hide
                        leading-relaxed"
             style={{ minHeight: '48px' }}
@@ -340,8 +299,9 @@ export default function ChatWidget() {
 
 function SendIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M14 8L2 2l2 6-2 6 12-6z" fill="currentColor"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
     </svg>
   )
 }
