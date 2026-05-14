@@ -3,7 +3,7 @@
 // Algorithme de scoring multi-critères par mode
 // =============================================
 
-import { MODES } from '../constants.js';
+import { MODES } from '../lib/constants.js';
 
 // ---- Poids par mode ----
 const MODE_WEIGHTS = {

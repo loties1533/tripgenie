@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scorepack } from '../server/services/scoring.js';
-import { MODES } from '../server/constants.js';
+import { MODES } from '../server/lib/constants.js';
 
 const packBase = {
   vol:        { price: 400, duration_min: 120, stops: 0 },

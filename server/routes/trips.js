@@ -6,7 +6,7 @@ import express from 'express';
 import { z } from 'zod';
 import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
-import { MODES_LIST, TRIP_STATUS_LIST } from '../constants.js';
+import { MODES_LIST, TRIP_STATUS_LIST } from '../lib/constants.js';
 
 const createTripSchema = z.object({
   destination:  z.string().min(1, 'destination requise').max(100),
