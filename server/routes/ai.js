@@ -14,7 +14,7 @@ const router = express.Router();
 
 
 // ---- POST /api/ai/analyze ----
-router.post('/analyze', aiChatLimiter, optionalAuth, async (req, res) => {
+router.post('/analyze', aiChatLimiter, optionalAuth, async (req, res, next) => {
   try {
     const { input } = req.body;
     if (!input?.trim()) return res.status(400).json({ error: 'input requis' });
@@ -25,12 +25,12 @@ router.post('/analyze', aiChatLimiter, optionalAuth, async (req, res) => {
 
   } catch (err) {
     console.error('AI analyze error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de l\'analyse de votre demande' });
+    next(err);
   }
 });
 
 // ---- POST /api/ai/destinations ----
-router.post('/destinations', aiGenerateLimiter, optionalAuth, async (req, res) => {
+router.post('/destinations', aiGenerateLimiter, optionalAuth, async (req, res, next) => {
   try {
     const { mode, budget, travelers, duration, origin, preferences, departure } = req.body;
     if (!mode) return res.status(400).json({ error: 'mode requis' });
@@ -40,12 +40,12 @@ router.post('/destinations', aiGenerateLimiter, optionalAuth, async (req, res) =
 
   } catch (err) {
     console.error('AI destinations error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la suggestion de destinations' });
+    next(err);
   }
 });
 
 // ---- POST /api/ai/onboarding ----
-router.post('/onboarding', aiChatLimiter, optionalAuth, async (req, res) => {
+router.post('/onboarding', aiChatLimiter, optionalAuth, async (req, res, next) => {
   try {
     const { currentData, userMessage } = req.body;
     if (!userMessage) return res.status(400).json({ error: 'userMessage requis' });
@@ -56,12 +56,12 @@ router.post('/onboarding', aiChatLimiter, optionalAuth, async (req, res) => {
 
   } catch (err) {
     console.error('AI onboarding error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la conversation d\'onboarding' });
+    next(err);
   }
 });
 
 // ---- POST /api/ai/generate ----
-router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
+router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next) => {
   try {
     const {
       destination,
@@ -187,12 +187,12 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res) => {
 
   } catch (err) {
     console.error('AI generate error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la génération du pack. Réessayez.' });
+    next(err);
   }
 });
 
 // ---- POST /api/ai/chat ----
-router.post('/chat', aiChatLimiter, optionalAuth, async (req, res) => {
+router.post('/chat', aiChatLimiter, optionalAuth, async (req, res, next) => {
   try {
     const { message, current_pack, mode, trip_id } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'message requis' });
@@ -217,7 +217,7 @@ router.post('/chat', aiChatLimiter, optionalAuth, async (req, res) => {
 
   } catch (err) {
     console.error('AI chat error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la conversation' });
+    next(err);
   }
 });
 

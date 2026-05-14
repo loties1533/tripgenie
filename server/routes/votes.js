@@ -18,7 +18,7 @@ const router = express.Router();
 
 // ---- POST /api/votes ----
 // Permet de voter pour un élément du pack (public via lien)
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const parsed = voteSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -46,13 +46,13 @@ router.post('/', async (req, res) => {
 
   } catch (err) {
     console.error('Vote error:', err);
-    res.status(500).json({ error: 'Erreur lors de l\'enregistrement du vote' });
+    next(err);
   }
 });
 
 // ---- GET /api/votes/:trip_id ----
 // Récupérer tous les votes pour un voyage donné
-router.get('/:trip_id', async (req, res) => {
+router.get('/:trip_id', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('trip_votes')
@@ -65,7 +65,7 @@ router.get('/:trip_id', async (req, res) => {
 
   } catch (err) {
     console.error('Fetch votes error:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des votes' });
+    next(err);
   }
 });
 

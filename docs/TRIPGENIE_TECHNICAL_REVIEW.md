@@ -18,7 +18,7 @@ L'application repose sur une architecture moderne, séparant clairement le clien
 ### ⚙️ Backend (API Express.js)
 *   **Framework** : Node.js avec Express, structuré selon les standards MVC (Routes, Controllers/Services, Middlewares).
 *   **Sécurité** : Protection par `Helmet`, gestion des CORS stricts, et `express-rate-limit` pour prévenir les abus sur les endpoints d'IA.
-*   **Orchestration d'API (Le Cerveau)** : Le backend agit comme un chef d'orchestre. Il contacte l'IA (Claude/OpenRouter), puis interroge en parallèle Tavily (Recherche Web agentique) et PredictHQ (Événements) pour enrichir la réponse avec des données réelles et fraîches.
+*   **Orchestration d'API (Le Cerveau)** : Le backend agit comme un chef d'orchestre. Il contacte l'IA (Claude/OpenRouter), puis interroge en parallèle Tavily pour les vols (smartFlightSearch), événements (smartEventsSearch) et hôtels (smartHotelSearch) pour enrichir la réponse avec des données réelles et fraîches.
 
 ### 🗄️ Base de Données (Supabase / PostgreSQL)
 La modélisation respecte strictement les standards relationnels enseignés à Holberton School :

@@ -3,6 +3,8 @@
 // Algorithme de scoring multi-critères par mode
 // =============================================
 
+import { MODES } from '../constants.js';
+
 // ---- Poids par mode ----
 const MODE_WEIGHTS = {
   party: {
@@ -49,7 +51,8 @@ function normalise(value, min, max) {
 
 // ---- Score un vol ----
 function scoreVol(vol, mode) {
-  const prixScore   = 1 - normalise(vol.price, 50, 2000);  // moins cher = mieux
+  if (!vol) return 0.5;
+  const prixScore   = 1 - normalise(vol.price, 50, 2000);
   const dureeScore  = 1 - normalise(vol.duration_min, 60, 720);
   const directScore = vol.stops === 0 ? 1 : vol.stops === 1 ? 0.6 : 0.3;
 
@@ -64,6 +67,7 @@ function scoreVol(vol, mode) {
 
 // ---- Score un hôtel ----
 function scoreHotel(hotel, mode, travelers) {
+  if (!hotel) return 0.5;
   const starsScore    = normalise(hotel.stars || 3, 1, 5);
   const prixScore     = 1 - normalise(hotel.price_per_night, 20, 800);
   const capacityScore = hotel.max_guests >= travelers ? 1 : 0.3;
@@ -135,12 +139,14 @@ function scoreOriginalite(destination) {
 
 // ---- FONCTION PRINCIPALE ----
 /**
- * Calcule le score d'un pack complet
- * @param {Object} pack - { vol, hotel, events, activities, totalPrice }
- * @param {string} mode - 'party' | 'student' | 'luxury' | 'group' | 'relax' | 'surprise'
- * @param {number} travelers - nombre de voyageurs
- * @param {string} destination - nom de la destination
- * @returns {number} score entre 0 et 1
+ * Calcule le score multi-critères d'un pack voyage.
+ * Chaque mode (party, luxury, student…) applique des pondérations différentes
+ * sur les critères vol, hôtel, événements, activités et prix.
+ * @param {{ vol: Object, hotel: Object, events: Object[], activities: Object[], totalPrice: number }} pack
+ * @param {string} mode        - mode de voyage (voir MODES dans constants.js)
+ * @param {number} travelers   - nombre de voyageurs
+ * @param {string} destination - utilisé pour le score d'originalité (mode surprise)
+ * @returns {import('../types.js').ResultatScore}
  */
 export function scorepack(pack, mode, travelers = 2, destination = '') {
   const { vol, hotel, events, activities, totalPrice } = pack;

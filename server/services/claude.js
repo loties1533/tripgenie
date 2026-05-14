@@ -5,27 +5,19 @@
 import 'dotenv/config';
 import { searchWeb } from './tools/webSearch.js';
 import * as Mocks from './mocks.js';
+import { MODES } from '../constants.js';
+import { callClaude, callOpenRouter, callGemini, callOllama } from './providers.js';
 
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY?.trim() || null;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY?.trim() || null;
-const AI_TIMEOUT_MS  = 45_000;
 
 console.log(`🤖 AI Provider: ${process.env.AI_PROVIDER === 'ollama' ? 'Ollama' : process.env.AI_PROVIDER === 'openrouter' ? 'OpenRouter' : process.env.AI_PROVIDER === 'gemini' ? 'Gemini' : ANTHROPIC_KEY ? 'Claude' : '⚠️ AUCUN'}`);
 
 const SYSTEM_PROMPT = `Tu es TripGenie, expert voyage. Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après.`;
 
-
-
 // =============================================
 // HELPERS
 // =============================================
-
-function fetchWithTimeout(url, options, timeoutMs = AI_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timer));
-}
 
 function sanitizeInput(str) {
   if (typeof str !== 'string') return String(str ?? '');
@@ -63,125 +55,6 @@ function normalizeChips(chips) {
     if (c?.text) return c.text
     return String(c)
   }).filter(Boolean)
-}
-
-// =============================================
-// PROVIDERS
-// =============================================
-
-async function callClaude(systemPrompt, userPrompt) {
-  const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
-      system:     systemPrompt,
-      messages:   [{ role: 'user', content: userPrompt }]
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Claude error: ${JSON.stringify(data.error)}`);
-  return data.content[0].text;
-}
-
-const FREE_MODELS = [
-  'google/gemma-3-27b-it:free',
-  'google/gemma-4-26b-a4b-it:free',
-  'google/gemma-3-12b-it:free',
-  'google/gemma-3-4b-it:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
-  'microsoft/phi-3-medium-128k-instruct:free',
-  'google/gemma-7b-it:free',
-  'qwen/qwen-2-7b-instruct:free',
-  'z-ai/glm-4.5-air:free',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'nvidia/nemotron-nano-9b-v2:free',
-  'openai/gpt-oss-20b:free',
-];
-
-async function callOpenRouter(systemPrompt, userPrompt) {
-  for (const model of FREE_MODELS) {
-    try {
-      const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'HTTP-Referer':  'http://localhost:3001',
-          'X-Title':       'TripGenie'
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4000,
-          messages: [
-            { role: 'system', content: systemPrompt + "\n\nCRITICAL: REPONDS UNIQUEMENT EN JSON VALIDE. PAS DE TEXTE AVANT OU APRES. TON OUTPUT SERA PARSE DIRECTEMENT PAR UN SCRIPT." },
-            { role: 'user',   content: userPrompt }
-          ]
-        })
-      });
-      const data = await res.json();
-      if (!res.ok || data.error?.code === 429) {
-        console.warn(`Model ${model} unavailable, trying next...`);
-        continue;
-      }
-      console.log(`✅ Using model: ${model}`);
-      return data.choices[0].message.content;
-    } catch (err) {
-      if (err.message.includes('429')) {
-        console.warn(`Model ${model} quota exceeded, trying next...`);
-      } else {
-        console.warn(`Model ${model} failed: ${err.message}`);
-      }
-      continue;
-    }
-  }
-  throw new Error('QUOTA_EXCEEDED: Tous les modèles gratuits sont épuisés. Attends 1 minute avant de réessayer.');
-}
-
-async function callGemini(systemPrompt, userPrompt) {
-  const res = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
-        }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
-      })
-    }
-  );
-  const data = await res.json();
-  if (res.status === 429) {
-    throw new Error('QUOTA_EXCEEDED: Limite gratuite Gemini atteinte. Attends 1 minute.');
-  }
-  if (!res.ok) throw new Error(`Gemini error: ${JSON.stringify(data.error)}`);
-  return data.candidates[0].content.parts[0].text;
-}
-
-async function callOllama(systemPrompt, userPrompt) {
-  const res = await fetchWithTimeout(`${process.env.OLLAMA_BASE_URL}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model:    process.env.OLLAMA_MODEL || 'gemma2:9b',
-      stream:   false,
-      messages: [
-        { role: 'system',  content: systemPrompt },
-        { role: 'user',    content: userPrompt   }
-      ]
-    })
-  }, 60_000)
-  const data = await res.json()
-  if (!res.ok) throw new Error(`Ollama error: ${JSON.stringify(data)}`)
-  return data.message.content
 }
 
 // =============================================
@@ -281,9 +154,23 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
   return JSON.stringify({ response: "Service temporairement limité. Réessayez dans 1 minute.", isMock: true });
 }
 
-// ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
-// La structure JSON complète est construite côté serveur
-// → jamais de problème de troncature
+/**
+ * Génère un pack de voyage complet à partir des données récupérées.
+ * L'IA produit uniquement les textes courts — la structure finale est assemblée côté serveur
+ * pour éviter tout problème de troncature JSON.
+ * @param {Object}   params
+ * @param {string}   params.destination
+ * @param {Object[]} params.flights      - résultats de smartFlightSearch (Tavily)
+ * @param {Object[]} params.events       - résultats de smartEventsSearch (Tavily)
+ * @param {string}   params.mode         - mode de voyage (voir MODES dans constants.js)
+ * @param {string}   [params.profile]    - profil du groupe (couple, amis, famille…)
+ * @param {number}   params.travelers    - nombre de voyageurs
+ * @param {number}   params.budget       - budget total en euros
+ * @param {string}   [params.departure]  - date de départ YYYY-MM-DD
+ * @param {string}   [params.return_date] - date de retour YYYY-MM-DD
+ * @param {number}   [params.duration]   - durée en jours (si pas de dates)
+ * @returns {Promise<import('../types.js').Pack>}
+ */
 export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration }) {
   const dest = sanitizeInput(destination);
 
@@ -494,6 +381,13 @@ const divers    = budget - vols - heberg - activites - resto - trans;
   };
 }
 
+/**
+ * Gère l'onboarding conversationnel.
+ * Analyse le message utilisateur et extrait les données voyage (destination, budget, dates…).
+ * Passe isReady à true dès que les informations minimales sont collectées.
+ * @param {{ currentData: Object, userMessage: string }} params
+ * @returns {Promise<import('../types.js').ResultatOnboarding>}
+ */
 export async function chatIntake({ currentData, userMessage }) {
   const systemPrompt = `Tu es TripGenie, un expert voyage IA ultra-efficace et empathique.
 

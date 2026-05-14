@@ -41,14 +41,14 @@ J'ai conçu et développé l'intégralité du front-end en autonomie totale.
 **1. Décrivez les tâches ou opérations que vous avez effectuées, et dans quelles conditions :**
 Pour propulser l'application TripGenie, j'ai conçu un back-end robuste en Node.js/Express, dont le rôle principal est d'orchestrer intelligemment des APIs externes tout en garantissant l'intégrité des données en base.
 - **Création d'une API RESTful sécurisée :** Développement de routes Express pour gérer l'authentification, les recherches de voyages, et un système de votes (consensus). 
-- **Orchestration asynchrone d'APIs tierces :** Implémentation de requêtes parallèles (`Promise.allSettled`) vers les services de recherche (Tavily/SmartSearch), d'événements (PredictHQ) et les modèles de langage (Anthropic Claude, OpenRouter) pour réduire de moitié les temps de réponse.
+- **Orchestration asynchrone d'APIs tierces :** Implémentation de requêtes parallèles (`Promise.allSettled`) vers les services de recherche (Tavily/SmartSearch), d'événements, vols et hôtels (Tavily) et les modèles de langage (Anthropic Claude, OpenRouter) pour réduire de moitié les temps de réponse.
 - **Mécanismes de tolérance aux pannes (Mode Survie) :** Mise en place d'un système de "fallback" (bascule automatique) vers des modèles d'IA secondaires ou des données factices (Mocks) en cas d'erreur 429 (quota dépassé) des fournisseurs d'API, garantissant une disponibilité continue.
 - **Interaction Base de données & Sécurité :** Modélisation relationnelle stricte (UUID, ON DELETE CASCADE) et intégration avec PostgreSQL via Supabase. Validation stricte des données entrantes et assainissement (Regex) des réponses JSON capricieuses renvoyées par l'IA.
 
 **2. Précisez les moyens utilisés :**
 - Node.js, Express.js
 - Supabase (PostgreSQL), API JavaScript Supabase
-- APIs externes : Tavily (SmartSearch), PredictHQ, Anthropic (Claude), OpenRouter
+- APIs externes : Tavily (SmartSearch : vols, événements, hôtels), Anthropic (Claude), OpenRouter
 - Visual Studio Code, Git / GitHub
 - Postman et scripts CLI pour tester et valider les endpoints à 100%
 

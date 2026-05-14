@@ -46,7 +46,7 @@ Le socle initial acquis à Holberton reposait fortement sur le Vanilla JS et le 
 ### 3.4. Les APIs Tierces
 *   **Anthropic Claude & OpenRouter** : Le cerveau de l'appli pour la compréhension du langage naturel.
 *   **Tavily (Search API)** : Utilisé via SmartSearch pour récupérer des données de vols et d'activités en temps réel sur le web, offrant une plus grande flexibilité que les APIs de voyage classiques (souvent limitées en mode Sandbox).
-*   **PredictHQ** : Pour injecter des événements locaux réels (Concerts, festivals) dans l'itinéraire.
+*   **Tavily** : Pour rechercher en temps réel des vols, événements (concerts, festivals) et hôtels via web search — une seule API remplace PredictHQ et Amadeus.
 
 ---
 
@@ -111,7 +111,7 @@ erDiagram
 +    participant S as Serveur Express
 +    participant AI as IA (Claude/OpenRouter)
 +    participant T as Tavily (SmartSearch)
-+    participant P as PredictHQ (Events)
++    participant P as Tavily (Events/Hotels)
 +    participant DB as Supabase (PostgreSQL)
 +
 +    U->>S: POST /api/ai/generate

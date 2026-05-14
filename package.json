@@ -12,7 +12,8 @@
     "client:build": "cd client-react && npm run build",
     "test": "node tests/test_api_v1.js",
     "test:services": "node tests/test_services.js",
-    "test:vitest": "vitest run tests/api.test.js"
+    "test:vitest": "vitest run tests/api.test.js",
+    "test:scoring": "vitest run tests/scoring.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",

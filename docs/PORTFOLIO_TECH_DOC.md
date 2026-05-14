@@ -34,7 +34,7 @@ graph TD
     
     %% Services Internes
     Backend <--> DB[(Supabase / PostgreSQL)]
-    Backend <--> Auth[Supabase Auth / JWT]
+    Backend <--> Auth[JWT / bcryptjs (auth custom)]
 
     %% API Externes
     Backend <--> AI[Anthropic - Claude 3.5]
@@ -49,7 +49,7 @@ graph TD
 
 ### Description du Flux de Données
 1.  **Interaction Utilisateur** : L'utilisateur envoie une requête via le `Frontend`.
-2.  **Orchestration Backend** : Le `Backend` vérifie l'identité via `Supabase Auth`.
+2.  **Orchestration Backend** : Le `Backend` vérifie l'identité via le middleware `requireAuth` (JWT signé avec jsonwebtoken, mots de passe hashés avec bcryptjs).
 3.  **Intelligence Agentique** : Le `Backend` sollicite `Claude 3.5` qui orchestre une recherche via `Tavily` pour obtenir des données réelles (météo, vols, hôtels).
 4.  **Enrichissement Visuel** : Le `Backend` récupère des visuels via `Unsplash` pour chaque destination.
 5.  **Persistance** : Le pack final est stocké dans la `DB (Supabase)` pour consultation ultérieure.
@@ -158,7 +158,7 @@ sequenceDiagram
     participant U as Utilisateur
     participant F as Frontend
     participant B as Backend
-    participant S as Supabase Auth
+    participant S as JWT / bcryptjs (auth custom)
 
     U->>F: Saisit ses identifiants
     F->>B: POST /api/auth/login
@@ -247,4 +247,4 @@ La fiabilité du système repose sur une approche de tests multi-niveaux :
 *   **Supabase (Infrastructure PostgreSQL)** : 
     *   **Choix stratégique** : Plutôt que de consacrer du temps à la maintenance d'un serveur DB Linux, le choix s'est porté sur une solution managée pour garantir une sécurité maximale (Authentification JWT, Chiffrement des données au repos).
     *   **Respect des fondamentaux** : Bien que le service soit managé, la **conception relationnelle** (MCD/MLD) a été entièrement réalisée à la main (Schéma ERD). L'utilisation de PostgreSQL standard garantit la portabilité totale du projet vers n'importe quel autre hébergeur SQL si nécessaire.
-    *   **Sécurité** : L'utilisation de Supabase Auth permet de respecter les standards de sécurité actuels (OAuth2, Sessions sécurisées), une priorité absolue pour une application gérant des itinéraires personnels.
+    *   **Sécurité** : L'auth est entièrement gérée en custom : JWT signé via jsonwebtoken, hash bcryptjs au coût 12, middleware requireAuth. Supabase est utilisé uniquement comme hébergeur PostgreSQL, une priorité absolue pour une application gérant des itinéraires personnels.

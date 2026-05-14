@@ -42,7 +42,7 @@ function sanitizeUser(user) {
 }
 
 // ---- POST /api/auth/signup ----
-router.post('/signup', async (req, res) => {
+router.post('/signup', async (req, res, next) => {
   try {
     const validatedData = signupSchema.safeParse(req.body);
     if (!validatedData.success) {
@@ -87,12 +87,12 @@ router.post('/signup', async (req, res) => {
 
   } catch (err) {
     console.error('Signup error:', err);
-    res.status(500).json({ error: 'Erreur lors de la création du compte' });
+    next(err);
   }
 });
 
 // ---- POST /api/auth/login ----
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
   try {
     const validatedData = loginSchema.safeParse(req.body);
     if (!validatedData.success) {
@@ -125,12 +125,12 @@ router.post('/login', async (req, res) => {
 
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ error: 'Erreur lors de la connexion' });
+    next(err);
   }
 });
 
 // ---- GET /api/auth/me ----
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const { data: user, error } = await supabase
       .from('users')
@@ -146,12 +146,12 @@ router.get('/me', requireAuth, async (req, res) => {
 
   } catch (err) {
     console.error('Me error:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    next(err);
   }
 });
 
 // ---- PUT /api/auth/me ----
-router.put('/me', requireAuth, async (req, res) => {
+router.put('/me', requireAuth, async (req, res, next) => {
   try {
     const validatedData = updateMeSchema.safeParse(req.body);
     if (!validatedData.success) {
@@ -178,7 +178,7 @@ router.put('/me', requireAuth, async (req, res) => {
 
   } catch (err) {
     console.error('Update me error:', err);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    next(err);
   }
 });
 

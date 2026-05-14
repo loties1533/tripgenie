@@ -182,6 +182,84 @@ describe('🚀 TripGenie API Comprehensive Test Suite', () => {
       expect(res.status).toBe(200);
       expect(res.body.response).toBeDefined();
     });
+
+    it('should reject generate without destination (400)', async () => {
+      const res = await request(app)
+        .post('/api/ai/generate')
+        .send({ mode: 'party', budget: 2000, departure: '2025-08-01' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBeDefined();
+    });
+
+    it('should reject generate without departure date (400)', async () => {
+      const res = await request(app)
+        .post('/api/ai/generate')
+        .send({ destination: 'Tokyo', mode: 'party', budget: 2000 });
+      expect(res.status).toBe(400);
+    });
+
+    it('should reject generate with invalid budget (400)', async () => {
+      const res = await request(app)
+        .post('/api/ai/generate')
+        .send({ destination: 'Tokyo', mode: 'party', budget: -100, departure: '2025-08-01' });
+      expect(res.status).toBe(400);
+    });
+
+    it('should reject onboarding without userMessage (400)', async () => {
+      const res = await request(app)
+        .post('/api/ai/onboarding')
+        .send({ currentData: {} });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // --- VALIDATION ZOD ---
+  describe('✅ Validation Zod', () => {
+    it('trips — rejette un mode invalide (400)', async () => {
+      const res = await request(app)
+        .post('/api/trips')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ destination: 'Tokyo', mode: 'mode_invalide' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/mode invalide/i);
+    });
+
+    it('trips — rejette une destination vide (400)', async () => {
+      const res = await request(app)
+        .post('/api/trips')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ destination: '', mode: 'party' });
+      expect(res.status).toBe(400);
+    });
+
+    it('trips — rejette un statut invalide sur PUT (400)', async () => {
+      const tripRes = await request(app)
+        .post('/api/trips')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ destination: 'Berlin', mode: 'relax' });
+      const id = tripRes.body.trip.id;
+
+      const res = await request(app)
+        .put(`/api/trips/${id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ status: 'statut_invalide' });
+      expect(res.status).toBe(400);
+    });
+
+    it('votes — rejette un trip_id non UUID (400)', async () => {
+      const res = await request(app)
+        .post('/api/votes')
+        .send({ trip_id: 'pas-un-uuid', item_id: 'hotel-1', vote_type: true });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/trip_id invalide/i);
+    });
+
+    it('votes — rejette un vote sans item_id (400)', async () => {
+      const res = await request(app)
+        .post('/api/votes')
+        .send({ trip_id: '00000000-0000-0000-0000-000000000000', vote_type: true });
+      expect(res.status).toBe(400);
+    });
   });
 
   // --- ERROR HANDLING ---

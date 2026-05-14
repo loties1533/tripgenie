@@ -8,17 +8,18 @@ Ce document compile tout ce qu'il faut savoir sur l'architecture de TripGenie po
 
 TripGenie est une application web full-stack JavaScript moderne :
 - **Front-end** : React + Vite (UI interactive, navigation, cartes, animations).
-- **Back-end** : Node.js + Express (API REST, logique métier, IA, sécurité).
-- **Base de données** : PostgreSQL via Supabase (stockage relationnel, auth, JSONB).
-- **Autres** : Outils pour data (React Query, Zustand), styling (Tailwind, Framer Motion), validation (Zod), etc.
+- **Back-end** : Node.js + Express (API REST, logique métier, pipeline IA, sécurité).
+- **Base de données** : PostgreSQL via Supabase (stockage relationnel, JSONB pour les itinéraires).
+- **APIs externes** : Anthropic/Claude (génération IA), Tavily (recherche web temps réel : vols, événements, hôtels).
+- **Autres** : Outils pour data (React Query, Zustand), styling (Tailwind, Framer Motion), validation (Zod).
 
-Pourquoi cette stack ? Cohérente (même langage JS/TS partout), moderne, adaptée à un projet SaaS comme TripGenie, et facile à défendre à l'oral.
+Pourquoi cette stack ? Cohérente (même langage JS partout), moderne, adaptée à un projet SaaS comme TripGenie, et facile à défendre à l'oral.
 
 ---
 
 ## 2. Flux complet de l'application
 
-### A. Utilisateur ouvre l’app
+### A. Utilisateur ouvre l'app
 - Navigateur charge le front React compilé par Vite.
 - Interface affiche Home, Login, Trips, etc.
 
@@ -27,8 +28,9 @@ Pourquoi cette stack ? Cohérente (même langage JS/TS partout), moderne, adapt�
 - Front envoie requête HTTP à Express.
 
 ### C. Traitement backend
-- Middlewares (helmet, cors, rate-limit, json).
-- Logique : Validation (Zod), génération IA, scoring.
+- Middlewares (Helmet, CORS, rate-limit, JSON).
+- Validation des entrées (Zod sur toutes les routes critiques).
+- Pipeline IA : analyse → recherche Tavily → assemblage pack → scoring multi-critères.
 - Stockage : Via Supabase/PostgreSQL.
 
 ### D. Réponse front
@@ -36,7 +38,18 @@ Pourquoi cette stack ? Cohérente (même langage JS/TS partout), moderne, adapt�
 - Animations et styles (Tailwind, Framer Motion).
 
 ### Schéma simplifié
-Front React → Back Express → DB PostgreSQL via Supabase.
+```
+Front React → Back Express → Pipeline IA (Claude + Tavily) → DB PostgreSQL via Supabase
+```
+
+### Pipeline IA détaillé
+```
+chatIntake (onboarding) → analyzeRequest → suggestDestinations
+→ smartFlightSearch (Tavily) + smartEventsSearch (Tavily) + smartHotelSearch (Tavily)
+→ assemblePack (Claude) → scorepack (scoring multi-critères)
+→ sauvegarde Supabase + (optionnel) chatModify
+```
+> TripGenie repose sur un **pipeline IA orchestré côté serveur**, avec une composante conversationnelle agentique pour la modification post-génération (`chatModify`). Ce n'est pas un agent autonome : l'orchestration est codée dans `ai.js`, le modèle ne décide pas de l'ordre des étapes.
 
 ---
 
@@ -46,65 +59,82 @@ Front React → Back Express → DB PostgreSQL via Supabase.
 - **React** : Composants réutilisables pour UI.
 - **JSX** : HTML-like dans JS, compilé par Vite.
 - **Vite** : Bundler rapide, dev server.
-- **React Router** : Navigation SPA.
-- **React Query** : Data serveur (cache, erreurs).
-- **Zustand** : État global simple.
+- **React Router v6** : Navigation SPA.
+- **React Query v5** : Data serveur (cache, états de chargement, invalidation).
+- **Zustand v5** : État global (authStore, searchStore, chatStore, themeStore).
 - **Tailwind CSS** : Styling utilitaires.
 - **Framer Motion** : Animations.
-- **Leaflet** : Cartes interactives.
-- **Recharts** : Graphiques.
+- **Leaflet** : Cartes interactives (OpenStreetMap, sans coût API).
+- **Recharts** : Visualisation du score multi-critères.
+- **Sonner** : Notifications toast.
 
 ### Back-end
-- **Node.js** : Runtime serveur.
-- **Express** : API REST légère.
-- **Middlewares** : Sécurité, parsing, rate-limiting.
-- **Zod** : Validation données.
-- **JWT** : Auth par token.
-- **bcryptjs** : Hash mots de passe.
-- **dotenv** : Variables env.
-- **node-fetch** : Appels externes (IA).
+- **Node.js ≥18** : Runtime serveur — `fetch` natif intégré, pas de dépendance supplémentaire.
+- **Express** : API REST légère — 5 routers (auth, trips, ai, packs, votes).
+- **Middlewares** : Helmet (headers sécurité), CORS, express-rate-limit (2 limiteurs : global + IA), morgan.
+- **Zod** : Validation des entrées sur toutes les routes critiques (auth, trips, votes).
+- **JWT (jsonwebtoken)** : Auth stateless — token signé côté serveur, vérifié par middleware.
+- **bcryptjs** : Hash mots de passe (coût 12).
+- **dotenv** : Variables d'environnement (.env exclu du dépôt Git).
+
+### APIs externes
+- **Anthropic/Claude** : Génération des itinéraires, onboarding conversationnel, modification de pack.
+- **Tavily** : Recherche web temps réel — vols (`smartFlightSearch`), événements (`smartEventsSearch`), hôtels (`smartHotelSearch`). Remplace toute API spécialisée (pas d'Amadeus, pas de PredictHQ).
+- **Providers IA alternatifs** : OpenRouter, Gemini, Ollama — configurables via variable `AI_PROVIDER`.
 
 ### Base de données
-- **Supabase** : Service PostgreSQL + auth.
-- **PostgreSQL** : Base relationnelle, JSONB.
+- **Supabase** : Hébergeur PostgreSQL managé — utilisé uniquement comme client BDD, pas comme service d'auth.
+- **PostgreSQL** : Base relationnelle — 6 tables avec FK, RLS activé, index, type JSONB pour `pack_data`.
 
 ---
 
-## 4. Tableau comparatif enrichi : techno vs équivalents
+## 4. Tableau comparatif : techno vs équivalents
 
-| Ta techno / framework | À quoi elle sert | Équivalent principal | Équivalent possible (alternatives) | Pourquoi tu as choisi la tienne | Avantages/Inconvénients |
-|-----------------------|------------------|----------------------|------------------------------------|-------------------------------|--------------------------|
-| **React** | UI interactive, composants | Angular, Vue.js | Svelte, SolidJS | Très demandé, moderne, compatible JS/TS | **Avantages** : Composants réutilisables, écosystème riche. **Inconvénients** : Courbe d'apprentissage pour l'état. |
-| **Vite** | Dev server + bundler | Webpack | CRA, Next.js | Plus rapide, simple à configurer | **Avantages** : Démarrage rapide, hot reload. **Inconvénients** : Moins de plugins que Webpack. |
-| **React Router** | Navigation pages | React Router DOM | Reach Router | Version standard stable | **Avantages** : Fluide sans rechargement. **Inconvénients** : Routes imbriquées complexes. |
-| **React Query** | Data serveur | Redux Toolkit Query | SWR | Léger, moderne pour API REST | **Avantages** : Cache intelligent. **Inconvénients** : Apprentissage pour options avancées. |
-| **Zustand** | État global front | Redux | Context API | Plus simple que Redux | **Avantages** : Léger, peu de boilerplate. **Inconvénients** : Moins structuré pour gros projets. |
-| **Tailwind CSS** | Styling rapide | CSS classique | Bootstrap | Gagne du temps, design propre | **Avantages** : Productif, cohérent. **Inconvénients** : JSX chargé. |
-| **Framer Motion** | Animations | react-spring | Animate.css | Fluide sans boilerplate | **Avantages** : Intégration simple. **Inconvénients** : Peut alourdir performances. |
-| **Leaflet** | Carte interactive | Google Maps | MapLibre | Libre, léger | **Avantages** : Customisable. **Inconvénients** : Moins de features que payant. |
-| **Recharts** | Graphiques | Chart.js | D3 | Intégration React | **Avantages** : Personnalisable. **Inconvénients** : Moins puissant pour complexes. |
-| **Node.js** | Runtime serveur | Python | Java | Stack full JS | **Avantages** : Même langage partout. **Inconvénients** : Moins pour calculs lourds. |
-| **Express** | API REST | Fastify | NestJS | Simple, léger | **Avantages** : Flexible. **Inconvénients** : Peu intégré. |
-| **Zod** | Validation | Yup | Joi | Moderne, TS intégré | **Avantages** : Stricte. **Inconvénients** : Schémas à maintenir. |
-| **Supabase** | DB + auth | Firebase | Nhost | Relationnelle, simple | **Avantages** : Auth prête. **Inconvénients** : Dépendance externe. |
-| **PostgreSQL** | Base relationnelle | MySQL | SQLite | Performant, JSONB | **Avantages** : Puissant. **Inconvénients** : Complexe à gérer. |
-| **JWT** | Auth token | Sessions | OAuth | Léger, stateless | **Avantages** : Sécurisé APIs. **Inconvénients** : Expiration côté client. |
-| **bcryptjs** | Hash mots de passe | argon2 | scrypt | Simple, répandu | **Avantages** : Sécurisé. **Inconvénients** : Coût calcul. |
-| **dotenv** | Variables env | Statiques | Configs | Sécurisé | **Avantages** : Flexible. **Inconvénients** : Fichiers à gérer. |
-| **node-fetch** | Appels HTTP | axios | got | Moderne, léger | **Avantages** : Natif-like. **Inconvénients** : Moins features qu'axios. |
+| Techno | Rôle | Équivalent principal | Alternatives | Pourquoi ce choix | Avantages / Inconvénients |
+|--------|------|----------------------|--------------|-------------------|--------------------------|
+| **React** | UI interactive, composants | Vue.js | Angular, Svelte | Très demandé, écosystème riche | ✅ Composants réutilisables ❌ Courbe d'apprentissage état |
+| **Vite** | Dev server + bundler | Webpack | CRA (obsolète), Next.js | ESM natif, démarrage instantané | ✅ Hot reload rapide ❌ Moins de plugins que Webpack |
+| **React Router v6** | Navigation SPA | React Router v5 | Reach Router | API `<Routes>` plus stricte | ✅ Layouts imbriqués natifs ❌ Migration v5→v6 non triviale |
+| **React Query v5** | Cache + sync données serveur | Redux Toolkit Query | SWR | Léger, sans store Redux | ✅ Cache automatique, invalidation ❌ Courbe pour options avancées |
+| **Zustand v5** | État global front | Redux Toolkit | Context API | 10 lignes vs 100 avec Redux | ✅ Léger, middleware persist ❌ Moins structuré pour très gros projets |
+| **Tailwind CSS** | Styling utilitaire | Bootstrap | Material UI | Tree-shaking, dark mode natif | ✅ Productif, cohérent ❌ HTML verbeux |
+| **Framer Motion** | Animations | CSS animations | react-spring, GSAP | Intégré au cycle de vie React | ✅ API déclarative ❌ Peut alourdir le bundle |
+| **Leaflet** | Carte interactive | Google Maps SDK | Mapbox, MapLibre | Open source, sans coût API | ✅ Gratuit, léger (42 KB) ❌ Moins de features que les payants |
+| **Recharts** | Graphiques | Chart.js | D3.js | Composants React purs | ✅ Déclaratif, intégration React ❌ Moins puissant que D3 pour les cas complexes |
+| **Sonner** | Notifications toast | react-toastify | react-hot-toast | Minimaliste, compatible Tailwind | ✅ Léger, CSS variables ❌ Moins de features que react-toastify |
+| **Node.js ≥18** | Runtime serveur | Python/Django | Java Spring, Go | Stack 100% JS, fetch natif | ✅ Même langage front/back ❌ Moins adapté aux calculs CPU lourds |
+| **Express** | API REST | Fastify | NestJS, Hono | Standard industrie, middlewares matures | ✅ Flexible, écosystème large ❌ Peu d'opinions, structure à définir soi-même |
+| **Zod** | Validation des entrées | Joi | Yup, Valibot | TS-first, messages d'erreur clairs | ✅ Schémas concis, inférence de type ❌ Schémas à maintenir |
+| **Supabase** | Hébergeur PostgreSQL | Firebase | Nhost, PlanetScale | Vrai SQL vs NoSQL Firebase | ✅ PostgreSQL managé, RLS, gratuit ❌ Dépendance externe |
+| **PostgreSQL** | Base relationnelle | MySQL | SQLite, MongoDB | JSONB natif pour pack_data | ✅ Relations + JSON flexible ❌ Plus complexe que MySQL à administrer |
+| **JWT** | Auth stateless | Sessions Express | Passport.js, OAuth2 | Pas de stockage côté serveur | ✅ Stateless, vérifiable sans BDD ❌ Révocation complexe |
+| **bcryptjs** | Hash mots de passe | argon2 | scrypt | Implémentation JS pure | ✅ Sans binaires natifs, coût configurable ❌ Plus lent qu'argon2 |
+| **dotenv** | Variables d'environnement | Variables OS | convict | Standard universel | ✅ Centralisé, exclu de Git ❌ Fichier à gérer par environnement |
+| **Anthropic/Claude** | Génération IA | OpenAI GPT-4 | Gemini, Mistral | Qualité de raisonnement, JSON structuré | ✅ Excellent pour JSON structuré ❌ Coût API à l'usage |
+| **Tavily** | Recherche web temps réel | Amadeus (vols), PredictHQ (events) | SerpAPI, Brave Search | Une seule API pour vols + événements + hôtels | ✅ Gratuit, polyvalent ❌ Données moins structurées qu'une API spécialisée |
 
 ---
 
 ## 5. Clarification authentification
 
-- **Ton rôle** : Tu as créé et intégré l'auth dans ton code (routes `/api/auth`, utilisation de `jsonwebtoken` pour tokens, `bcryptjs` pour hash si nécessaire). Tu gères la logique : inscription, login, vérification, protection routes.
-- **Rôle de Supabase** : Fournit le service sous-jacent (base users, sessions, API auth). Tu l'utilises via client JS, mais c'est toi qui contrôles le flux.
-- **En résumé** : Supabase simplifie, mais c'est toi qui as orchestré l'auth. Pour l'oral : "J'ai intégré Supabase pour l'auth, mais j'ai géré la logique et sécurité dans mon backend."
+- **Ce que tu as codé** : Routes `/api/auth` (signup, login, me, update), middleware `requireAuth` et `optionalAuth`, génération et vérification JWT, hash bcrypt, sanitisation des sorties utilisateur.
+- **Rôle de Supabase** : Uniquement hébergeur PostgreSQL — tu stockes tes users dans une table `users` que tu gères toi-même. Tu **n'utilises pas** Supabase Auth (pas de `supabase.auth.signIn`).
+- **Formule exacte pour l'oral** : *"J'utilise Supabase uniquement comme hébergeur PostgreSQL managé. L'authentification est entièrement implémentée dans mon backend : JWT signé avec jsonwebtoken, mots de passe hashés avec bcryptjs au coût 12, et middleware requireAuth codé par moi qui protège toutes les routes privées."*
 
 ---
 
-## 6. Phrase clé pour l'oral
+## 6. Clarification pipeline IA
 
-“TripGenie est une stack JS full-stack moderne : React/Vite front, Express/Node back, PostgreSQL via Supabase DB. J'ai choisi ces outils pour leur cohérence, rapidité, et pertinence pour un projet SaaS, tout en montrant des compétences pro en sécurité et data.”
+- **Ce n'est pas du fine-tuning** : Les poids du modèle ne sont pas modifiés. Claude est utilisé tel quel via l'API Anthropic.
+- **Ce n'est pas un agent autonome** : Le modèle ne décide pas de ses prochaines étapes. L'orchestration est codée dans `server/routes/ai.js`.
+- **C'est un pipeline orchestré** : Les étapes s'enchaînent dans un ordre fixe défini par le développeur.
+- **La seule partie agentique** : `chatModify` — boucle de feedback où l'utilisateur modifie le pack après génération.
+- **Formule exacte pour l'oral** : *"TripGenie repose sur un pipeline IA orchestré côté serveur, avec une composante conversationnelle agentique pour la modification post-génération."*
+
+---
+
+## 7. Phrase clé pour l'oral
+
+*"TripGenie est une application full-stack JavaScript : React/Vite côté front, Node.js/Express côté back, PostgreSQL via Supabase en base. La feature centrale est un pipeline IA orchestré qui combine Claude pour la génération et Tavily pour la recherche web temps réel — vols, événements, hôtels — le tout sécurisé avec JWT, Zod et Helmet, et testé avec Vitest et Supertest."*
 
 ---

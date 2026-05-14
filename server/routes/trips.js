@@ -6,12 +6,11 @@ import express from 'express';
 import { z } from 'zod';
 import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
-
-const MODES = ['party', 'student', 'luxury', 'group', 'relax', 'surprise'];
+import { MODES_LIST, TRIP_STATUS_LIST } from '../constants.js';
 
 const createTripSchema = z.object({
   destination:  z.string().min(1, 'destination requise').max(100),
-  mode:         z.enum(MODES, { errorMap: () => ({ message: 'mode invalide' }) }),
+  mode:         z.enum(MODES_LIST, { errorMap: () => ({ message: 'mode invalide' }) }),
   title:        z.string().max(200).optional(),
   country:      z.string().max(100).optional(),
   origin:       z.string().max(100).optional(),
@@ -25,7 +24,7 @@ const createTripSchema = z.object({
 
 const updateTripSchema = z.object({
   title:     z.string().max(200).optional(),
-  status:    z.enum(['draft', 'confirmed', 'archived']).optional(),
+  status:    z.enum(TRIP_STATUS_LIST).optional(),
   pack_data: z.any().optional(),
   score:     z.number().optional(),
   travelers: z.number().int().min(1).max(50).optional(),
@@ -35,7 +34,7 @@ const updateTripSchema = z.object({
 const router = express.Router();
 
 // ---- GET /api/trips/share/:id (Public) ----
-router.get('/share/:id', async (req, res) => {
+router.get('/share/:id', async (req, res, next) => {
   try {
     const { data: trip, error } = await supabase
       .from('trips')
@@ -50,14 +49,14 @@ router.get('/share/:id', async (req, res) => {
     res.json({ trip });
   } catch (err) {
     console.error('Public share error:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    next(err);
   }
 });
 
 router.use(requireAuth);
 
 // ---- GET /api/trips ----
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { mode, status } = req.query;
 
@@ -82,12 +81,12 @@ router.get('/', async (req, res) => {
 
   } catch (err) {
     console.error('GET trips error:', err);
-    res.status(500).json({ error: 'Erreur lors de la récupération des voyages' });
+    next(err);
   }
 });
 
 // ---- POST /api/trips ----
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const parsed = createTripSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -115,12 +114,12 @@ router.post('/', async (req, res) => {
 
   } catch (err) {
     console.error('POST trip error:', err);
-    res.status(500).json({ error: 'Erreur lors de la création du voyage' });
+    next(err);
   }
 });
 
 // ---- GET /api/trips/:id ----
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const { data: trip, error } = await supabase
       .from('trips')
@@ -137,12 +136,12 @@ router.get('/:id', async (req, res) => {
 
   } catch (err) {
     console.error('GET trip error:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    next(err);
   }
 });
 
 // ---- PUT /api/trips/:id ----
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const parsed = updateTripSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -166,12 +165,12 @@ router.put('/:id', async (req, res) => {
 
   } catch (err) {
     console.error('PUT trip error:', err);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+    next(err);
   }
 });
 
 // ---- DELETE /api/trips/:id ----
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const { error } = await supabase
       .from('trips')
@@ -185,7 +184,7 @@ router.delete('/:id', async (req, res) => {
 
   } catch (err) {
     console.error('DELETE trip error:', err);
-    res.status(500).json({ error: 'Erreur lors de la suppression' });
+    next(err);
   }
 });
 

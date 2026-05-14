@@ -13,7 +13,7 @@ sequenceDiagram
     participant S as Serveur Express
     participant AI as IA (Claude/OpenRouter)
     participant T as Tavily (SmartSearch)
-    participant P as PredictHQ (Events)
+    participant P as Tavily (Events/Hotels)
     participant DB as Supabase (PostgreSQL)
 
     U->>S: POST /api/ai/generate (Params)
