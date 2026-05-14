@@ -236,7 +236,7 @@ function BudgetChart({ breakdown }) {
 // ---- Event card ----
 function EventCard({ event }) {
   const bookingUrl = event.booking_url || event.links?.viator || event.links?.getyourguide
-    || `https://www.viator.com/fr-FR/search?text=${encodeURIComponent((event.name || '') + ' ' + (event.venue || ''))}`
+    || `https://www.getyourguide.fr/s/?q=${encodeURIComponent((event.name || '') + ' ' + (event.venue || ''))}`
 
   return (
     <div className="flex gap-3 p-3 glass rounded-xl">
@@ -412,8 +412,8 @@ export default function PackResults() {
       </div>
       <div className="flex justify-between items-center pt-3 border-t border-parchment-dark dark:border-white/10 mt-auto">
         <div className="flex gap-2">
-          <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+          <a
+            href={`https://maps.google.com/?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] font-semibold text-ink dark:text-parchment bg-parchment-dark dark:bg-ink-light hover:bg-gold hover:text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
@@ -421,12 +421,12 @@ export default function PackResults() {
             📍 Carte
           </a>
           <a
-            href={activity.links?.viator || activity.links?.getyourguide || `https://www.viator.com/fr-FR/search?text=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+            href={activity.links?.viator || `https://www.getyourguide.fr/s/?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
           >
-            Viator ↗
+            Réserver ↗
           </a>
         </div>
         <VoteButtons tripId={d.id} itemId={activity.name} />

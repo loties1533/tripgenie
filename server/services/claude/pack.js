@@ -5,15 +5,7 @@
  */
 
 import { callAI, parseJSON, sanitizeInput } from './core.js';
-
-const BUDGET_RATIOS = {
-  party:   { vols: 0.25, heberg: 0.25, activites: 0.25, resto: 0.12, trans: 0.08 },
-  student: { vols: 0.35, heberg: 0.30, activites: 0.10, resto: 0.15, trans: 0.05 },
-  luxury:  { vols: 0.20, heberg: 0.45, activites: 0.20, resto: 0.10, trans: 0.03 },
-  group:   { vols: 0.30, heberg: 0.35, activites: 0.15, resto: 0.12, trans: 0.05 },
-  relax:   { vols: 0.22, heberg: 0.40, activites: 0.15, resto: 0.13, trans: 0.07 },
-  surprise:{ vols: 0.28, heberg: 0.32, activites: 0.18, resto: 0.13, trans: 0.06 },
-};
+import { MODES, BUDGET_RATIOS, DEFAULT_VALUES } from '../../lib/constants.js';
 
 /**
  * Génère un pack de voyage complet à partir des données récupérées.
@@ -28,12 +20,12 @@ const BUDGET_RATIOS = {
  * @param {string}   [params.departure]  - date de départ YYYY-MM-DD
  * @param {string}   [params.return_date] - date de retour YYYY-MM-DD
  * @param {number}   [params.duration]   - durée en jours (si pas de dates)
- * @returns {Promise<import('../../types.js').Pack>}
+ * @returns {Promise<import('../../lib/types.js').Pack>}
  */
 export async function assemblePack({ destination, flights, events, hotels: realHotels, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
   const dest = sanitizeInput(destination);
 
-  let nights = 4;
+  let nights = DEFAULT_VALUES.NIGHTS;
   if (departure && return_date) {
     nights = Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1);
   } else if (duration) {
@@ -44,52 +36,63 @@ export async function assemblePack({ destination, flights, events, hotels: realH
 
   const budgetPerPers = Math.round(budget / travelers);
 
-  const budgetTone = budgetPerPers >= 1500
-    ? 'Budget confortable : privilégie des adresses soignées sans nécessairement être luxueuses.'
-    : budgetPerPers >= 600
-    ? 'Budget moyen : bon rapport qualité/prix, quelques expériences premium ciblées.'
-    : 'Petit budget : adresses accessibles, astuces locales, évite les pièges à touristes.';
+  const budgetTone = budgetPerPers >= 2000
+    ? 'Budget premium : penthouses, villas privées, tables Michelin, accès VIP.'
+    : budgetPerPers >= 1000
+    ? 'Budget confortable : hôtels 4★ soignés, restaurants gastronomiques, expériences exclusives ciblées.'
+    : budgetPerPers >= 500
+    ? 'Budget moyen : bon rapport qualité/prix, quelques coups de cœur premium bien choisis.'
+    : 'Petit budget : adresses locales authentiques, astuces insider, évite les pièges à touristes.';
+
+  const modePersona = mode === MODES.LUXURY
+    ? 'Ton ADN est l\'excellence absolue. Chaque proposition doit être digne d\'un guide Condé Nast.'
+    : mode === MODES.PARTY
+    ? 'Tu es l\'expert nightlife. Chaque journée monte en puissance vers une soirée mémorable.'
+    : mode === MODES.RELAX
+    ? 'Tu es un maître du slow travel. Rythme doux, expériences intimes, pas de rush.'
+    : mode === MODES.GROUP
+    ? 'Tu orchestre des expériences fédératrices, accessibles à tous les membres du groupe.'
+    : mode === MODES.STUDENT
+    ? 'Tu connais tous les bons plans : max de saveurs pour min de budget, sans sacrifier l\'authenticité.'
+    : 'Tu combines intelligemment les envies du groupe avec la richesse locale.';
 
   const textRaw = await callAI(
     `Tu es le concierge privé de TripGenie. Destination : ${dest}.
     VOYAGEURS : ${travelers} personne(s). PROFIL : ${profile || mode}. VIBE : ${mode}. BUDGET : ${budgetPerPers}€/pers. DURÉE : ${nights} nuits.
 
-    CONTEXTE À COMBINER intelligemment :
-    - Qui : ${travelers} personne(s), profil "${profile || mode}"
-    - Vibe dominante : "${mode}" — mais adapte selon le contexte réel (ex: amis qui veulent du calme, couple qui veut faire la fête, etc.)
-    - ${budgetTone}
+    ${modePersona}
+    ${budgetTone}
 
-    PRINCIPES (pas des règles rigides) :
-    - Vibe fête/soirée → inclure au moins 1-2 soirées/bars dans l'itinéraire si cohérent
-    - Vibe détente/couple → rythme plus lent, expériences intimes, pas de rush
-    - Vibe famille → activités accessibles à tous, évite la vie nocturne tardive
-    - Vibe luxe → élève le niveau partout sans en faire trop
-    - Le budget dicte le niveau des adresses, pas le mode seul
+    PRINCIPES DE GÉNÉRATION :
+    - ANTICIPATION : Pour chaque journée, ajoute un "plan_b" (alternative si météo ou imprévu)
+    - HÉBERGEMENTS : Adapte au budget — villa privée/penthouse si premium, boutique-hôtel charme si moyen
+    - ACTIVITÉS : Pense "expérience", pas "tourisme de masse". Vrais noms de lieux à ${dest}.
+    - GASTRONOMIE : Suggère des adresses qui correspondent au budget (pas de Michelin sur petit budget)
+    - TON : Expert, chaleureux, inspirant — comme un ami qui connait parfaitement la destination
 
     Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
     {
       "country": "Pays",
-      "tagline": "Accroche",
-      "overview": "Description",
-      "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Style"},
+      "tagline": "Accroche percutante 5-7 mots",
+      "overview": "Description immersive 2-3 phrases",
+      "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Conseil vestimentaire"},
       "hotels": [
-        {"name": "Hôtel VIP", "loc": "Quartier", "hl": "Point fort"},
-        {"name": "Alternative Hype", "loc": "Quartier", "hl": "Point fort"}
+        {"name": "Vrai nom hôtel", "loc": "Quartier précis", "hl": "Point fort unique"},
+        {"name": "Alternative", "loc": "Quartier", "hl": "Point fort"}
       ],
       "itinerary": [
-        { "day": 1, "title": "Titre", "am": "Activité matin", "pm": "Activité soir" }
+        {"day": 1, "title": "Titre évocateur", "am": "Activité matin concrète", "pm": "Activité soir concrète", "plan_b": "Alternative si imprévu"}
       ],
       "activities": [
-        {"name": "Vrai nom du lieu", "desc": "Max 60 chars", "type": "bar|club|restaurant|activité|plage|spa"},
-        {"name": "...", "desc": "...", "type": "..."},
-        {"name": "...", "desc": "...", "type": "..."},
-        {"name": "...", "desc": "...", "type": "..."},
-        {"name": "...", "desc": "...", "type": "..."},
-        {"name": "...", "desc": "...", "type": "..."}
+        {"name": "Vrai nom lieu", "desc": "Max 60 chars", "type": "bar|club|restaurant|activité|plage|spa", "plan_b": "Alternative"},
+        {"name": "...", "desc": "...", "type": "...", "plan_b": "..."},
+        {"name": "...", "desc": "...", "type": "...", "plan_b": "..."},
+        {"name": "...", "desc": "...", "type": "...", "plan_b": "..."},
+        {"name": "...", "desc": "...", "type": "...", "plan_b": "..."},
+        {"name": "...", "desc": "...", "type": "...", "plan_b": "..."}
       ],
-      "tip1": "Conseil court", "tip2": "Adresse food", "phrase": "Argot", "phrase_tr": "Trad"
-    }
-    Activités : VRAIS noms de lieux à ${dest}. Vibe fête → clubs/bars/rooftops. Descriptions MAX 60 caractères.`,
+      "tip1": "Conseil pratique local", "tip2": "Adresse food incontournable", "phrase": "Mot argot local", "phrase_tr": "Traduction"
+    }`,
     undefined,
     'pack'
   );
@@ -173,9 +176,9 @@ export async function assemblePack({ destination, flights, events, hotels: realH
     : [{ name:`Soirée à ${dest}`, category:'Nightlife', date:'Pendant votre séjour', venue:'Centre ville', description:'Animation locale garantie' }];
 
   // Répartition budgétaire selon le mode
-  const ratio    = BUDGET_RATIOS[mode] || BUDGET_RATIOS.party;
+  const ratio    = BUDGET_RATIOS[mode] || BUDGET_RATIOS[MODES.PARTY];
   const vols     = Math.round(budget * ratio.vols);
-  const maxPpn   = mode === 'luxury' ? 800 : 250;
+  const maxPpn   = mode === MODES.LUXURY ? 800 : 250;
   let   heberg   = Math.round(budget * ratio.heberg);
   const ppn      = heberg / nights / travelers;
   if (ppn > maxPpn) heberg = maxPpn * nights * travelers;
@@ -208,10 +211,11 @@ export async function assemblePack({ destination, flights, events, hotels: realH
     itinerary: (t.itinerary || []).map(d => ({
       day:      d.day,
       title:    d.title || 'Journée découverte',
-      subtitle: mode === 'party' ? 'Vibe & Nightlife' : 'Exploration',
+      subtitle: mode === MODES.PARTY ? 'Vibe & Nightlife' : mode === MODES.LUXURY ? 'Prestige & Exclusivité' : 'Exploration',
+      plan_b:   d.plan_b || null,
       items: [
-        { time: mode === 'party' ? '14:00' : '10:00', type: 'activity', title: d.am || 'Exploration', description: 'Découverte locale', price: 'gratuit', duration: '3h' },
-        { time: mode === 'party' ? '22:00' : '20:00', type: mode === 'party' ? 'event' : 'food', title: d.pm || 'Soirée', description: 'Moment mémorable', price: '40€', duration: '4h' }
+        { time: mode === MODES.PARTY ? '14:00' : '10:00', type: 'activity', title: d.am || 'Exploration', description: 'Découverte locale', price: 'gratuit', duration: '3h' },
+        { time: mode === MODES.PARTY ? '22:00' : '20:00', type: mode === MODES.PARTY ? 'event' : 'food', title: d.pm || 'Soirée', description: 'Moment mémorable', price: '40€', duration: '4h' }
       ]
     })),
     activities: (t.activities || []).map((a) => {
@@ -224,6 +228,7 @@ export async function assemblePack({ destination, flights, events, hotels: realH
         category:    isNight ? 'Nightlife' : isFood ? 'Gastronomie' : 'Culture',
         emoji,
         description: a.desc || 'Incontournable',
+        plan_b:      a.plan_b || null,
         duration:    '2-3h',
         price:       'Variable',
         best_time:   isNight ? 'Soir' : 'Journée'

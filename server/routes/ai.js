@@ -11,6 +11,8 @@ import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../servi
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
 import supabase from '../db/supabase.js';
+import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
+import { AppError } from '../lib/AppError.js';
 
 const router = express.Router();
 
@@ -68,18 +70,18 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
   try {
     const {
       destination,
-      origin      = 'Paris',
+      origin      = DEFAULT_VALUES.ORIGIN,
       departure,
       return_date,
-      travelers   = 2,
+      travelers   = DEFAULT_VALUES.TRAVELERS,
       budget,
-      mode        = 'party',
+      mode        = MODES.PARTY,
       preferences = []
     } = req.body;
 
-    if (!destination?.trim()) return res.status(400).json({ error: 'destination requise' });
-    if (!departure)           return res.status(400).json({ error: 'date de départ requise' });
-    if (!budget || budget <= 0) return res.status(400).json({ error: 'budget invalide' });
+    if (!destination?.trim()) return next(new AppError('destination requise', 400));
+    if (!departure)           return next(new AppError('date de départ requise', 400));
+    if (!budget || budget <= 0) return next(new AppError('budget invalide', 400));
 
     // ---- RECHERCHE WEB (Tavily + IA) ----
     // On utilise SmartSearch (Tavily) pour plus de réalisme et de fiabilité

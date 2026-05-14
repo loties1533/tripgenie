@@ -22,6 +22,7 @@ import tripRoutes  from './routes/trips.js';
 import aiRoutes    from './routes/ai.js';
 import packRoutes  from './routes/packs.js';
 import voteRoutes  from './routes/votes.js';
+import { globalErrorHandler } from './lib/AppError.js';
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -81,14 +82,7 @@ if (process.env.NODE_ENV === 'production' && existsSync(DIST_PATH)) {
 }
 
 // ---- Erreurs globales ----
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production'
-      ? 'Erreur interne du serveur'
-      : err.message
-  });
-});
+app.use(globalErrorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
