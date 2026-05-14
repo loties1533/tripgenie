@@ -284,11 +284,17 @@ export async function callAI(userPrompt, systemPrompt = SYSTEM_PROMPT, context =
 // ---- assemblePack : l'IA génère SEULEMENT les textes courts ----
 // La structure JSON complète est construite côté serveur
 // → jamais de problème de troncature
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date }) {
-  const dest   = sanitizeInput(destination);
-  const nights = departure && return_date
-    ? Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1)
-    : Math.max(Math.round(budget / 250), 2);
+export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration }) {
+  const dest = sanitizeInput(destination);
+
+  let nights = 4;
+  if (departure && return_date) {
+    nights = Math.max(Math.round((new Date(return_date) - new Date(departure)) / 86400000), 1);
+  } else if (duration) {
+    nights = parseInt(duration);
+  } else {
+    nights = Math.min(Math.max(Math.round(budget / 500), 2), 14);
+  }
     
   const budgetPerPers = Math.round(budget / travelers);
   
@@ -331,10 +337,31 @@ export async function assemblePack({ destination, flights, events, mode, profile
     t = parseJSON(textRaw);
   } catch (err) {
     console.warn('Fallback IA activé suite à un problème (ex: Quotas ou JSON malformé).', err.message);
-    t = Mocks.MOCK_PACK; // Utilisation du Mock ultra-complet pour Ibiza
-    
-    // On remplace juste le nom de la ville si c'était différent
-    if (!t.destination) t.destination = dest;
+    t = {
+      country: 'Destination',
+      tagline: `Découvrez les secrets de ${dest}`,
+      overview: `Un voyage sur-mesure à ${dest}. Profitez de l'authenticité et de la richesse locale.`,
+      weather: { temp: '22°C', cond: 'Ensoleillé', tip: 'Tenue légère recommandée' },
+      hotels: [
+        { name: `Grand Hôtel ${dest}`, loc: 'Centre-ville', hl: 'Vue panoramique' },
+        { name: `Boutique Hôtel ${dest}`, loc: 'Vieille ville', hl: 'Charme local' }
+      ],
+      itinerary: Array.from({ length: Math.min(nights, 3) }).map((_, i) => ({
+        day: i + 1,
+        title: i === 0 ? 'Arrivée & Découverte' : i === 1 ? 'Exploration locale' : 'Détente & Gastronomie',
+        am: i === 0 ? 'Installation et première balade' : 'Visite des incontournables',
+        pm: i === 0 ? 'Dîner dans le quartier' : 'Soirée en ville'
+      })),
+      activities: [
+        { name: `Découverte de ${dest}`, desc: 'Exploration des quartiers emblématiques.' },
+        { name: 'Gastronomie locale', desc: 'Les meilleures adresses culinaires.' },
+        { name: 'Expérience culturelle', desc: 'Musées, architecture et vie locale.' }
+      ],
+      tip1: 'Réservez vos activités à l\'avance.',
+      tip2: 'Goûtez aux spécialités locales.',
+      phrase: 'Bonjour !',
+      phrase_tr: 'Hello!'
+    };
   }
 
   // Vols — données réelles si SmartSearch a répondu, sinon estimées

@@ -4,7 +4,15 @@
 // =============================================
 
 import express from 'express';
+import { z } from 'zod';
 import supabase from '../db/supabase.js';
+
+const voteSchema = z.object({
+  trip_id:    z.string().uuid('trip_id invalide'),
+  item_id:    z.string().min(1, 'item_id requis'),
+  vote_type:  z.boolean(),
+  voter_name: z.string().max(50).optional()
+});
 
 const router = express.Router();
 
@@ -12,11 +20,11 @@ const router = express.Router();
 // Permet de voter pour un élément du pack (public via lien)
 router.post('/', async (req, res) => {
   try {
-    const { trip_id, item_id, voter_name, vote_type } = req.body;
-
-    if (!trip_id || !item_id || vote_type === undefined) {
-      return res.status(400).json({ error: 'Données de vote incomplètes' });
+    const parsed = voteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
     }
+    const { trip_id, item_id, voter_name, vote_type } = parsed.data;
 
     const { data, error } = await supabase
       .from('trip_votes')

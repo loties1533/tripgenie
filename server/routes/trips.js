@@ -3,8 +3,34 @@
 // =============================================
 
 import express from 'express';
+import { z } from 'zod';
 import supabase from '../db/supabase.js';
 import { requireAuth } from '../middleware/auth.js';
+
+const MODES = ['party', 'student', 'luxury', 'group', 'relax', 'surprise'];
+
+const createTripSchema = z.object({
+  destination:  z.string().min(1, 'destination requise').max(100),
+  mode:         z.enum(MODES, { errorMap: () => ({ message: 'mode invalide' }) }),
+  title:        z.string().max(200).optional(),
+  country:      z.string().max(100).optional(),
+  origin:       z.string().max(100).optional(),
+  departure:    z.string().optional(),
+  return_date:  z.string().optional(),
+  travelers:    z.number().int().min(1).max(50).optional(),
+  budget:       z.union([z.string(), z.number()]).optional(),
+  pack_data:    z.any().optional(),
+  score:        z.number().optional()
+});
+
+const updateTripSchema = z.object({
+  title:     z.string().max(200).optional(),
+  status:    z.enum(['draft', 'confirmed', 'archived']).optional(),
+  pack_data: z.any().optional(),
+  score:     z.number().optional(),
+  travelers: z.number().int().min(1).max(50).optional(),
+  budget:    z.union([z.string(), z.number()]).optional()
+});
 
 const router = express.Router();
 
@@ -63,15 +89,11 @@ router.get('/', async (req, res) => {
 // ---- POST /api/trips ----
 router.post('/', async (req, res) => {
   try {
-    const {
-      title, destination, country, origin,
-      departure, return_date, travelers,
-      budget, mode, pack_data, score
-    } = req.body;
-
-    if (!destination || !mode) {
-      return res.status(400).json({ error: 'destination et mode sont requis' });
+    const parsed = createTripSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
     }
+    const { title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score } = parsed.data;
 
     const { data: trip, error } = await supabase
       .from('trips')
@@ -122,10 +144,11 @@ router.get('/:id', async (req, res) => {
 // ---- PUT /api/trips/:id ----
 router.put('/:id', async (req, res) => {
   try {
-    const allowed = ['title', 'status', 'pack_data', 'score', 'travelers', 'budget'];
-    const updates = {};
-    allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
-    updates.updated_at = new Date();
+    const parsed = updateTripSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const updates = { ...parsed.data, updated_at: new Date() };
 
     const { data: trip, error } = await supabase
       .from('trips')
