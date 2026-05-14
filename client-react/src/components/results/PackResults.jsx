@@ -444,7 +444,12 @@ export default function PackResults() {
       <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold h-[260px] flex items-end">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          {(d.photo || d.photo_url) && <img src={d.photo || d.photo_url} alt={d.destination} className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[20s]" />}
+          <img
+            src={d.photo || d.photo_url || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80`}
+            alt={d.destination}
+            className="w-full h-full object-cover opacity-40 transition-transform duration-[20s]"
+            onError={e => { e.target.src = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80' }}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-parchment via-parchment/60 to-transparent dark:from-ink dark:via-ink/60 dark:to-transparent" />
         </div>
 

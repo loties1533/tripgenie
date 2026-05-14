@@ -6,6 +6,7 @@
 import { searchWeb } from '../tools/webSearch.js';
 import * as Mocks from '../mocks.js';
 import { callAI, parseJSON, sanitizeInput } from './core.js';
+import { getDestinationPhoto } from '../photo.js';
 
 export async function analyzeRequest(userInput) {
   const raw = await callAI(
@@ -50,7 +51,20 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
       undefined,
       'destinations'
     );
-    return parseJSON(raw);
+    const result = parseJSON(raw);
+
+    // Enrichir chaque destination avec une vraie photo en parallèle
+    if (result?.destinations?.length) {
+      const photos = await Promise.allSettled(
+        result.destinations.map(d => getDestinationPhoto(d.city))
+      );
+      result.destinations = result.destinations.map((d, i) => ({
+        ...d,
+        photo: photos[i].status === 'fulfilled' ? photos[i].value : null
+      }));
+    }
+
+    return result;
   } catch (err) {
     console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', err.message);
     return Mocks.MOCK_DESTINATIONS;
