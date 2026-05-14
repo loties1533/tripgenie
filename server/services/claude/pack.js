@@ -143,7 +143,9 @@ export async function assemblePack({ destination, flights, events, hotels: realH
           stops:            flights[0].outbound?.stops === 0 ? 'Direct' : `${flights[0].outbound?.stops} escale(s)`,
           airline:          flights[0].outbound?.airline || 'Air France',
           price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
-          type:             'outbound'
+          type:             'outbound',
+          booking_url:      flights[0].booking_url || null,
+          links:            flights[0].links || null
         },
         flights[0].return ? {
           from:             flights[0].return?.from || 'XXX',
@@ -156,7 +158,9 @@ export async function assemblePack({ destination, flights, events, hotels: realH
           stops:            flights[0].return?.stops === 0 ? 'Direct' : `${flights[0].return?.stops} escale(s)`,
           airline:          flights[0].return?.airline || 'Air France',
           price_per_person: `${Math.round((flights[0].price || 0) / (travelers || 1))}€`,
-          type:             'return'
+          type:             'return',
+          booking_url:      flights[0].booking_url || null,
+          links:            flights[0].links || null
         } : null
       ].filter(Boolean)
     : [
@@ -171,7 +175,9 @@ export async function assemblePack({ destination, flights, events, hotels: realH
         category:    e.category,
         date:        (e.start || '').slice(0, 10) || 'Pendant votre séjour',
         venue:       e.venue || 'Centre ville',
-        description: e.description || ''
+        description: e.description || '',
+        booking_url: e.booking_url || null,
+        links:       e.links || null
       }))
     : [{ name:`Soirée à ${dest}`, category:'Nightlife', date:'Pendant votre séjour', venue:'Centre ville', description:'Animation locale garantie' }];
 

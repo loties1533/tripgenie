@@ -79,7 +79,7 @@ function FlightCard({ flight, tripId, destination }) {
   const isReturn  = flight.type === 'return'
   const bookingUrl = flight.links?.skyscanner
     || flight.links?.kayak
-    || `https://www.skyscanner.fr/transport/flights/${encodeURIComponent(flight.from_city || 'Paris')}/${encodeURIComponent(flight.to_city || destination)}/`
+    || `https://www.google.com/travel/flights?q=Vols%20de%20${encodeURIComponent(flight.from_city || 'Paris')}%20à%20${encodeURIComponent(flight.to_city || destination)}`
 
   return (
     <motion.div initial={{ opacity: 0, x: isReturn ? 8 : -8 }} animate={{ opacity: 1, x: 0 }}
@@ -123,7 +123,7 @@ function FlightCard({ flight, tripId, destination }) {
             rel="noopener noreferrer"
             className="text-[10px] font-bold text-sage hover:underline flex items-center gap-0.5"
           >
-            Skyscanner ↗
+            Réservation ↗
           </a>
         </div>
       </div>
@@ -234,9 +234,10 @@ function BudgetChart({ breakdown }) {
 }
 
 // ---- Event card ----
-function EventCard({ event }) {
+function EventCard({ event, destination }) {
+  const query = encodeURIComponent(`${event.name || event.title || ''} ${destination || ''}`)
   const bookingUrl = event.booking_url || event.links?.viator || event.links?.getyourguide
-    || `https://www.getyourguide.fr/s/?q=${encodeURIComponent((event.name || '') + ' ' + (event.venue || ''))}`
+    || `https://www.getyourguide.fr/s/?q=${query}`
 
   return (
     <div className="flex gap-3 p-3 glass rounded-xl">
@@ -421,7 +422,7 @@ export default function PackResults() {
             📍 Carte
           </a>
           <a
-            href={activity.links?.viator || `https://www.getyourguide.fr/s/?q=${encodeURIComponent(activity.name + ' ' + d.destination)}`}
+            href={activity.links?.viator || `https://www.getyourguide.fr/s/?q=${encodeURIComponent((activity.name || activity.title) + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
@@ -429,7 +430,7 @@ export default function PackResults() {
             Réserver ↗
           </a>
         </div>
-        <VoteButtons tripId={d.id} itemId={activity.name} />
+        <VoteButtons tripId={d.id} itemId={activity.name || activity.title} />
       </div>
     </div>
   )
@@ -554,7 +555,7 @@ export default function PackResults() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
                 {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} tripId={d.id} destination={d.destination} />)}
-                {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} />)}
+                {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} destination={d.destination} />)}
               </div>
             </div>
           )}
