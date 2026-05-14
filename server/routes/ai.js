@@ -8,6 +8,8 @@ import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude/index.js';
 import { scorepack } from '../services/scoring.js';
 import { smartFlightSearch, smartEventsSearch } from '../services/smartSearch.js';
+import { getRealWeather } from '../services/weather.js';
+import { getDestinationPhoto } from '../services/photo.js';
 import supabase from '../db/supabase.js';
 
 const router = express.Router();
@@ -84,7 +86,9 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
     
     const results = await Promise.allSettled([
       smartFlightSearch({ origin, destination, departure, return_date }),
-      smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode })
+      smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
+      getRealWeather(destination),
+      getDestinationPhoto(destination)
     ]);
 
     let aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -95,24 +99,25 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
         id: 'AI-SEARCH',
         price: aiFlight.price * travelers,
         price_per_person: aiFlight.price,
-        outbound: { 
-          from: origin, to: destination, airline: aiFlight.airline, 
-          departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time, 
-          duration_min: parseInt(aiFlight.duration) * 60 || 180, // Conversion simplifiée
-          stops: aiFlight.stops === "Direct" ? 0 : 1 
+        outbound: {
+          from: origin, to: destination, airline: aiFlight.airline,
+          departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time,
+          duration_min: parseInt(aiFlight.duration) * 60 || 180,
+          stops: aiFlight.stops === 'Direct' ? 0 : 1
         },
-        return: { 
-          from: destination, to: origin, airline: aiFlight.airline, 
-          departure_time: '18:00', arrival_time: '20:00', 
-          duration_min: 120, stops: 0 
+        return: {
+          from: destination, to: origin, airline: aiFlight.airline,
+          departure_time: '18:00', arrival_time: '20:00',
+          duration_min: 120, stops: 0
         }
       }];
     }
 
-    const events = results[1].status === 'fulfilled' ? results[1].value : [];
+    const events     = results[1].status === 'fulfilled' ? results[1].value : [];
+    const realWeather = results[2].status === 'fulfilled' ? results[2].value : null;
+    const realPhoto   = results[3].status === 'fulfilled' ? results[3].value : null;
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
 
-    // Assemblage du pack avec les VRAIES données injectées
     const pack = await assemblePack({
       destination,
       flights,
@@ -121,8 +126,10 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
       travelers,
       budget,
       departure,
-      return_date
-  });
+      return_date,
+      realWeather,
+      realPhoto
+    });
 
     // ---- Scoring réel via scoring.js ----
     const bestFlight = flights[0] ?? null;

@@ -5,9 +5,13 @@
 
 @layer base {
   :root {
-    --gold: #C9A84C;
-    --ink:  #1A1410;
-    --bg:   #FAF7F2;
+    --gold:       #C9A84C;
+    --gold-light: #E5D5A5; /* Champagne */
+    --gold-dark:  #8B6F28;
+    --ink:        #1A1410;
+    --ink-deep:   #0D0B09;
+    --bg:         #FAF7F2;
+    --glass-border: rgba(201, 168, 76, 0.25);
   }
 
   html { scroll-behavior: smooth; }
@@ -24,7 +28,8 @@
   .dark body {
     @apply text-parchment;
     background:
-      radial-gradient(ellipse at 50% 0%, #0D1B2A 0%, #050A10 55%, #000 100%);
+      radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.05) 0%, transparent 50%),
+      #050505;
     background-attachment: fixed;
   }
 }
@@ -32,14 +37,25 @@
 @layer components {
   /* ---- Glass card ---- */
   .glass {
-    background: rgba(255,255,255,0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(201,168,76,0.2);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
   }
   .dark .glass {
-    background: rgba(26,23,20,0.85);
-    border-color: rgba(201,168,76,0.15);
+    background: rgba(5, 5, 5, 0.9);
+    border-color: rgba(201, 168, 76, 0.2);
+    box-shadow: 0 8px 32px -2px rgba(0, 0, 0, 0.8);
+  }
+  
+  .glass-premium {
+    @apply glass;
+    border: 1px solid transparent;
+    background-clip: padding-box, border-box;
+    background-origin: padding-box, border-box;
+    background-image: linear-gradient(to right, rgba(255,255,255,0.05), rgba(255,255,255,0.05)), 
+                      linear-gradient(135deg, var(--gold-light), var(--gold-dark));
   }
 
   /* ---- Scrollbar ---- */
@@ -162,28 +178,84 @@
 }
 
 
-/* ---- Glow & Premium Effects ---- */
-.shadow-glow-gold {
-  box-shadow: 0 0 15px rgba(201, 168, 76, 0.3);
-  transition: box-shadow 0.3s ease;
+/* ---- Luxury Animations ---- */
+@keyframes shine {
+  0% { left: -100%; }
+  20% { left: 100%; }
+  100% { left: 100%; }
 }
-.shadow-glow-gold:hover {
-  box-shadow: 0 0 25px rgba(201, 168, 76, 0.5);
+.shine-effect {
+  position: relative;
+  overflow: hidden;
+}
+.shine-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
+  transform: skewX(-25deg);
+  animation: shine 4s infinite;
 }
 
-.animate-pulse-gold {
-  animation: pulse-gold 2s infinite;
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
-@keyframes pulse-gold {
-  0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(201, 168, 76, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+.text-gradient-gold {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-gold-light via-gold to-gold-dark;
 }
 
-.glass-premium {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(201, 168, 76, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+/* ---- Cinematic Grain ---- */
+.grain-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+.dark .grain-overlay {
+  opacity: 0.06;
+}
+
+/* ---- Ambient Orbs ---- */
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+  animation: floatOrb 15s ease-in-out infinite alternate;
+}
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  100% { transform: translate(50px, -50px) scale(1.2); opacity: 0.6; }
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+.animate-bounce-slow {
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+/* ---- Pulse slow ---- */
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-slow {
+  animation: pulseSlow 3s ease-in-out infinite;
 }

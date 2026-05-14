@@ -30,7 +30,7 @@ const BUDGET_RATIOS = {
  * @param {number}   [params.duration]   - durée en jours (si pas de dates)
  * @returns {Promise<import('../../types.js').Pack>}
  */
-export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration }) {
+export async function assemblePack({ destination, flights, events, mode, profile, travelers, budget, departure, return_date, duration, realWeather, realPhoto }) {
   const dest = sanitizeInput(destination);
 
   let nights = 4;
@@ -172,11 +172,10 @@ export async function assemblePack({ destination, flights, events, mode, profile
     country:     t.country  || 'Destination',
     tagline:     t.tagline  || `${dest}, votre prochaine aventure`,
     overview:    t.overview || `Découvrez ${dest} sous son meilleur jour.`,
-    weather: {
-      avg_temp:   t.weather?.temp || '20°C',
-      conditions: t.weather?.cond || 'Ensoleillé',
-      tip:        t.weather?.tip  || 'Prévoyez des couches'
-    },
+    weather: realWeather
+      ? { avg_temp: realWeather.temp, conditions: realWeather.cond, humidity: realWeather.humidity, wind: realWeather.wind, tip: t.weather?.tip || 'Prévoyez des couches' }
+      : { avg_temp: t.weather?.temp || '20°C', conditions: t.weather?.cond || 'Ensoleillé', tip: t.weather?.tip || 'Prévoyez des couches' },
+    photo: realPhoto || null,
     summary: { total_budget:`${budget}€`, nights, activities_count:(t.activities || []).length },
     flights: flightData,
     hotels: (t.hotels || []).map((h, i) => ({
