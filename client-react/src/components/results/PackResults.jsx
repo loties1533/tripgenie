@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import axios from 'axios'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -329,23 +328,9 @@ export default function PackResults() {
     window.open(waUrl, '_blank')
   }
 
-  const [isBooking, setIsBooking] = useState(false)
-  const handleBooking = async () => {
-    try {
-      setIsBooking(true)
-      const response = await axios.post('/api/payments/create-checkout-session', {
-        pack: d,
-        tripId: d.id
-      })
-      if (response.data.url) {
-        window.location.href = response.data.url
-      }
-    } catch (err) {
-      console.error('Booking error:', err)
-      toast.error('Veuillez ajouter votre clé Stripe Secret dans le fichier .env pour activer la réservation.')
-    } finally {
-      setIsBooking(false)
-    }
+  const [isBooking] = useState(false)
+  const handleBooking = () => {
+    toast.info('Paiement en ligne bientôt disponible. Contactez-nous pour réserver.')
   }
 
   // ---- Internal Cards with Locate & Vote button ----
