@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: tripgenie
+    runtime: node
+    region: frankfurt
+    branch: feat/mvp-final-certification
+    buildCommand: npm install && npm run client:build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # --- Supabase ---
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      # --- Auth ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # --- IA (au moins une clé requise) ---
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: AI_PROVIDER
+        value: gemini
+      # --- Tavily ---
+      - key: TAVILY_API_KEY
+        sync: false

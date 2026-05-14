@@ -9,6 +9,7 @@
     "dev": "nodemon server/index.js",
     "setup-db": "node scripts/setup-db.js",
     "client:dev": "cd client-react && npm run dev",
+    "build": "cd client-react && npm install && npm run build",
     "client:build": "cd client-react && npm run build",
     "test": "node tests/test_api_v1.js",
     "test:services": "node tests/test_services.js",
