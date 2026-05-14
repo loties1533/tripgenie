@@ -38,19 +38,19 @@ export async function callClaude(systemPrompt, userPrompt) {
 }
 
 const FREE_MODELS = [
-  'google/gemma-3-27b-it:free',
-  'google/gemma-4-26b-a4b-it:free',
-  'google/gemma-3-12b-it:free',
-  'google/gemma-3-4b-it:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
-  'microsoft/phi-3-medium-128k-instruct:free',
-  'google/gemma-7b-it:free',
-  'qwen/qwen-2-7b-instruct:free',
-  'z-ai/glm-4.5-air:free',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'nvidia/nemotron-nano-9b-v2:free',
+  // Les plus fiables en premier (souvent disponibles)
   'openai/gpt-oss-20b:free',
+  'z-ai/glm-4.5-air:free',
+  'mistralai/mistral-7b-instruct:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'google/gemma-3-27b-it:free',
+  'google/gemma-3-12b-it:free',
+  'microsoft/phi-3-medium-128k-instruct:free',
+  'qwen/qwen-2-7b-instruct:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'google/gemma-3-4b-it:free',
+  'liquid/lfm-2.5-1.2b-instruct:free',
 ];
 
 export async function callOpenRouter(systemPrompt, userPrompt) {
@@ -96,7 +96,7 @@ export async function callGemini(systemPrompt, userPrompt) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 }
       })
     }
   );

@@ -3,6 +3,67 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useChatStore, useSearchStore } from '../../store'
 import { chatOnboarding, getDestinations, generatePack } from '../../lib/api'
 
+// ---- Helpers dates ----
+function addDays(n) {
+  const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10)
+}
+
+// =============================================
+// QUIZ STEPS (questionnaire déterministe)
+// =============================================
+const QUIZ_STEPS = [
+  {
+    key:      'occasion',
+    question: "C'est pour quelle occasion ?",
+    chips: [
+      { label: 'Entre amis 🥂',    data: { mode: 'party',   profile: 'amis' } },
+      { label: 'En couple 💑',     data: { mode: 'relax',   profile: 'couple' } },
+      { label: 'En famille 👨‍👩‍👧',  data: { mode: 'group',   profile: 'famille' } },
+      { label: 'Solo 🌍',          data: { mode: 'relax',   profile: 'solo' } },
+    ]
+  },
+  {
+    key:      'travelers',
+    question: 'Vous serez combien ?',
+    chips: [
+      { label: '2 personnes',    data: { travelers: 2 } },
+      { label: '3-4 personnes',  data: { travelers: 4 } },
+      { label: '5-8 personnes',  data: { travelers: 6 } },
+      { label: '9+ personnes',   data: { travelers: 10 } },
+    ]
+  },
+  {
+    key:      'budget',
+    question: 'Quel est votre budget total ?',
+    chips: [
+      { label: 'Moins de 1 500€',   data: { budget: 1200 } },
+      { label: '1 500 – 4 000€',    data: { budget: 2500 } },
+      { label: '4 000 – 10 000€',   data: { budget: 7000 } },
+      { label: '10 000€ et +',      data: { budget: 15000 } },
+    ]
+  },
+  {
+    key:      'departure',
+    question: 'Quand souhaitez-vous partir ?',
+    chips: [
+      { label: 'Ce week-end',   data: { departure: addDays(3),  return_date: addDays(5),   duration: 2  } },
+      { label: 'Dans 1 mois',   data: { departure: addDays(30), return_date: addDays(37),  duration: 7  } },
+      { label: 'Dans 3 mois',   data: { departure: addDays(90), return_date: addDays(97),  duration: 7  } },
+      { label: 'Dans 6 mois',   data: { departure: addDays(180),return_date: addDays(187), duration: 7  } },
+    ]
+  },
+  {
+    key:      'duration',
+    question: 'Pour combien de temps ?',
+    chips: [
+      { label: 'Un week-end (2-3j)', data: { duration: 2 } },
+      { label: '1 semaine',          data: { duration: 7 } },
+      { label: '2 semaines',         data: { duration: 14 } },
+      { label: '3 semaines et +',    data: { duration: 21 } },
+    ]
+  },
+]
+
 // ---- Typing indicator ----
 function TypingDots() {
   return (
@@ -15,7 +76,7 @@ function TypingDots() {
   )
 }
 
-// ---- Single message bubble ----
+// ---- Message bubble ----
 function Message({ msg }) {
   const isBot = msg.role === 'bot'
   return (
@@ -31,14 +92,11 @@ function Message({ msg }) {
         </div>
       )}
       <div className={`max-w-[78%] flex flex-col gap-2 ${isBot ? 'items-start' : 'items-end'}`}>
-        <div className={isBot ? 'bubble-bot' : 'bubble-user'}>
-          {msg.text}
-        </div>
-        {/* Chips */}
+        <div className={isBot ? 'bubble-bot' : 'bubble-user'}>{msg.text}</div>
         {isBot && msg.chips?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
             {msg.chips.map((c, i) => (
-              <ChipButton key={i} label={c} msgId={msg.id} />
+              <StaticChip key={i} label={typeof c === 'string' ? c : c.label} msgId={msg.id} />
             ))}
           </div>
         )}
@@ -47,88 +105,61 @@ function Message({ msg }) {
   )
 }
 
-// ---- Chip button (se désactive après click) ----
-function ChipButton({ label, msgId }) {
-  const [used, setUsed] = useState(false)
-  const { addMessage, mergeChatData, setTyping, setReady, setMockMode, chatData, turnCount } = useChatStore()
-  const { setLoading, setPack, setField } = useSearchStore()
-
-  const handleClick = useCallback(async () => {
-    if (used) return
-    setUsed(true)
-    addMessage({ role: 'user', text: label })
-    await processUserMessage(label, {
-      addMessage, mergeChatData, setTyping, setReady, setMockMode,
-      setLoading, setPack, setField, chatData, turnCount
-    })
-  }, [used, label])
-
-  return (
-    <button onClick={handleClick} disabled={used}
-      className={`chip text-sm transition-all duration-200 ${used ? 'opacity-40 cursor-default' : ''}`}>
-      {label}
-    </button>
-  )
+// Chip qui ne fait rien (déjà traité via quiz)
+function StaticChip({ label }) {
+  return <span className="chip text-sm opacity-60 cursor-default">{label}</span>
 }
 
-// L'ancien composant DestinationCards a été supprimé pour faire place à TripConcepts
-
-// ---- Core business logic (outside component to avoid re-creation) ----
-async function processUserMessage(value, ctx) {
+// =============================================
+// LOGIQUE TEXTE LIBRE (IA parsing)
+// =============================================
+async function processAIMessage(value, ctx) {
   const { addMessage, mergeChatData, setTyping, setReady, setMockMode,
           setLoading, setPack, setField, chatData, turnCount } = ctx
-
-  // Force isReady après 7 tours pour éviter les boucles infinies
-  const forceReady = turnCount >= 6
-
+  const forceReady = turnCount >= 5
   try {
     setTyping(true)
     const res = await chatOnboarding(value, chatData)
     setTyping(false)
-
     if (res.isMock) setMockMode(true)
     if (res.extractedData) mergeChatData(res.extractedData)
-
+    const merged = { ...chatData, ...(res.extractedData || {}) }
     if (res.isReady || forceReady) {
       setReady(true)
-      addMessage({ role: 'bot', text: '🎯 Super, j\'ai tout ce qu\'il me faut ! Je cherche les meilleures pépites pour vous...' })
-      await suggestDestinations(chatData, { addMessage, setTyping, setLoading, setPack, setField })
+      addMessage({ role: 'bot', text: '🎯 Parfait, j\'ai tout ce qu\'il me faut ! Je cherche les meilleures destinations pour vous...' })
+      await suggestDestinations(merged, { addMessage, setTyping, setLoading, setPack, setField })
     } else {
       addMessage({ role: 'bot', text: res.response, chips: res.chips || [] })
     }
   } catch (err) {
     setTyping(false)
-    console.error(err)
     addMessage({ role: 'bot', text: 'Oups, petit souci technique. Réessaie !' })
   }
 }
 
+// =============================================
+// SUGGESTION DESTINATIONS (commun aux 2 chemins)
+// =============================================
 async function suggestDestinations(chatData, ctx) {
   const { addMessage, setTyping, setLoading, setPack, setField } = ctx
   setTyping(true)
   try {
     const res = await getDestinations({
-      mode:          chatData.mode,
-      profile:       chatData.profile,
-      interests:     chatData.interests,
-      budget:        chatData.budget,
-      travelers:     chatData.travelers,
-      duration:      chatData.duration,
-      origin:        chatData.origin,
-      moods:         chatData.moods,
-      discoveryMode: chatData.discoveryMode,
-      departure:     chatData.departure,
-      preferences:   []
+      mode:      chatData.mode,
+      profile:   chatData.profile,
+      budget:    chatData.budget,
+      travelers: chatData.travelers,
+      duration:  chatData.duration,
+      origin:    chatData.origin || 'Paris',
+      departure: chatData.departure,
+      preferences: []
     })
     setTyping(false)
     const dests = res.destinations || []
     if (dests.length) {
       setField('concepts', dests)
     } else {
-      addMessage({ role: 'bot', text: 'Je génère votre pack directement !', chips: [] })
-      if (chatData.destination) {
-        await launchGeneration(chatData.destination, chatData, { setLoading, setPack, setField, addMessage, setTyping })
-      }
+      addMessage({ role: 'bot', text: 'Impossible de charger les destinations. Réessaie !' })
     }
   } catch {
     setTyping(false)
@@ -136,78 +167,72 @@ async function suggestDestinations(chatData, ctx) {
   }
 }
 
-async function launchGeneration(destination, chatData, ctx) {
-  const { setLoading, setPack, setField, addMessage } = ctx
-  setLoading(true)
-  setField('destination', destination)
-  try {
-    const today = new Date()
-    const dep   = new Date(today); dep.setDate(dep.getDate() + 30)
-    const ret   = new Date(dep);   ret.setDate(ret.getDate() + (chatData.duration || 7))
-    const fmt   = d => d.toISOString().slice(0, 10)
-
-    const result = await generatePack({
-      destination,
-      origin:      chatData.origin || 'Paris',
-      departure:   fmt(dep),
-      return_date: fmt(ret),
-      travelers:   chatData.travelers || 2,
-      budget:      chatData.budget    || 2000,
-      mode:        chatData.mode      || 'party',
-      preferences: chatData.interests || []
-    })
-    setPack(result.pack || result, result.trip_id)
-    addMessage({ role: 'bot', text: `✅ Ton pack **${destination}** est prêt ! Scroll vers le bas pour le découvrir.` })
-
-    // Scroll vers les résultats
-    setTimeout(() => {
-      document.getElementById('pack-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 400)
-  } catch (err) {
-    setLoading(false)
-    addMessage({ role: 'bot', text: 'Erreur lors de la génération du pack. Réessaie !' })
-  }
-}
-
 // =============================================
 // MAIN CHAT WIDGET
 // =============================================
 export default function ChatWidget() {
-  const { messages, isTyping, addMessage, mergeChatData, setTyping,
-          setReady, setMockMode, chatData, turnCount, isMockMode } = useChatStore()
+  const {
+    messages, isTyping, addMessage, mergeChatData, setTyping,
+    setReady, setMockMode, chatData, turnCount, isMockMode,
+    quizMode, quizStep, setQuizMode, nextQuizStep
+  } = useChatStore()
   const { setLoading, setPack, setField } = useSearchStore()
   const [input, setInput]   = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
+  const initRef   = useRef(false)
 
-  const initRef = useRef(false)
-  // Message de bienvenue au montage
+  // Message de bienvenue
   useEffect(() => {
     if (messages.length === 0 && !initRef.current) {
       initRef.current = true
       setTimeout(() => {
         addMessage({
-          role:  'bot',
-          text:  'Bienvenue. ✦ Je suis votre Concierge Privé TripGenie. Quelques questions suffisent pour orchestrer une expérience à la hauteur de vos aspirations. Quelle est l\'occasion de cette escapade ?',
-          chips: ['Duo Romantique 💑', 'Entre Amis 🥂', 'En Famille 👨‍👩‍👧', 'Solo & Liberté 🌍']
+          role: 'bot',
+          text: 'Bienvenue. ✦ Comment souhaitez-vous procéder ?',
+          chips: []
         })
-      }, 800)
+      }, 500)
     }
   }, [])
 
-  // Auto-scroll à chaque nouveau message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
+  // ---- Handler chip quiz ----
+  const handleQuizChip = useCallback(async (chip) => {
+    const currentStep = QUIZ_STEPS[quizStep]
+    addMessage({ role: 'user', text: chip.label })
+    mergeChatData(typeof chip.data === 'function' ? chip.data() : chip.data)
+
+    const isLast = quizStep === QUIZ_STEPS.length - 1
+    if (isLast) {
+      // On a tout — suggérer destinations
+      const merged = { ...chatData, ...(typeof chip.data === 'function' ? chip.data() : chip.data) }
+      setTimeout(() => {
+        addMessage({ role: 'bot', text: '🎯 Parfait ! Je cherche les meilleures destinations pour votre voyage...' })
+      }, 200)
+      setReady(true)
+      await suggestDestinations(merged, { addMessage, setTyping, setLoading, setPack, setField })
+    } else {
+      nextQuizStep()
+      const next = QUIZ_STEPS[quizStep + 1]
+      setTimeout(() => {
+        addMessage({ role: 'bot', text: next.question })
+      }, 300)
+    }
+  }, [quizStep, chatData])
+
+  // ---- Envoi texte libre ----
   const sendMessage = useCallback(async () => {
     const text = input.trim()
     if (!text || sending) return
     setInput('')
     setSending(true)
     addMessage({ role: 'user', text })
-    await processUserMessage(text, {
+    await processAIMessage(text, {
       addMessage, mergeChatData, setTyping, setReady, setMockMode,
       setLoading, setPack, setField, chatData, turnCount
     })
@@ -219,9 +244,28 @@ export default function ChatWidget() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
+  // Chip d'accueil pour choisir le mode
+  const handleModeSelect = useCallback((mode) => {
+    if (mode === 'quiz') {
+      addMessage({ role: 'user', text: 'Questionnaire guidé' })
+      setQuizMode(true)
+      setTimeout(() => {
+        addMessage({ role: 'bot', text: QUIZ_STEPS[0].question })
+      }, 300)
+    } else {
+      addMessage({ role: 'user', text: 'Je décris mon voyage' })
+      setQuizMode(false)
+      setTimeout(() => {
+        addMessage({ role: 'bot', text: 'Décrivez-moi votre voyage en une phrase — je m\'occupe du reste.\nEx : "4 amis, fête, du 15/06 au 21/06, départ Bordeaux, budget 16 000€"' })
+      }, 300)
+    }
+  }, [])
+
+  // Détecter si on est sur le message d'accueil (avant choix de mode)
+  const isWelcomeState = messages.length === 1 && messages[0].role === 'bot' && !quizMode
+
   return (
     <div className="flex flex-col h-full">
-      {/* Mock mode indicator */}
       <AnimatePresence>
         {isMockMode && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -232,13 +276,39 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Messages list */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto scroll-hide px-4 py-4 flex flex-col gap-4">
         <AnimatePresence initial={false}>
           {messages.map(msg => <Message key={msg.id} msg={msg} />)}
         </AnimatePresence>
 
-        {/* Typing indicator */}
+        {/* Boutons de choix de mode (état d'accueil) */}
+        {isWelcomeState && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-2 pl-9">
+            <button
+              onClick={() => handleModeSelect('quiz')}
+              className="chip text-sm text-left hover:border-gold/60 hover:bg-gold/10 transition-all">
+              🧭 Questionnaire guidé (4 questions)
+            </button>
+            <button
+              onClick={() => handleModeSelect('freeform')}
+              className="chip text-sm text-left hover:border-gold/60 hover:bg-gold/10 transition-all">
+              ✍️ Décrire mon voyage en une phrase
+            </button>
+          </motion.div>
+        )}
+
+        {/* Quiz chips interactifs */}
+        {quizMode && !isWelcomeState && (
+          <QuizChips
+            step={quizStep}
+            onSelect={handleQuizChip}
+            disabled={isTyping}
+          />
+        )}
+
         <AnimatePresence>
           {isTyping && (
             <motion.div className="flex gap-2 justify-start"
@@ -246,54 +316,73 @@ export default function ChatWidget() {
               <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 mt-1">
                 <span className="text-[13px]">✦</span>
               </div>
-              <div className="bubble-bot">
-                <TypingDots />
-              </div>
+              <div className="bubble-bot"><TypingDots /></div>
             </motion.div>
           )}
         </AnimatePresence>
-
         <div ref={bottomRef} />
       </div>
 
-      {/* Input area */}
-      <div className="px-4 pb-4 pt-2">
-        <div className="flex gap-2 items-end bg-white/60 dark:bg-ink-light/40 backdrop-blur-md border border-gold/20 rounded-2xl p-1 shadow-inner">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={onKey}
-            placeholder="Confiez-moi vos envies de voyage..."
-            rows={1}
-            className="flex-1 resize-none bg-transparent border-none
-                       px-4 py-3 text-[15px] text-ink dark:text-parchment placeholder:text-muted/60
-                       focus:outline-none focus:ring-0
-                       transition-all duration-200 max-h-32 overflow-y-auto scroll-hide
-                       leading-relaxed"
-            style={{ minHeight: '48px' }}
-            onInput={e => {
-              e.target.style.height = 'auto'
-              e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
-            }}
-          />
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={sendMessage}
-            disabled={!input.trim() || sending}
-            className="w-11 h-11 rounded-xl bg-gold text-white flex items-center justify-center
-                       disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gold-dark
-                       transition-all duration-200 flex-shrink-0 shadow-glow-gold hover:shadow-none"
-          >
-            {sending
-              ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              : <SendIcon />
-            }
-          </motion.button>
+      {/* Input texte libre (uniquement en mode freeform ou non-quiz) */}
+      {!quizMode && (
+        <div className="px-4 pb-4 pt-2">
+          <div className="flex gap-2 items-end bg-white/60 dark:bg-ink-light/40 backdrop-blur-md border border-gold/20 rounded-2xl p-1 shadow-inner">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={onKey}
+              placeholder="Confiez-moi vos envies de voyage..."
+              rows={1}
+              className="flex-1 resize-none bg-transparent border-none
+                         px-4 py-3 text-[15px] text-ink dark:text-parchment placeholder:text-muted/60
+                         focus:outline-none focus:ring-0 transition-all duration-200 max-h-32 overflow-y-auto scroll-hide leading-relaxed"
+              style={{ minHeight: '48px' }}
+              onInput={e => {
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
+              }}
+            />
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={sendMessage}
+              disabled={!input.trim() || sending}
+              className="w-11 h-11 rounded-xl bg-gold text-white flex items-center justify-center
+                         disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gold-dark
+                         transition-all duration-200 flex-shrink-0 shadow-glow-gold hover:shadow-none"
+            >
+              {sending
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <SendIcon />
+              }
+            </motion.button>
+          </div>
+          <p className="text-[11px] text-muted/60 mt-1.5 text-center">Entrée pour envoyer · Shift+Entrée pour saut de ligne</p>
         </div>
-        <p className="text-[11px] text-muted/60 mt-1.5 text-center">Entrée pour envoyer · Shift+Entrée pour saut de ligne</p>
-      </div>
+      )}
     </div>
+  )
+}
+
+// ---- Quiz chips interactifs (non désactivés après click — gérés par quizStep) ----
+function QuizChips({ step, onSelect, disabled }) {
+  const currentStep = QUIZ_STEPS[step]
+  if (!currentStep) return null
+  return (
+    <motion.div
+      key={step}
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="flex flex-wrap gap-2 pl-9">
+      {currentStep.chips.map((chip, i) => (
+        <button
+          key={i}
+          onClick={() => !disabled && onSelect(chip)}
+          disabled={disabled}
+          className="chip text-sm hover:border-gold/60 hover:bg-gold/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          {chip.label}
+        </button>
+      ))}
+    </motion.div>
   )
 }
 

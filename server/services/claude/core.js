@@ -33,18 +33,32 @@ export function parseJSON(raw) {
     .trim();
 
   const start = str.indexOf('{');
-  const end   = str.lastIndexOf('}');
-  if (start !== -1 && end !== -1) str = str.slice(start, end + 1);
+  if (start !== -1) str = str.slice(start);
 
+  // Tenter le parsing direct
+  const attempts = [
+    str,
+    str.slice(0, str.lastIndexOf('}') + 1),
+    str.replace(/,(\s*[}\]])/g, '$1'),
+  ];
+
+  for (const attempt of attempts) {
+    try { return JSON.parse(attempt); } catch {}
+  }
+
+  // Réparer JSON tronqué : fermer les tableaux/objets ouverts
   try {
-    return JSON.parse(str);
+    let fixed = str;
+    // Couper à la dernière virgule propre avant troncature
+    fixed = fixed.replace(/,\s*$/, '');
+    // Compter les brackets ouverts et les fermer
+    const opens = (fixed.match(/\[/g) || []).length - (fixed.match(/\]/g) || []).length;
+    const braces = (fixed.match(/\{/g) || []).length - (fixed.match(/\}/g) || []).length;
+    fixed += ']'.repeat(Math.max(0, opens)) + '}'.repeat(Math.max(0, braces));
+    return JSON.parse(fixed);
   } catch (e) {
-    try {
-      return JSON.parse(str.replace(/,(\s*[}\]])/g, '$1'));
-    } catch {
-      console.error('parseJSON failed:', raw.slice(0, 200));
-      throw new Error(`JSON malformé: ${e.message}`);
-    }
+    console.error('parseJSON failed:', raw.slice(0, 200));
+    throw new Error(`JSON malformé: ${e.message}`);
   }
 }
 

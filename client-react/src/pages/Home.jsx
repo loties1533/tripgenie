@@ -1,4 +1,37 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
+const FALLBACK_PHOTOS = [
+  'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80', // ibiza/beach party
+  'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80', // city night
+  'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80', // beach tropical
+]
+
+function CityPhoto({ city, photo }) {
+  const [src, setSrc] = useState(photo || null)
+  const fetched = useRef(false)
+
+  useEffect(() => {
+    if (src || fetched.current) return
+    fetched.current = true
+    if (!UNSPLASH_KEY) { setSrc(FALLBACK_PHOTOS[Math.floor(Math.random() * FALLBACK_PHOTOS.length)]); return }
+    fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(city + ' city travel')}&per_page=1&orientation=landscape`, {
+      headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` }
+    })
+      .then(r => r.json())
+      .then(d => setSrc(d.results?.[0]?.urls?.regular || FALLBACK_PHOTOS[0]))
+      .catch(() => setSrc(FALLBACK_PHOTOS[0]))
+  }, [city])
+
+  return (
+    <img
+      src={src || FALLBACK_PHOTOS[0]}
+      alt={city}
+      onError={e => { e.target.src = FALLBACK_PHOTOS[0] }}
+      className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700"
+    />
+  )
+}
 import { motion } from 'framer-motion'
 import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
@@ -196,12 +229,25 @@ function TripConcepts() {
   if (!concepts) return null
 
   const handleSelect = async (dest) => {
-    // Relance la génération complète depuis ici
-    setField('concepts', null) // on cache les concepts
+    setField('concepts', null)
     setLoading(true)
     addMessage({ role: 'bot', text: `Excellent choix ! 🚀 Je génère ton pack VIP pour **${dest.city}**...` })
-    
-    // Fake the launchGeneration logic here or call an API directly
+
+    // Normalise une date DD/MM ou DD/MM/YY → YYYY-MM-DD
+    const normalizeDate = (d) => {
+      if (!d) return null
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d // déjà bon
+      const [day, month, year] = d.split('/')
+      if (!day || !month) return null
+      const y = year ? (year.length === 2 ? '20' + year : year) : new Date().getFullYear()
+      return `${y}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`
+    }
+
+    const dep = normalizeDate(chatData.departure)
+      || new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10)
+    const ret = normalizeDate(chatData.return_date)
+      || new Date(new Date(dep).getTime() + 86400000 * (chatData.duration || 7)).toISOString().slice(0, 10)
+
     try {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
@@ -209,10 +255,11 @@ function TripConcepts() {
         body: JSON.stringify({
           destination: dest.city,
           origin:      chatData.origin || 'Paris',
-          departure:   chatData.departure || new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10),
+          departure:   dep,
+          return_date: ret,
           budget:      chatData.budget || 5000,
           travelers:   chatData.travelers || 2,
-          mode:        chatData.mode || 'luxury'
+          mode:        chatData.mode || 'party'
         })
       })
       const data = await res.json()
@@ -246,12 +293,7 @@ function TripConcepts() {
             
             {/* Image (Images Premium garanties pour la démo) */}
             <div className="absolute inset-0 bg-ink">
-              <img 
-                src={c.photo || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80`}
-                alt={c.city}
-                onError={e => { e.target.src = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80' }}
-                className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700"
-              />
+              <CityPhoto city={c.city} photo={c.photo} />
               <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
             </div>
 
@@ -260,12 +302,16 @@ function TripConcepts() {
             <div className="absolute inset-0 p-8 flex flex-col justify-end">
               <span className="text-gold font-bold tracking-widest uppercase text-[10px] mb-2 drop-shadow-md">{c.country}</span>
               <h3 className="font-display text-4xl text-white font-bold mb-1 leading-none">{c.city}</h3>
-              <p className="text-parchment/80 italic font-serif text-lg mb-4">{c.tagline || c.reason}</p>
+              <p className="text-parchment/80 italic font-serif text-lg mb-4 line-clamp-2">{c.tagline || c.reason}</p>
               
               <div className="flex items-center justify-between pt-4 border-t border-white/20">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-muted">Budget estimé</p>
-                  <p className="text-gold font-bold text-lg">{c.budget_estimate || 'Sur devis'}</p>
+                  <p className="text-gold font-bold text-lg">
+                    {c.budget_estimate || (chatData.budget && chatData.travelers
+                      ? `~${Math.round(chatData.budget / chatData.travelers).toLocaleString('fr-FR')}€/pers`
+                      : 'Sur devis')}
+                  </p>
                 </div>
                 <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-gold transition-colors">
                   ↗

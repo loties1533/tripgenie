@@ -54,6 +54,7 @@ router.post('/onboarding', aiChatLimiter, optionalAuth, async (req, res, next) =
     if (userMessage.length > 1000) return res.status(400).json({ error: 'Message trop long' });
 
     const result = await chatIntake({ currentData, userMessage });
+    console.log('🧠 chatIntake extracted:', JSON.stringify(result.extractedData));
     res.json(result);
 
   } catch (err) {

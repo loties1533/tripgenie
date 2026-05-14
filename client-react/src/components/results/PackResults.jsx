@@ -458,7 +458,7 @@ export default function PackResults() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <ModeBadge mode={mode} />
-                {d.score && <ScoreBadge score={d.score} />}
+                {d.score != null && <ScoreBadge score={d.score} />}
               </div>
               <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment flex items-center gap-3">
                 {d.destination}

@@ -46,16 +46,20 @@ export async function smartFlightSearch({ origin, destination, departure, return
 Voici des résultats web pour des vols de ${origin} à ${destination} :
 ${webContext}
 
-Extrais les infos du meilleur vol trouvé. Si tu trouves une URL de réservation directe dans les sources, inclus-la.
+Extrais le meilleur vol trouvé. RÈGLES STRICTES :
+- "price" = prix EN EUROS par personne pour UN billet aller simple. Valeur réaliste (minimum 50€, jamais moins). Ex: Paris-Londres ~80-200€, Paris-New York ~400-800€.
+- Si tu vois "16€" ou tout prix < 50€ dans les résultats, IGNORE-LE, c'est une taxe ou frais, pas un billet.
+- Si aucun prix fiable trouvé, estime un prix réaliste selon la distance.
+
 Retourne UNIQUEMENT ce JSON :
 {
-  "price": 450,
+  "price": 150,
   "airline": "Compagnie",
   "outbound_time": "10:30",
   "arrival_time": "14:00",
-  "duration": "3h30",
+  "duration": "2h30",
   "stops": "Direct",
-  "booking_url": "URL directe si trouvée, sinon null"
+  "booking_url": null
 }`;
 
     const resRaw = await callAI(prompt, undefined, 'pack');

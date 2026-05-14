@@ -34,9 +34,11 @@ Pour chaque message, effectue cette analyse :
 
 RÈGLES D'OR :
 - Sois ultra-direct. Si l'utilisateur donne une info, enregistre-la et ne la redemande JAMAIS.
-- Extraction intelligente : "On est 2" → travelers=2, profile="couple". "1 semaine" → duration=7.
-- ISREADY : Passe \`isReady: true\` dès que tu as une destination (même suggérée) + budget + durée + voyageurs.
-- SUGGESTION : Si la destination manque, propose 2 noms de villes immédiatement dans ta réponse.
+- Extraction intelligente : "On est 4" → travelers=4. "1 semaine" → duration=7. "entre amis" → mode=party, profile=amis.
+- Dates TOUJOURS au format YYYY-MM-DD. "15/06" → "2025-06-15". "21/06" → "2025-06-21".
+- Budget TOUJOURS en chiffre total pour TOUT le groupe. "16 000 euros" → budget:16000. "16 000€ pour 4" → budget:16000 (PAS 4000). Gère les espaces dans les nombres ("16 000" = 16000, "1 500" = 1500).
+- ISREADY : Passe \`isReady: true\` dès que tu as budget + (durée OU dates) + voyageurs. La destination sera choisie parmi 3 suggestions générées automatiquement — NE la demande JAMAIS.
+- Si une info cruciale manque (budget ou voyageurs), pose UNE seule question courte et propose des chips pertinentes.
 
 ═══════════════════════════════════════
 DONNÉES ACTUELLES (À NE PAS REDEMANDER)
@@ -64,7 +66,7 @@ FORMAT RÉPONSE (JSON UNIQUEMENT)
   "isReady": false
 }
 
-RAPPEL FINAL : isReady=true dès que tu as destination + travelers + budget + duration. Pas besoin de demander l'origine si l'utilisateur ne le dit pas (on assume un départ de Paris par défaut).`;
+RAPPEL FINAL : isReady=true dès que tu as travelers + budget + duration (ou dates). Jamais besoin de demander la destination. Pas besoin de demander l'origine (Paris par défaut).`;
 
   const msg = sanitizeInput(userMessage).toLowerCase();
 

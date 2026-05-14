@@ -49,9 +49,11 @@ export const useChatStore = create((set, get) => ({
     mode:          'party',
     interests:     [],
     budget:        null,
-    origin:        null,
+    origin:        'Paris',
     destination:   null,
     duration:      null,
+    departure:     null,
+    return_date:   null,
     discoveryMode: null,
     moods:         [],
   },
@@ -59,32 +61,26 @@ export const useChatStore = create((set, get) => ({
   isReady:    false,
   turnCount:  0,
   isMockMode: false,
+  quizMode:   false,
+  quizStep:   0,
 
-  // Ajouter un message
-  addMessage: (msg) => set((s) => ({
-    messages: [...s.messages, { id: Date.now() + Math.random(), ...msg }]
-  })),
+  addMessage:    (msg) => set((s) => ({ messages: [...s.messages, { id: Date.now() + Math.random(), ...msg }] })),
+  setTyping:     (v) => set({ isTyping: v }),
+  mergeChatData: (data) => set((s) => ({ chatData: { ...s.chatData, ...data }, turnCount: s.turnCount + 1 })),
+  setReady:      (v) => set({ isReady: v }),
+  setMockMode:   (v) => set({ isMockMode: v }),
+  setQuizMode:   (v) => set({ quizMode: v, quizStep: 0 }),
+  nextQuizStep:  ()  => set((s) => ({ quizStep: s.quizStep + 1 })),
 
-  // Indicateur de frappe bot
-  setTyping:  (v) => set({ isTyping: v }),
-
-  // Mettre à jour les données extraites par l'IA
-  mergeChatData: (data) => set((s) => ({
-    chatData:  { ...s.chatData, ...data },
-    turnCount: s.turnCount + 1,
-  })),
-
-  setReady:    (v) => set({ isReady: v }),
-  setMockMode: (v) => set({ isMockMode: v }),
-
-  // Reset complet du chat
   resetChat: () => set({
-    messages:  [],
-    chatData:  { travelers: null, profile: null, mode: 'party', interests: [], budget: null, origin: null, destination: null, duration: null, discoveryMode: null, moods: [] },
-    isTyping:  false,
-    isReady:   false,
-    turnCount: 0,
+    messages:   [],
+    chatData:   { travelers: null, profile: null, mode: 'party', interests: [], budget: null, origin: 'Paris', destination: null, duration: null, departure: null, return_date: null, discoveryMode: null, moods: [] },
+    isTyping:   false,
+    isReady:    false,
+    turnCount:  0,
     isMockMode: false,
+    quizMode:   false,
+    quizStep:   0,
   }),
 }))
 

@@ -41,26 +41,30 @@ export async function suggestDestinations({ mode, profile, interests, budget, tr
       `CONTEXTE WEB RÉCENT : ${webContext}
       MISSION : Suggère 3 destinations parfaites pour un voyage en ${month}.
       PROFIL : ${profile}, MODE : ${mode}.
-      BUDGET : ${budget >= 10000 ? 'LUXE / ILLIMITÉ' : budget + '€'}.
+      BUDGET TOTAL : ${budget}€ pour ${travelers || 2} personne(s) = ${Math.round(budget / (travelers || 2))}€/personne.
 
       STRATÉGIE : 2 destinations CLASSIQUES + 1 destination PÉPITE (Hidden Gem).
-      1. Si BUDGET >= 10000 : Ton ton doit être VIP/Prestigieux. INTERDICTION de parler de "gratuit".
+      1. Si budget/pers >= 2000 : Ton VIP/Prestigieux. Pas de "gratuit".
       2. Si MODE = PARTY : Focus sur la vie nocturne mondiale.
 
-      FORMAT JSON : {"destinations": [{"city": "Nom", "country": "Pays", "reason": "Pourquoi ce spot est parfait (Mentionne explicitement si c'est la PÉPITE).", "match_score": 95}]}`,
+      FORMAT JSON STRICT — reason MAX 8 mots, budget_estimate CALCULÉ depuis le budget réel (${Math.round(budget / (travelers || 2))}€/pers) :
+      {"destinations": [{"city": "Nom", "country": "Pays", "tagline": "Accroche courte (5-8 mots)", "reason": "Raison MAX 8 mots", "budget_estimate": "~${Math.round(budget / (travelers || 2))}€/pers", "match_score": 95}]}`,
       undefined,
       'destinations'
     );
     const result = parseJSON(raw);
+    const budgetPerPers = budget && travelers ? Math.round(budget / travelers) : null;
 
-    // Enrichir chaque destination avec une vraie photo en parallèle
+    // Enrichir chaque destination avec photo + budget calculé côté serveur
     if (result?.destinations?.length) {
       const photos = await Promise.allSettled(
         result.destinations.map(d => getDestinationPhoto(d.city))
       );
       result.destinations = result.destinations.map((d, i) => ({
         ...d,
-        photo: photos[i].status === 'fulfilled' ? photos[i].value : null
+        photo: photos[i].status === 'fulfilled' ? photos[i].value : null,
+        // Toujours calculé depuis les vraies données, jamais hallucin par l'IA
+        budget_estimate: budgetPerPers ? `~${budgetPerPers.toLocaleString('fr-FR')}€/pers` : d.budget_estimate
       }));
     }
 

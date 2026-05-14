@@ -13,13 +13,24 @@ export async function getDestinationPhoto(query) {
 
   if (key) {
     try {
-      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' luxury travel')}&per_page=1&orientation=landscape`;
-      const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
-      const data = await res.json();
-      const photo = data.results?.[0]?.urls?.regular;
-      if (photo) return photo;
+      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' city travel')}&per_page=1&orientation=landscape`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Client-ID ${key}` },
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) {
+        console.warn(`Unsplash ${res.status} for "${query}"`);
+      } else {
+        const data = await res.json();
+        const photo = data.results?.[0]?.urls?.regular;
+        if (photo) {
+          console.log(`📸 Unsplash OK: ${query} → ${photo.slice(0, 60)}...`);
+          return photo;
+        }
+        console.warn(`Unsplash: aucun résultat pour "${query}"`);
+      }
     } catch (err) {
-      console.error('Unsplash API error, falling back:', err.message);
+      console.warn(`Unsplash timeout/error for "${query}":`, err.message);
     }
   }
 

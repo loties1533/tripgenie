@@ -44,14 +44,27 @@ export async function assemblePack({ destination, flights, events, hotels: realH
 
   const budgetPerPers = Math.round(budget / travelers);
 
+  const budgetTone = budgetPerPers >= 1500
+    ? 'Budget confortable : privilégie des adresses soignées sans nécessairement être luxueuses.'
+    : budgetPerPers >= 600
+    ? 'Budget moyen : bon rapport qualité/prix, quelques expériences premium ciblées.'
+    : 'Petit budget : adresses accessibles, astuces locales, évite les pièges à touristes.';
+
   const textRaw = await callAI(
     `Tu es le concierge privé de TripGenie. Destination : ${dest}.
-    PROFIL : ${profile}, MODE : ${mode}, BUDGET : ${budgetPerPers}€/personne, DURÉE : ${nights} nuits.
+    VOYAGEURS : ${travelers} personne(s). PROFIL : ${profile || mode}. VIBE : ${mode}. BUDGET : ${budgetPerPers}€/pers. DURÉE : ${nights} nuits.
 
-    LOGIQUE DE GÉNÉRATION PAR MODE :
-    - Si MODE = "party" : L'itinéraire doit être NOCTURNE. Matin = "Recovery/Repos". Après-midi = "Vibe/Rooftops". Soir = "Clubs VIP/Underground".
-    - Si BUDGET > 1500€/pers : Propose uniquement des lieux HAUT DE GAMME, réservations exclusives, accès VIP, transferts privés. Évite le "tourisme de masse".
-    - Si MODE = "luxury" : Focus sur l'exclusivité, la gastronomie étoilée et le calme absolu.
+    CONTEXTE À COMBINER intelligemment :
+    - Qui : ${travelers} personne(s), profil "${profile || mode}"
+    - Vibe dominante : "${mode}" — mais adapte selon le contexte réel (ex: amis qui veulent du calme, couple qui veut faire la fête, etc.)
+    - ${budgetTone}
+
+    PRINCIPES (pas des règles rigides) :
+    - Vibe fête/soirée → inclure au moins 1-2 soirées/bars dans l'itinéraire si cohérent
+    - Vibe détente/couple → rythme plus lent, expériences intimes, pas de rush
+    - Vibe famille → activités accessibles à tous, évite la vie nocturne tardive
+    - Vibe luxe → élève le niveau partout sans en faire trop
+    - Le budget dicte le niveau des adresses, pas le mode seul
 
     Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
     {
@@ -67,12 +80,16 @@ export async function assemblePack({ destination, flights, events, hotels: realH
         { "day": 1, "title": "Titre", "am": "Activité matin", "pm": "Activité soir" }
       ],
       "activities": [
-        {"name": "Expérience 1", "desc": "Détails"},
-        {"name": "Expérience 2", "desc": "Détails"},
-        {"name": "Expérience 3", "desc": "Détails"}
+        {"name": "Vrai nom du lieu", "desc": "Max 60 chars", "type": "bar|club|restaurant|activité|plage|spa"},
+        {"name": "...", "desc": "...", "type": "..."},
+        {"name": "...", "desc": "...", "type": "..."},
+        {"name": "...", "desc": "...", "type": "..."},
+        {"name": "...", "desc": "...", "type": "..."},
+        {"name": "...", "desc": "...", "type": "..."}
       ],
-      "tip1": "Conseil", "tip2": "Miam", "phrase": "Argot", "phrase_tr": "Traduction"
-    }`,
+      "tip1": "Conseil court", "tip2": "Adresse food", "phrase": "Argot", "phrase_tr": "Trad"
+    }
+    Activités : VRAIS noms de lieux à ${dest}. Vibe fête → clubs/bars/rooftops. Descriptions MAX 60 caractères.`,
     undefined,
     'pack'
   );
@@ -197,15 +214,21 @@ export async function assemblePack({ destination, flights, events, hotels: realH
         { time: mode === 'party' ? '22:00' : '20:00', type: mode === 'party' ? 'event' : 'food', title: d.pm || 'Soirée', description: 'Moment mémorable', price: '40€', duration: '4h' }
       ]
     })),
-    activities: (t.activities || []).map((a, i) => ({
-      name:      a.name || 'Activité',
-      category:  i === 2 ? 'Nightlife' : 'Culture',
-      emoji:     i === 2 ? '🎉' : '🏛',
-      description: a.desc || 'Incontournable',
-      duration:  '3h',
-      price:     '30€',
-      best_time: i === 2 ? 'Soir' : 'Matin'
-    })),
+    activities: (t.activities || []).map((a) => {
+      const type = a.type || 'activité';
+      const isNight = ['club','bar','nightlife','soirée'].some(k => type.toLowerCase().includes(k));
+      const isFood  = ['restaurant','food','gastronomie'].some(k => type.toLowerCase().includes(k));
+      const emoji   = isNight ? '🎉' : isFood ? '🍽' : type === 'plage' ? '🏖' : type === 'spa' ? '💆' : '🏛';
+      return {
+        name:        a.name || 'Activité',
+        category:    isNight ? 'Nightlife' : isFood ? 'Gastronomie' : 'Culture',
+        emoji,
+        description: a.desc || 'Incontournable',
+        duration:    '2-3h',
+        price:       'Variable',
+        best_time:   isNight ? 'Soir' : 'Journée'
+      };
+    }),
     events: eventData.map(e => ({
       ...e,
       links: e.links || null,
