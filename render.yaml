@@ -36,3 +36,6 @@ services:
       # --- Unsplash (photos HD — optionnel) ---
       - key: UNSPLASH_ACCESS_KEY
         sync: false
+      # --- Eventbrite (événements réels — optionnel) ---
+      - key: EVENTBRITE_API_KEY
+        sync: false
