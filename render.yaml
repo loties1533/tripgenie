@@ -33,3 +33,6 @@ services:
       # --- Tavily ---
       - key: TAVILY_API_KEY
         sync: false
+      # --- Unsplash (photos HD — optionnel) ---
+      - key: UNSPLASH_ACCESS_KEY
+        sync: false
