@@ -24,19 +24,23 @@ export function Header() {
 
         {/* Nav */}
         <nav className="hidden sm:flex items-center bg-parchment-dark/50 dark:bg-ink-light/50 p-1 rounded-xl border border-gold/10">
-          {[
-            { to: '/',       label: 'Accueil' },
-            { to: '/trips',  label: 'Mes voyages' },
-          ].map(n => (
-            <Link key={n.to} to={n.to}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
-                ${loc.pathname === n.to
-                  ? 'text-ink dark:text-parchment bg-white dark:bg-ink-light shadow-sm'
-                  : 'text-muted hover:text-ink dark:hover:text-parchment'
-                }`}>
-              {n.label}
-            </Link>
-          ))}
+          <Link to="/"
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+              ${loc.pathname === '/'
+                ? 'text-ink dark:text-parchment bg-white dark:bg-ink-light shadow-sm'
+                : 'text-muted hover:text-ink dark:hover:text-parchment'
+              }`}>
+            Accueil
+          </Link>
+          <Link to="/trips"
+            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2
+              ${loc.pathname === '/trips'
+                ? 'text-white bg-gold shadow-glow-gold'
+                : 'text-gold hover:bg-gold/10'
+              }`}>
+            <span className="text-lg">📖</span>
+            Mes voyages
+          </Link>
         </nav>
 
         {/* Right actions */}

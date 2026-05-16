@@ -286,7 +286,7 @@ const TABS = [
 ]
 
 export default function PackResults() {
-  const { pack, isLoading, mode } = useSearchStore()
+  const { pack, tripId, isLoading, mode } = useSearchStore()
   const [activeTab, setActiveTab] = useState('overview')
   const [focusedLocation, setFocusedLocation] = useState(null)
 
@@ -445,6 +445,14 @@ export default function PackResults() {
               <div className="flex items-center gap-2 mb-1">
                 <ModeBadge mode={mode} />
                 {d.score != null && <ScoreBadge score={d.score} />}
+                {tripId && (
+                  <motion.span 
+                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                    className="bg-sage/10 text-sage text-[10px] px-2 py-0.5 rounded-full border border-sage/20 font-bold uppercase tracking-widest"
+                  >
+                    ✦ Sauvegardé
+                  </motion.span>
+                )}
               </div>
               <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment flex items-center gap-3">
                 {d.destination}
@@ -459,13 +467,21 @@ export default function PackResults() {
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
             </div>
             <div className="flex flex-col items-end gap-3">
-              <button 
-                onClick={handleBooking}
-                disabled={isBooking}
-                className="bg-gold hover:bg-gold/80 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-glow-gold hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
-              >
-                {isBooking ? 'Ouverture...' : '💳 Réserver ce Pack'}
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => toast.success("Génération de votre carnet de voyage PDF en cours...")}
+                  className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-4 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-2"
+                >
+                  <span>📄</span> PDF
+                </button>
+                <button 
+                  onClick={handleBooking}
+                  disabled={isBooking}
+                  className="bg-gold hover:bg-gold/80 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-glow-gold hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+                >
+                  {isBooking ? 'Ouverture...' : '💳 Réserver'}
+                </button>
+              </div>
               <div className="flex gap-4 text-center">
                 <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
                   <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>

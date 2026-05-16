@@ -41,48 +41,53 @@ export const useSearchStore = create(
 // =============================================
 // CHAT STORE — état du chatbot onboarding
 // =============================================
-export const useChatStore = create((set, get) => ({
-  messages: [],
-  chatData: {
-    travelers:     null,
-    profile:       null,
-    mode:          'party',
-    interests:     [],
-    budget:        null,
-    origin:        'Paris',
-    destination:   null,
-    duration:      null,
-    departure:     null,
-    return_date:   null,
-    discoveryMode: null,
-    moods:         [],
-  },
-  isTyping:   false,
-  isReady:    false,
-  turnCount:  0,
-  isMockMode: false,
-  quizMode:   false,
-  quizStep:   0,
+export const useChatStore = create(
+  persist(
+    (set, get) => ({
+      messages: [],
+      chatData: {
+        travelers:     null,
+        profile:       null,
+        mode:          'party',
+        interests:     [],
+        budget:        null,
+        origin:        'Paris',
+        destination:   null,
+        duration:      null,
+        departure:     null,
+        return_date:   null,
+        discoveryMode: null,
+        moods:         [],
+      },
+      isTyping:   false,
+      isReady:    false,
+      turnCount:  0,
+      isMockMode: false,
+      quizMode:   false,
+      quizStep:   0,
 
-  addMessage:    (msg) => set((s) => ({ messages: [...s.messages, { id: Date.now() + Math.random(), ...msg }] })),
-  setTyping:     (v) => set({ isTyping: v }),
-  mergeChatData: (data) => set((s) => ({ chatData: { ...s.chatData, ...data }, turnCount: s.turnCount + 1 })),
-  setReady:      (v) => set({ isReady: v }),
-  setMockMode:   (v) => set({ isMockMode: v }),
-  setQuizMode:   (v) => set({ quizMode: v, quizStep: 0 }),
-  nextQuizStep:  ()  => set((s) => ({ quizStep: s.quizStep + 1 })),
+      addMessage:    (msg) => set((s) => ({ messages: [...s.messages, { id: Date.now() + Math.random(), ...msg }] })),
+      setTyping:     (v) => set({ isTyping: v }),
+      mergeChatData: (data) => set((s) => ({ chatData: { ...s.chatData, ...data }, turnCount: s.turnCount + 1 })),
+      setReady:      (v) => set({ isReady: v }),
+      setMockMode:   (v) => set({ isMockMode: v }),
+      setQuizMode:   (v) => set({ quizMode: v, quizStep: 0 }),
+      nextQuizStep:  ()  => set((s) => ({ quizStep: s.quizStep + 1 })),
 
-  resetChat: () => set({
-    messages:   [],
-    chatData:   { travelers: null, profile: null, mode: 'party', interests: [], budget: null, origin: 'Paris', destination: null, duration: null, departure: null, return_date: null, discoveryMode: null, moods: [] },
-    isTyping:   false,
-    isReady:    false,
-    turnCount:  0,
-    isMockMode: false,
-    quizMode:   false,
-    quizStep:   0,
-  }),
-}))
+      resetChat: () => set({
+        messages:   [],
+        chatData:   { travelers: null, profile: null, mode: 'party', interests: [], budget: null, origin: 'Paris', destination: null, duration: null, departure: null, return_date: null, discoveryMode: null, moods: [] },
+        isTyping:   false,
+        isReady:    false,
+        turnCount:  0,
+        isMockMode: false,
+        quizMode:   false,
+        quizStep:   0,
+      }),
+    }),
+    { name: 'tg_v2_chat' }
+  )
+)
 
 // =============================================
 // AUTH STORE — utilisateur connecté

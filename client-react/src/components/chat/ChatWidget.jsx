@@ -14,12 +14,12 @@ function addDays(n) {
 const QUIZ_STEPS = [
   {
     key:      'occasion',
-    question: "C'est pour quelle occasion ?",
+    question: "Quelle est l'inspiration de cette escapade ?",
     chips: [
-      { label: 'Entre amis 🥂',    data: { mode: 'party',   profile: 'amis' } },
-      { label: 'En couple 💑',     data: { mode: 'relax',   profile: 'couple' } },
-      { label: 'En famille 👨‍👩‍👧',  data: { mode: 'group',   profile: 'famille' } },
-      { label: 'Solo 🌍',          data: { mode: 'relax',   profile: 'solo' } },
+      { label: 'Duo Romantique 💑',    data: { mode: 'relax',   profile: 'couple' } },
+      { label: 'Entre Amis 🥂',       data: { mode: 'party',   profile: 'amis' } },
+      { label: 'En Famille 👨‍👩‍👧',     data: { mode: 'group',   profile: 'famille' } },
+      { label: 'Solo & Liberté 🌍',   data: { mode: 'relax',   profile: 'solo' } },
     ]
   },
   {
@@ -34,12 +34,12 @@ const QUIZ_STEPS = [
   },
   {
     key:      'budget',
-    question: 'Quel est votre budget total ?',
+    question: 'Quel budget souhaitez-vous allouer à cette escapade ?',
     chips: [
-      { label: 'Moins de 1 500€',   data: { budget: 1200 } },
-      { label: '1 500 – 4 000€',    data: { budget: 2500 } },
-      { label: '4 000 – 10 000€',   data: { budget: 7000 } },
-      { label: '10 000€ et +',      data: { budget: 15000 } },
+      { label: 'Dès 1 500€',     data: { budget: 1500 } },
+      { label: 'Environ 5 000€', data: { budget: 5000 } },
+      { label: '10 000€ et +',   data: { budget: 15000 } },
+      { label: 'Surprise-moi ✦', data: { budget: 30000 } },
     ]
   },
   {
@@ -190,7 +190,7 @@ export default function ChatWidget() {
       setTimeout(() => {
         addMessage({
           role: 'bot',
-          text: 'Bienvenue. ✦ Comment souhaitez-vous procéder ?',
+          text: 'Bienvenue chez TripGenie. ✦ Je suis votre Concierge Privé. Comment souhaitez-vous orchestrer votre prochaine escapade ?',
           chips: []
         })
       }, 500)
@@ -290,12 +290,12 @@ export default function ChatWidget() {
             <button
               onClick={() => handleModeSelect('quiz')}
               className="chip text-sm text-left hover:border-gold/60 hover:bg-gold/10 transition-all">
-              🧭 Questionnaire guidé (4 questions)
+              🧭 Définir mes préférences signature (Guidé)
             </button>
             <button
               onClick={() => handleModeSelect('freeform')}
               className="chip text-sm text-left hover:border-gold/60 hover:bg-gold/10 transition-all">
-              ✍️ Décrire mon voyage en une phrase
+              ✍️ Confier mon projet d'escapade (Libre)
             </button>
           </motion.div>
         )}

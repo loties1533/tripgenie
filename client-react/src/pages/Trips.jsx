@@ -10,11 +10,22 @@ export default function Trips() {
   const { user } = useAuthStore()
   const navigate  = useNavigate()
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['trips'],
     queryFn:  getTrips,
     enabled:  !!user,
   })
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation()
+    if (!window.confirm('Voulez-vous vraiment supprimer cette escapade ?')) return
+    try {
+      await deleteTrip(id)
+      refetch()
+    } catch (err) {
+      alert('Erreur lors de la suppression')
+    }
+  }
 
   if (!user) {
     return (
@@ -111,6 +122,13 @@ export default function Trips() {
 
                 <div className="flex items-center gap-2 mb-6 relative z-10">
                   <ModeBadge mode={trip.mode} />
+                  <button 
+                    onClick={(e) => handleDelete(e, trip.id)}
+                    className="ml-auto w-8 h-8 rounded-full bg-coral/10 text-coral flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-coral hover:text-white"
+                    title="Supprimer l'escapade"
+                  >
+                    <TrashIcon />
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-gold/10 pt-4 mt-auto relative z-10">
@@ -128,5 +146,14 @@ export default function Trips() {
         )}
       </div>
     </PageLayout>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
   )
 }

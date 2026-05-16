@@ -83,17 +83,30 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req, res, next)
     if (!departure)           return next(new AppError('date de départ requise', 400));
     if (!budget || budget <= 0) return next(new AppError('budget invalide', 400));
 
-    // ---- RECHERCHE WEB (Tavily + IA) ----
-    // On utilise SmartSearch (Tavily) pour plus de réalisme et de fiabilité
-    console.log(`✈️ Recherche de vols via SmartSearch (Web) pour ${destination}...`);
-    
-    const results = await Promise.allSettled([
-      smartFlightSearch({ origin, destination, departure, return_date }),
-      smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
-      smartHotelSearch({ location: destination, mode }),
-      getRealWeather(destination),
-      getDestinationPhoto(destination)
+    // ---- RECHERCHE WEB (Tavily + IA) avec Timeout de sécurité ----
+    const withTimeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
     ]);
+
+    console.log(`✈️ Orchestration de l'escapade pour ${destination}...`);
+    
+    let results = [];
+    try {
+      results = await withTimeout(Promise.allSettled([
+        smartFlightSearch({ origin, destination, departure, return_date }),
+        smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
+        smartHotelSearch({ location: destination, mode }),
+        getRealWeather(destination),
+        getDestinationPhoto(destination)
+      ]), 15000); // 15 secondes max pour le web
+    } catch (err) {
+      console.warn('⚠️ Web search timeout or error, falling back to pure AI generation.');
+      results = [
+        { status: 'rejected' }, { status: 'rejected' }, 
+        { status: 'rejected' }, { status: 'rejected' }, { status: 'rejected' }
+      ];
+    }
 
     let aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
     let flights = [];
