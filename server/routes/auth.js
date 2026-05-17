@@ -36,6 +36,15 @@ function generateToken(user) {
   );
 }
 
+function setAuthCookie(res, token) {
+  res.cookie('tg_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
+  });
+}
+
 function sanitizeUser(user) {
   const { password, ...safe } = user;
   return safe;
@@ -78,10 +87,10 @@ router.post('/signup', async (req, res, next) => {
     await supabase.from('user_preferences').insert({ user_id: user.id });
 
     const token = generateToken(user);
+    setAuthCookie(res, token);
 
     res.status(201).json({
       message: 'Compte créé avec succès',
-      token,
       user: sanitizeUser(user)
     });
 
@@ -116,10 +125,10 @@ router.post('/login', async (req, res, next) => {
     }
 
     const token = generateToken(user);
+    setAuthCookie(res, token);
 
     res.json({
       message: 'Connexion réussie',
-      token,
       user: sanitizeUser(user)
     });
 
@@ -180,6 +189,12 @@ router.put('/me', requireAuth, async (req, res, next) => {
     console.error('Update me error:', err);
     next(err);
   }
+});
+
+// ---- POST /api/auth/logout ----
+router.post('/logout', (req, res) => {
+  res.clearCookie('tg_token', { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
+  res.json({ message: 'Déconnecté' });
 });
 
 export default router;

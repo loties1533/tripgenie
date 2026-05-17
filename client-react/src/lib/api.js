@@ -7,26 +7,19 @@
 // En production : VITE_API_URL pointe vers l'API distante
 const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 
-function getToken() {
-  try {
-    const raw = localStorage.getItem('tg_v2_auth')
-    return raw ? JSON.parse(raw)?.state?.token : null
-  } catch { return null }
-}
-
 async function request(path, opts = {}) {
-  const token = getToken()
   const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // cookie httpOnly envoyé automatiquement
     ...opts
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`)
   return data
 }
+
+// Logout — appelle le serveur pour effacer le cookie
+export const logout = () => request('/auth/logout', { method: 'POST' })
 
 // Auth
 export const login    = (email, password) => request('/auth/login',  { method: 'POST', body: JSON.stringify({ email, password }) })
@@ -51,6 +44,9 @@ export const getTrips     = (filters = {}) => request(`/trips?${new URLSearchPar
 export const getTrip      = (id) => request(`/trips/${id}`)
 export const getPublicTrip = (id) => request(`/trips/share/${id}`)
 export const deleteTrip   = (id) => request(`/trips/${id}`, { method: 'DELETE' })
+
+// Photos — proxy backend (clé Unsplash jamais exposée côté client)
+export const getCityPhoto = (city) => request(`/photos/${encodeURIComponent(city)}`)
 
 // Votes
 export const saveVote     = (trip_id, item_id, vote_type, voter_name) => 

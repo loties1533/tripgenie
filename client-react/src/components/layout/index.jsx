@@ -1,9 +1,15 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore, useThemeStore } from '../../store'
+import { logout } from '../../lib/api'
 
 export function Header() {
   const { user, clearAuth } = useAuthStore()
+
+  const handleLogout = async () => {
+    try { await logout() } catch (_) {}
+    clearAuth()
+  }
   const { theme, toggle }   = useThemeStore()
   const loc = useLocation()
 
@@ -56,7 +62,7 @@ export function Header() {
                   <span className="text-xs font-semibold text-ink dark:text-parchment leading-none">{user.name}</span>
                   <span className="text-[10px] text-muted mt-0.5">Membre</span>
                 </div>
-                <button onClick={clearAuth}
+                <button onClick={handleLogout}
                   className="w-9 h-9 rounded-xl bg-coral/10 text-coral border border-coral/20 
                              hover:bg-coral hover:text-white transition-all flex items-center justify-center group">
                   <LogOutIcon />

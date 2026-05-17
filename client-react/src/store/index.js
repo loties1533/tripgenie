@@ -95,12 +95,11 @@ export const useChatStore = create(
 export const useAuthStore = create(
   persist(
     (set) => ({
-      user:  null,
-      token: null,
-      setAuth:  (user, token) => set({ user, token }),
-      clearAuth: () => set({ user: null, token: null }),
+      user: null,
+      setAuth:  (user) => set({ user }),        // plus de token — géré par cookie httpOnly
+      clearAuth: () => set({ user: null }),
     }),
-    { name: 'tg_v2_auth', partialize: (s) => ({ user: s.user, token: s.token }) }
+    { name: 'tg_v2_auth', partialize: (s) => ({ user: s.user }) }
   )
 )
 

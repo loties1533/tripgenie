@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -17,11 +18,12 @@ const __dirname  = dirname(fileURLToPath(import.meta.url));
 const DIST_PATH  = join(__dirname, '../client-react/dist');
 
 // Routes
-import authRoutes  from './routes/auth.js';
-import tripRoutes  from './routes/trips.js';
-import aiRoutes    from './routes/ai.js';
-import packRoutes  from './routes/packs.js';
-import voteRoutes  from './routes/votes.js';
+import authRoutes   from './routes/auth.js';
+import tripRoutes   from './routes/trips.js';
+import aiRoutes     from './routes/ai.js';
+import packRoutes   from './routes/packs.js';
+import voteRoutes   from './routes/votes.js';
+import photoRoutes  from './routes/photos.js';
 import { globalErrorHandler } from './lib/AppError.js';
 
 const app  = express();
@@ -30,14 +32,18 @@ app.set('trust proxy', 1);
 
 // ---- Sécurité ----
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cookieParser());
+
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean)
+  : ['http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:5500'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? true  // même origine — frontend servi par Express
-    : [
-        process.env.CLIENT_URL || 'http://localhost:3001',
-        'http://127.0.0.1:5500',
-        'http://localhost:5500'
-      ],
+  origin: (origin, cb) => {
+    // Même origine (production) ou origine autorisée
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS bloqué'));
+  },
   credentials: true
 }));
 
@@ -59,11 +65,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
 // ---- Routes ----
-app.use('/api/auth',  authRoutes);
-app.use('/api/trips', tripRoutes);
-app.use('/api/ai',    aiLimiter, aiRoutes);
-app.use('/api/packs', packRoutes);
-app.use('/api/votes', voteRoutes);
+app.use('/api/auth',   authRoutes);
+app.use('/api/trips',  tripRoutes);
+app.use('/api/ai',     aiLimiter, aiRoutes);
+app.use('/api/packs',  packRoutes);
+app.use('/api/votes',  voteRoutes);
+app.use('/api/photos', photoRoutes);
 
 // ---- Health check ----
 app.get('/api/health', (req, res) => {

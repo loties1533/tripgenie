@@ -5,18 +5,21 @@
 
 import jwt from 'jsonwebtoken';
 
-export function requireAuth(req, res, next) {
+function extractToken(req) {
+  // 1. Cookie httpOnly (priorité — inaccessible au JS, immunisé XSS)
+  if (req.cookies?.tg_token) return req.cookies.tg_token;
+  // 2. Header Authorization (fallback pour compatibilité)
   const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.split(' ')[1];
+  return null;
+}
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token manquant ou invalide' });
-  }
-
-  const token = authHeader.split(' ')[1];
+export function requireAuth(req, res, next) {
+  const token = extractToken(req);
+  if (!token) return res.status(401).json({ error: 'Token manquant ou invalide' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, email, name }
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -28,11 +31,9 @@ export function requireAuth(req, res, next) {
 
 // Middleware optionnel (ne bloque pas si pas de token)
 export function optionalAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    try {
-      req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-    } catch (_) {}
+  const token = extractToken(req);
+  if (token) {
+    try { req.user = jwt.verify(token, process.env.JWT_SECRET); } catch (_) {}
   }
   next();
 }

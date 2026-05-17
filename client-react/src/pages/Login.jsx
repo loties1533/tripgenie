@@ -23,7 +23,7 @@ export default function LoginPage() {
       const fn   = tab === 'login' ? login : signup
       const args = tab === 'login' ? [email, pass] : [email, pass, name]
       const data = await fn(...args)
-      setAuth(data.user, data.token)
+      setAuth(data.user)
       navigate('/')
     } catch (e) {
       setErr(e.message)
