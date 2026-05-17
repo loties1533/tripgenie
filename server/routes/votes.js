@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { z } from 'zod';
+import { rateLimit } from 'express-rate-limit';
 import supabase from '../db/supabase.js';
 
 const voteSchema = z.object({
@@ -15,6 +16,17 @@ const voteSchema = z.object({
 });
 
 const router = express.Router();
+
+// Max 10 votes par minute par IP
+const voteLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  message: { error: 'Trop de votes, réessaie dans une minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.use(voteLimiter);
 
 // ---- POST /api/votes ----
 // Permet de voter pour un élément du pack (public via lien)
