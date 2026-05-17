@@ -34,7 +34,7 @@ router.post('/', async (req, res, next) => {
   try {
     const parsed = voteSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors[0].message });
+      return res.status(400).json({ error: parsed.error.issues?.[0]?.message ?? 'Données invalides' });
     }
     const { trip_id, item_id, voter_name, vote_type } = parsed.data;
 
