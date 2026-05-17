@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { getCityPhoto } from '../lib/api'
 
-const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
 const FALLBACK_PHOTOS = [
-  'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80', // ibiza/beach party
-  'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80', // city night
-  'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80', // beach tropical
+  'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80',
+  'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80',
+  'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80',
 ]
 
 function CityPhoto({ city, photo }) {
@@ -14,13 +14,9 @@ function CityPhoto({ city, photo }) {
   useEffect(() => {
     if (src || fetched.current) return
     fetched.current = true
-    if (!UNSPLASH_KEY) { setSrc(FALLBACK_PHOTOS[Math.floor(Math.random() * FALLBACK_PHOTOS.length)]); return }
-    fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(city + ' city travel')}&per_page=1&orientation=landscape`, {
-      headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` }
-    })
-      .then(r => r.json())
-      .then(d => setSrc(d.results?.[0]?.urls?.regular || FALLBACK_PHOTOS[0]))
-      .catch(() => setSrc(FALLBACK_PHOTOS[0]))
+    getCityPhoto(city)
+      .then(data => setSrc(data.url || FALLBACK_PHOTOS[0]))
+      .catch(() => setSrc(FALLBACK_PHOTOS[Math.floor(Math.random() * FALLBACK_PHOTOS.length)]))
   }, [city])
 
   return (
@@ -90,7 +86,7 @@ function Hero() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1.5, ease: "easeOut" }}
-      className="relative -mx-4 sm:-mx-8 -mt-24 mb-12 h-[90vh] min-h-[600px] flex items-center justify-center overflow-hidden">
+      className="relative w-screen left-1/2 right-1/2 -translate-x-1/2 -mt-6 mb-12 h-[80vh] min-h-[550px] flex items-center justify-center overflow-hidden">
 
       {/* Slideshow Background */}
       <div className="absolute inset-0 z-0">
