@@ -77,6 +77,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const limit  = Math.min(Math.max(parseInt((req.query.limit as string) || '20'), 1), 50);
     const offset = Math.max(parseInt((req.query.offset as string) || '0'), 0);
 
+    // Filtre systématique par user_id : chaque utilisateur ne voit que ses voyages.
+    // C'est la seule barrière d'isolation des données (RLS Supabase non activé).
     let query = supabase
       .from('trips')
       .select('*')
