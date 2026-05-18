@@ -1,0 +1,105 @@
+/**
+ * @fileoverview Analyse de la demande utilisateur et suggestion de destinations.
+ */
+
+import { searchWeb } from '../tools/webSearch.js';
+import * as Mocks from '../mocks.js';
+import { callAI, parseJSON, sanitizeInput } from './core.js';
+import { getDestinationPhoto } from '../photo.js';
+import type { ResultatOnboarding } from '../../lib/types.js';
+
+export async function analyzeRequest(userInput: string): Promise<unknown> {
+  const raw = await callAI(
+    `Analyse cette demande: "${sanitizeInput(userInput)}"
+JSON: {"destination":"ville ou null","origin":"Paris","mode":"party|student|luxury|group|relax|surprise","travelers":2,"duration_days":3,"budget_total":null,"preferences":[],"confidence":0.9}`,
+    undefined,
+    'onboarding'
+  );
+  return parseJSON(raw);
+}
+
+interface SuggestDestinationsParams {
+  mode?: string;
+  profile?: string;
+  interests?: string[];
+  budget?: number;
+  travelers?: number;
+  duration?: number;
+  origin?: string;
+  moods?: string[];
+  discoveryMode?: string;
+  preferences?: string[];
+  departure?: string;
+}
+
+interface DestinationItem {
+  city: string;
+  country: string;
+  tagline?: string;
+  reason?: string;
+  budget_estimate?: string;
+  match_score?: number;
+  photo?: string | null;
+}
+
+interface DestinationsResult {
+  destinations: DestinationItem[];
+  isMock?: boolean;
+}
+
+export async function suggestDestinations({
+  mode, profile, interests, budget, travelers, duration, origin, moods, discoveryMode, preferences, departure,
+}: SuggestDestinationsParams): Promise<DestinationsResult> {
+  try {
+    const intStr  = interests?.join(', ') ?? 'voyage';
+    const moodStr = moods?.join(', ')     ?? '';
+    const month   = departure
+      ? new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(departure))
+      : 'actuellement';
+
+    let query = `Meilleures destinations ${mode} pour ${profile} en ${month}. `;
+    if (mode === 'party') {
+      query += `Focus sur la vie nocturne, clubs underground, festivals, ambiance électrique et branchée. `;
+    }
+    query += `Budget total ${budget}€ pour ${travelers} personnes. Intérêts: ${intStr} ${moodStr}.`;
+    if (discoveryMode === 'hidden_gem') {
+      query += ` Cherche des pépites cachées, pas les destinations ultra-touristiques habituelles.`;
+    }
+
+    const webContext = await searchWeb(query);
+    const budgetPerPers = budget && travelers ? Math.round(budget / travelers) : 0;
+
+    const raw = await callAI(
+      `CONTEXTE WEB RÉCENT : ${webContext}
+      MISSION : Suggère 3 destinations parfaites pour un voyage en ${month}.
+      PROFIL : ${profile}, MODE : ${mode}.
+      BUDGET TOTAL : ${budget}€ pour ${travelers ?? 2} personne(s) = ${budgetPerPers}€/personne.
+
+      STRATÉGIE : 2 destinations CLASSIQUES + 1 destination PÉPITE (Hidden Gem).
+
+      FORMAT JSON STRICT :
+      {"destinations": [{"city": "Nom", "country": "Pays", "tagline": "Accroche courte", "reason": "Raison MAX 8 mots", "budget_estimate": "~${budgetPerPers}€/pers", "match_score": 95}]}`,
+      undefined,
+      'destinations'
+    );
+    const result = parseJSON(raw) as DestinationsResult;
+
+    if (result?.destinations?.length) {
+      const photos = await Promise.allSettled(
+        result.destinations.map(d => getDestinationPhoto(d.city))
+      );
+      result.destinations = result.destinations.map((d, i) => ({
+        ...d,
+        photo: photos[i].status === 'fulfilled' ? photos[i].value : null,
+        budget_estimate: budgetPerPers
+          ? `~${budgetPerPers.toLocaleString('fr-FR')}€/pers`
+          : d.budget_estimate,
+      }));
+    }
+
+    return result;
+  } catch (err) {
+    console.error('⚠️ SuggestDestinations failed, activation du Mode Survie:', (err as Error).message);
+    return Mocks.MOCK_DESTINATIONS;
+  }
+}
