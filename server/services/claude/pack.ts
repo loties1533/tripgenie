@@ -1,5 +1,15 @@
 /**
- * @fileoverview Génération du pack voyage complet.
+ * @fileoverview Génération du pack voyage complet via LLM.
+ *
+ * Ce service constitue le cœur du prompt engineering de TripGenie.
+ * Il injecte les données réelles (vols Tavily, météo OpenWeatherMap,
+ * hôtels, événements) dans un prompt structuré pour que le LLM génère
+ * un pack JSON cohérent et adapté au mode de voyage.
+ *
+ * Stratégie de prompt :
+ * - Le ton et les priorités changent selon le mode (luxury vs student vs party)
+ * - Les données réelles sont injectées en contexte pour éviter les hallucinations
+ * - Le JSON attendu est strictement défini pour faciliter le parsing
  */
 
 import { callAI, parseJSON, sanitizeInput } from './core.js';
@@ -38,6 +48,22 @@ interface AITextResult {
   phrase_tr?: string;
 }
 
+/**
+ * Génère un pack voyage complet en appelant le LLM avec un prompt enrichi.
+ *
+ * Les données réelles (vols, météo, hôtels, événements) sont injectées
+ * dans le prompt pour que le LLM les intègre au lieu de les inventer.
+ * Si une source externe a échoué (Promise.allSettled rejeté), le LLM
+ * génère des données simulées cohérentes en fallback.
+ *
+ * Le budget par personne détermine le "ton" du prompt :
+ * - ≥ 2000€/pers → expérience ultra-premium, villas, Michelin, VIP
+ * - ≥ 1000€/pers → expérience confort, hôtels 4★, restaurants gastronomiques
+ * - < 1000€/pers → optimisation budget, hébergements malins, street food
+ *
+ * @param params - Paramètres de génération (destination, mode, budget, dates, données réelles)
+ * @returns      Pack complet structuré prêt à être affiché côté client
+ */
 export async function assemblePack({
   destination, flights, events, hotels: realHotels, mode, profile, travelers, budget,
   departure, return_date, duration, realWeather, realPhoto,

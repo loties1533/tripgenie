@@ -1,5 +1,7 @@
 // =============================================
 // TRIPGENIE — server/routes/ai.ts
+// Routes du pipeline IA : génération de packs, chat de modification,
+// onboarding conversationnel et suggestions de destinations.
 // =============================================
 
 import express from 'express';
@@ -82,7 +84,33 @@ router.post('/onboarding', aiChatLimiter, optionalAuth, async (req: Request, res
   }
 });
 
-// ---- POST /api/ai/generate ----
+/**
+ * POST /api/ai/generate — Point d'entrée du pipeline de génération.
+ *
+ * Pipeline orchestré en 4 étapes séquentielles :
+ *
+ * 1. Validation des inputs (Zod-like, manuel)
+ *
+ * 2. Recherche web PARALLÈLE via Promise.allSettled :
+ *    - smartFlightSearch  → Tavily : vols réels
+ *    - smartEventsSearch  → Tavily : événements locaux
+ *    - smartHotelSearch   → Tavily : hôtels
+ *    - getRealWeather     → OpenWeatherMap
+ *    - getDestinationPhoto → Unsplash (proxy)
+ *
+ *    Promise.allSettled est utilisé à la place de Promise.all pour que
+ *    l'échec d'un service externe (ex: météo en panne) ne bloque pas
+ *    toute la génération. Le pack est créé avec les données disponibles.
+ *
+ * 3. assemblePack() → LLM (Gemini / OpenRouter / Claude en fallback)
+ *    génère le pack JSON structuré avec les données réelles injectées.
+ *
+ * 4. scorepack() → Algorithme déterministe (zéro IA) qui note le pack
+ *    de 0 à 1 selon des poids définis par mode de voyage.
+ *
+ * @requires optionalAuth — le pack est sauvegardé si l'utilisateur est connecté
+ * @requires aiGenerateLimiter — 10 générations/heure/IP (coût LLM)
+ */
 router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const {
@@ -233,7 +261,21 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
   }
 });
 
-// ---- POST /api/ai/chat ----
+/**
+ * POST /api/ai/chat — Modification conversationnelle post-génération.
+ *
+ * C'est la seule partie vraiment "agentique" de TripGenie :
+ * le LLM reçoit le pack actuel + le message utilisateur et décide
+ * librement quels éléments modifier, sans étapes prédéfinies.
+ *
+ * Contrairement à /generate (pipeline fixe), ici le modèle
+ * choisit lui-même ce qu'il modifie dans le pack.
+ *
+ * Si l'utilisateur est connecté et qu'un trip_id est fourni,
+ * les modifications sont persistées en base de données.
+ *
+ * @requires aiChatLimiter — 30 messages/15min/IP
+ */
 router.post('/chat', aiChatLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { message, current_pack, mode, trip_id } = req.body;
