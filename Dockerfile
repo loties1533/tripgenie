@@ -2,7 +2,7 @@
 # TripGenie — Dockerfile Backend (Express / Node.js)
 # =============================================
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Dossier de travail
 WORKDIR /app
@@ -10,18 +10,18 @@ WORKDIR /app
 # Copie des dépendances en premier (optimise le cache Docker)
 COPY package*.json ./
 
-# Installation des dépendances
+# Installation des dépendances (avec devDependencies pour TypeScript)
 RUN npm install
 
 # Copie du code source
 COPY server/ ./server/
 COPY tsconfig.json ./
 
-# Build TypeScript → JavaScript
-RUN npm run build 2>/dev/null || true
+# Compile TypeScript → dist-server/
+RUN npx tsc
 
 # Port exposé
 EXPOSE 3000
 
-# Démarrage
-CMD ["npm", "start"]
+# Démarrage depuis le dossier compilé
+CMD ["node", "dist-server/index.js"]
