@@ -1,0 +1,45 @@
+# =============================================
+# TripGenie — Docker Compose
+# Lance frontend + backend en 1 commande
+# =============================================
+#
+# Usage :
+#   docker-compose up --build     ← premier lancement
+#   docker-compose up             ← lancements suivants
+#   docker-compose down           ← arrêt
+#
+# Frontend → http://localhost:80
+# Backend  → http://localhost:3000
+# =============================================
+
+version: '3.8'
+
+services:
+
+  # ---- Backend Express / Node.js ----
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tripgenie-server:latest
+    container_name: tripgenie-server
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env                        # JWT_SECRET, SUPABASE_URL, GEMINI_API_KEY...
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  # ---- Frontend React / Nginx ----
+  client:
+    build:
+      context: ./client-react
+      dockerfile: Dockerfile
+    image: tripgenie-client:latest
+    container_name: tripgenie-client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
