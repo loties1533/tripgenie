@@ -227,7 +227,7 @@ function TripConcepts() {
   const handleSelect = async (dest: any) => {
     setField('concepts', null)
     setLoading(true)
-    addMessage({ role: 'assistant', content: `Excellent choix ! 🚀 Je génère ton pack VIP pour **${dest.city}**...` })
+    addMessage({ role: 'assistant', text: `Excellent choix ! 🚀 Je génère ton pack VIP pour **${dest.city}**...` })
 
     // Normalise une date DD/MM ou DD/MM/YY → YYYY-MM-DD
     const normalizeDate = (d: string) => {
