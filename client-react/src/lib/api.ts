@@ -3,6 +3,8 @@
 // Toutes les requêtes HTTP vers l'API Express
 // =============================================
 
+import type { Pack } from '../../../server/lib/types'
+
 // En développement : Vite proxifie /api → localhost:3000
 // En production : VITE_API_URL pointe vers l'API distante
 const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
@@ -27,16 +29,16 @@ export const signup   = (email: string, password: string, name: string) => reque
 export const getMe    = () => request('/auth/me')
 
 // AI
-export const chatOnboarding  = (userMessage: string, currentData: any) =>
+export const chatOnboarding  = (userMessage: string, currentData: Record<string, unknown>) =>
   request('/ai/onboarding', { method: 'POST', body: JSON.stringify({ userMessage, currentData }) })
 
-export const getDestinations = (params: any) =>
+export const getDestinations = (params: Record<string, unknown>) =>
   request('/ai/destinations', { method: 'POST', body: JSON.stringify(params) })
 
-export const generatePack    = (params: any) =>
+export const generatePack    = (params: Record<string, unknown>) =>
   request('/ai/generate', { method: 'POST', body: JSON.stringify(params) })
 
-export const chatModify      = (message: string, currentPack: any, mode: string, tripId: string | null) =>
+export const chatModify      = (message: string, currentPack: Pack, mode: string, tripId: string | null) =>
   request('/ai/chat', { method: 'POST', body: JSON.stringify({ message, current_pack: currentPack, mode, trip_id: tripId }) })
 
 // Trips
