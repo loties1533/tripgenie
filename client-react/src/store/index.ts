@@ -14,7 +14,7 @@ interface SearchState {
   budget: number;
   mode: TravelMode | string;
   prefs: string[];
-  concepts: any | null;
+  concepts: unknown[] | null;
   pack: Pack | null;
   tripId: string | null;
   isLoading: boolean;
@@ -47,7 +47,7 @@ export const useSearchStore = create<SearchState>()(
       error:       null,
 
       // Actions
-      setField:    (key, val) => set((state) => ({ ...state, [key]: val })),
+      setField:    (key, val) => set({ [key]: val } as Partial<SearchState>),
       setPack:     (pack, tripId) => set({ pack, tripId, isLoading: false, error: null }),
       setLoading:  (v) => set({ isLoading: v }),
       setError:    (e) => set({ error: e, isLoading: false }),
@@ -65,7 +65,7 @@ export const useSearchStore = create<SearchState>()(
 // =============================================
 export interface ChatMessage {
   id?: number | string;
-  role: 'user' | 'assistant' | 'bot'; // 'bot' gardé pour compat composants existants
+  role: 'user' | 'assistant' | 'bot';
   content?: string;
   text?: string;                       // alias backward compat
   chips?: (string | { label: string })[];

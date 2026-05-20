@@ -4,6 +4,7 @@
 
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -28,6 +29,9 @@ const PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ---- Sécurité HTTP headers ----
+app.use(helmet());
+
 // ---- Configuration CORS stricte pour la prod ----
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -40,10 +44,8 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
-// Logging en développement
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+// Logging : format lisible en dev, compact en prod
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ---- Routes API ----
 app.use('/api/auth', authRoutes);
