@@ -66,8 +66,7 @@ export const useSearchStore = create<SearchState>()(
 export interface ChatMessage {
   id?: number | string;
   role: 'user' | 'assistant' | 'bot';
-  content?: string;
-  text?: string;                       // alias backward compat
+  text?: string;
   chips?: (string | { label: string })[];
   isFlightSearch?: boolean;
 }
@@ -135,7 +134,10 @@ export const useChatStore = create<ChatState>()(
         quizStep:   0,
       }),
     }),
-    { name: 'tg_v2_chat' }
+    {
+      name: 'tg_v2_chat',
+      partialize: (s) => ({ chatData: s.chatData }) as any,
+    }
   )
 )
 
