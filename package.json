@@ -3,18 +3,18 @@
   "version": "1.0.0",
   "type": "module",
   "description": "AI Travel Curator — plans clé en main via scoring multi-critères",
-  "main": "server/index.js",
+  "main": "dist-server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
+    "start": "node dist-server/index.js",
+    "dev": "nodemon --exec tsx server/index.ts",
+    "build:server": "npx tsc",
     "setup-db": "node scripts/setup-db.js",
     "client:dev": "cd client-react && npm run dev",
     "build": "cd client-react && npm install && npm run build",
     "client:build": "cd client-react && npm run build",
-    "test": "node tests/test_api_v1.js",
-    "test:services": "node tests/test_services.js",
-    "test:vitest": "vitest run tests/api.test.js",
-    "test:scoring": "vitest run tests/scoring.test.js"
+    "test": "vitest run tests/api.test.ts tests/golden_path.test.ts tests/scoring.test.ts",
+    "test:vitest": "vitest run tests/api.test.ts",
+    "test:scoring": "vitest run tests/scoring.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",

@@ -65,7 +65,7 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
     // 3. Insérer l'utilisateur
     const { data: user, error } = await supabase
       .from('users')
-      .insert({ email, password_hash, name })
+      .insert({ email, password: password_hash, name })
       .select('id, email, name, created_at')
       .single();
 
@@ -107,7 +107,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
     // 1. Chercher l'utilisateur avec son hash
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name, password_hash, created_at')
+      .select('id, email, name, password, created_at')
       .eq('email', email)
       .single();
 
@@ -117,7 +117,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
     }
 
     // 2. Vérifier le mot de passe
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       return;
@@ -132,9 +132,9 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
 
     // 4. Set Cookie & Response
     res.cookie('tg_token', token, COOKIE_OPTIONS);
-    
+
     // On enlève le hash de la réponse
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password: _pw, ...userWithoutPassword } = user;
     res.json({ user: userWithoutPassword, token });
 
   } catch (err) {
@@ -158,7 +158,7 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction): Promi
       return;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
     
     if (!supabase) {
       res.status(500).json({ error: 'Base de données non configurée.' });
