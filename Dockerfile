@@ -13,9 +13,13 @@ COPY package*.json ./
 # Installation des dépendances (avec devDependencies pour TypeScript)
 RUN npm install
 
-# Copie du code source
+# Copie du code source backend
 COPY server/ ./server/
 COPY tsconfig.json ./
+
+# Copie et build du frontend React
+COPY client-react/ ./client-react/
+RUN cd client-react && npm install && npm run build
 
 # Compile TypeScript → dist-server/
 RUN npx tsc
