@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useChatStore, useSearchStore } from '../../store'
-import { chatOnboarding, getDestinations, generatePack } from '../../lib/api'
+import { chatOnboarding, getDestinations } from '../../lib/api'
 
 // ---- Helpers dates ----
 function addDays(n: number) {
