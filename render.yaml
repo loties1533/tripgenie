@@ -3,7 +3,7 @@ services:
     name: tripgenie
     runtime: node
     region: frankfurt
-    branch: feat/mvp-final-certification
+    branch: final
     buildCommand: npm install && npm run client:build
     startCommand: npm start
     envVars:
