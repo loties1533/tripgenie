@@ -63,7 +63,7 @@ vi.mock('../server/db/supabase.js', () => {
     order:   vi.fn().mockReturnThis(),
     range:   vi.fn().mockReturnThis(),
     limit:   vi.fn().mockReturnThis(),
-    single:  vi.fn().mockResolvedValue({ data: { id: '550e8400-e29b-41d4-a716-446655440000', email: 'pilot@tripgenie.test', name: 'Test Pilot', destination: 'Tokyo', mode: 'party', departure: '2025-06-01', budget: '2000', status: 'draft', password_hash: '$2b$hashed' }, error: null }),
+    single:  vi.fn().mockResolvedValue({ data: { id: '550e8400-e29b-41d4-a716-446655440000', email: 'pilot@tripgenie.test', name: 'Test Pilot', destination: 'Tokyo', mode: 'party', departure: '2025-06-01', budget: '2000', status: 'draft', password: '$2b$hashed' }, error: null }),
     then:    thenCb
   };
 
@@ -336,10 +336,123 @@ describe('🤖 AI — Validation des inputs', () => {
       .send({ message: '', current_pack: { destination: 'Tokyo' } });
     expect(res.status).toBe(400);
   });
+
+  it('POST /analyze — 400 sans input', async () => {
+    const res = await request(app)
+      .post('/api/ai/analyze')
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/input/i);
+  });
+
+  it('POST /analyze — 400 input trop long', async () => {
+    const res = await request(app)
+      .post('/api/ai/analyze')
+      .send({ input: 'A'.repeat(1001) });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/long/i);
+  });
+
+  it('POST /destinations — 400 sans mode', async () => {
+    const res = await request(app)
+      .post('/api/ai/destinations')
+      .send({ budget: 2000, travelers: 2 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/mode/i);
+  });
+
+  it('POST /destinations — 200 avec mode valide (mock)', async () => {
+    const res = await request(app)
+      .post('/api/ai/destinations')
+      .send({ mode: 'party', budget: 2000, travelers: 2, origin: 'Paris' });
+    expect(res.status).toBe(200);
+    expect(res.body.destinations).toBeDefined();
+  });
 });
 
 // ============================================================
-// 6 — ERROR HANDLING
+// 6 — TRIPS AVANCÉS (DELETE, PUT succès)
+// ============================================================
+
+describe('🗺️ Trips — DELETE et PUT succès', () => {
+
+  it('DELETE /:id — 200 avec token valide', async () => {
+    const res = await request(app)
+      .delete(`/api/trips/${TEST_TRIP_ID}`)
+      .set('Authorization', `Bearer ${TEST_TOKEN}`);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/supprim/i);
+  });
+
+  it('PUT /:id — 200 met à jour le statut confirmed', async () => {
+    const res = await request(app)
+      .put(`/api/trips/${TEST_TRIP_ID}`)
+      .set('Authorization', `Bearer ${TEST_TOKEN}`)
+      .send({ status: 'confirmed' });
+    expect(res.status).toBe(200);
+    expect(res.body.trip).toBeDefined();
+  });
+
+  it('GET / — filtre par mode', async () => {
+    const res = await request(app)
+      .get('/api/trips?mode=party')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.trips)).toBe(true);
+  });
+
+  it('GET / — pagination avec limit et offset', async () => {
+    const res = await request(app)
+      .get('/api/trips?limit=5&offset=0')
+      .set('Authorization', `Bearer ${TEST_TOKEN}`);
+    expect(res.status).toBe(200);
+    expect(res.body.limit).toBe(5);
+    expect(res.body.offset).toBe(0);
+  });
+});
+
+// ============================================================
+// 7 — AUTH AVANCÉ (mauvais mot de passe, email déjà pris)
+// ============================================================
+
+describe('🔐 Auth — cas limites', () => {
+
+  it('POST /login — 401 si mot de passe incorrect (mock bcrypt false)', async () => {
+    const { default: bcrypt } = await import('bcryptjs');
+    vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as never);
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'pilot@tripgenie.test', password: 'mauvais_mdp' });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/incorrect/i);
+  });
+
+  it('POST /signup — 400 si email déjà utilisé', async () => {
+    const { default: supabase } = await import('../server/db/supabase.js');
+    const chain = supabase.from('users') as any;
+    // Simule qu'un utilisateur existe déjà avec cet email
+    chain.single.mockResolvedValueOnce({ data: { id: 'existing-id' }, error: null });
+
+    const res = await request(app)
+      .post('/api/auth/signup')
+      .send({ email: 'existant@test.com', password: 'Password123!', name: 'Déjà là' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/déjà utilisé/i);
+  });
+
+  it('POST /logout — efface le cookie tg_token', async () => {
+    const res = await request(app).post('/api/auth/logout');
+    expect(res.status).toBe(200);
+    const setCookie = res.headers['set-cookie'];
+    expect(setCookie?.toString()).toMatch(/tg_token/);
+  });
+});
+
+// ============================================================
+// 8 — ERROR HANDLING
 // ============================================================
 
 describe('🚫 Error Handling', () => {
