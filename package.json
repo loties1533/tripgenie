@@ -12,9 +12,10 @@
     "client:dev": "cd client-react && npm run dev",
     "build": "cd client-react && npm install && npm run build",
     "client:build": "cd client-react && npm run build",
-    "test": "vitest run tests/api.test.ts tests/golden_path.test.ts tests/scoring.test.ts",
+    "test": "vitest run tests/api.test.ts tests/golden_path.test.ts tests/scoring.test.ts tests/middleware.test.ts",
     "test:vitest": "vitest run tests/api.test.ts",
-    "test:scoring": "vitest run tests/scoring.test.ts"
+    "test:scoring": "vitest run tests/scoring.test.ts",
+    "test:middleware": "vitest run tests/middleware.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
