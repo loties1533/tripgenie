@@ -75,7 +75,6 @@ router.post('/onboarding', aiChatLimiter, optionalAuth, async (req: Request, res
     }
 
     const result = await chatIntake({ currentData, userMessage });
-    console.log('🧠 chatIntake extracted:', JSON.stringify(result.extractedData));
     res.json(result);
 
   } catch (err) {
@@ -133,8 +132,6 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
     ]);
 
-    console.log(`✈️ Orchestration de l'escapade pour ${destination}...`);
-    
     let results: PromiseSettledResult<any>[] = [];
     try {
       results = await withTimeout(Promise.allSettled([
