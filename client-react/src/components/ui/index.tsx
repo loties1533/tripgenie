@@ -47,14 +47,17 @@ export function VerifiedBadge() {
 // ---- Tab bar ----
 export function TabBar({ tabs, active, onChange }: { tabs: any[], active: string, onChange: (id: string) => void }) {
   return (
-    <div className="flex gap-1 p-1 bg-parchment-dark dark:bg-ink rounded-xl">
-      {tabs.map(t => (
-        <button key={t.id} onClick={() => onChange(t.id)}
-          className={clsx('tab-btn flex-1 flex items-center justify-center gap-1.5', active === t.id && 'active')}>
-          {t.icon && <span>{t.icon}</span>}
-          <span className="hidden sm:inline">{t.label}</span>
-        </button>
-      ))}
+    <div className="overflow-x-auto scroll-hide -mx-1">
+      <div className="flex gap-1 p-1 bg-parchment-dark dark:bg-ink rounded-xl min-w-max mx-1">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => onChange(t.id)}
+            className={clsx('tab-btn flex items-center justify-center gap-1.5 whitespace-nowrap', active === t.id && 'active')}>
+            {t.icon && <span>{t.icon}</span>}
+            <span className="hidden sm:inline">{t.label}</span>
+            <span className="sm:hidden text-[10px] font-bold uppercase tracking-tight">{t.label.slice(0, 4)}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

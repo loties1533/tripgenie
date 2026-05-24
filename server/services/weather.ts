@@ -48,14 +48,14 @@ interface ClimateResponse {
 
 /** Convertit un WMO weather code en description lisible */
 function wmoToCondition(code: number): string {
-  if (code === 0)                    return 'Ciel dégagé';
-  if (code <= 2)                     return 'Partiellement nuageux';
-  if (code === 3)                    return 'Couvert';
-  if (code >= 51 && code <= 55)      return 'Bruine';
-  if (code >= 61 && code <= 65)      return 'Pluie';
-  if (code >= 71 && code <= 77)      return 'Neige';
-  if (code >= 80 && code <= 82)      return 'Averses';
-  if (code >= 95 && code <= 99)      return 'Orages';
+  if (code === 0)               return 'Ciel dégagé';
+  if (code <= 2)                return 'Partiellement nuageux';
+  if (code === 3)               return 'Couvert';
+  if (code >= 51 && code <= 55) return 'Bruine';
+  if (code >= 61 && code <= 65) return 'Pluie';
+  if (code >= 71 && code <= 77) return 'Neige';
+  if (code >= 80 && code <= 82) return 'Averses';
+  if (code >= 95 && code <= 99) return 'Orages';
   return 'Variable';
 }
 
@@ -75,12 +75,12 @@ async function getForecastWeather(lat: number, lon: number, date: string): Promi
   if (!res.ok) return null;
   const data = (await res.json()) as ForecastResponse;
 
-  const maxT  = data.daily?.temperature_2m_max?.[0] ?? 20;
-  const minT  = data.daily?.temperature_2m_min?.[0] ?? 15;
-  const avgT  = Math.round((maxT + minT) / 2);
-  const wind  = data.daily?.windspeed_10m_max?.[0] ?? 10;
-  const code  = data.daily?.weathercode?.[0] ?? 0;
-  const hum   = data.hourly?.relativehumidity_2m?.[12] ?? 60; // midi
+  const maxT = data.daily?.temperature_2m_max?.[0] ?? 20;
+  const minT = data.daily?.temperature_2m_min?.[0] ?? 15;
+  const avgT = Math.round((maxT + minT) / 2);
+  const wind = data.daily?.windspeed_10m_max?.[0] ?? 10;
+  const code = data.daily?.weathercode?.[0] ?? 0;
+  const hum  = data.hourly?.relativehumidity_2m?.[12] ?? 60;
 
   return {
     temp:     `${avgT}°C`,
@@ -105,7 +105,6 @@ async function getClimateWeather(lat: number, lon: number, date: string): Promis
 
   const temps = data.daily?.temperature_2m_mean?.filter((v): v is number => v != null) ?? [];
   const precs = data.daily?.precipitation_sum?.filter((v): v is number => v != null) ?? [];
-
   if (!temps.length) return null;
 
   const avgT = Math.round(temps.reduce((a, b) => a + b, 0) / temps.length);
@@ -115,7 +114,7 @@ async function getClimateWeather(lat: number, lon: number, date: string): Promis
   return {
     temp:     `${avgT}°C`,
     cond,
-    humidity: 65,       // estimation climatique
+    humidity: 65,
     wind:     '15 km/h',
   };
 }

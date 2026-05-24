@@ -427,7 +427,7 @@ export default function PackResults() {
       transition={{ duration: 0.5, ease: 'easeOut' }}>
 
       {/* Hero banner */}
-      <div className="glass-premium rounded-3xl p-6 relative overflow-hidden shadow-glow-gold h-[260px] flex items-end">
+      <div className="glass-premium rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-glow-gold min-h-[220px] sm:h-[260px] flex items-end">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <img
@@ -440,7 +440,7 @@ export default function PackResults() {
         </div>
 
         <div className="relative z-10 w-full">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <ModeBadge mode={mode} />
@@ -466,35 +466,35 @@ export default function PackResults() {
               </h2>
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
             </div>
-            <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-col gap-2 sm:items-end">
+              <div className="flex flex-wrap gap-2">
+                <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+                  <span className="text-gold font-bold text-base font-display">{travelers ?? '—'}</span>
+                  <span className="text-[10px] text-muted uppercase tracking-tighter">voy.</span>
+                </div>
+                <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+                  <span className="text-gold font-bold text-base font-display">{d.summary?.nights}</span>
+                  <span className="text-[10px] text-muted uppercase tracking-tighter">nuits</span>
+                </div>
+                <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+                  <span className="text-gold font-bold text-base font-display">{d.summary?.total_budget}</span>
+                  <span className="text-[10px] text-muted uppercase tracking-tighter">budget</span>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button 
                   onClick={() => toast.success("Génération de votre carnet de voyage PDF en cours...")}
-                  className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-4 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-2"
+                  className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-3 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-1"
                 >
-                  <span>📄</span> PDF
+                  <span>📄</span> <span className="hidden sm:inline">PDF</span>
                 </button>
                 <button 
                   onClick={handleBooking}
                   disabled={isBooking}
-                  className="bg-gold hover:bg-gold/80 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-glow-gold hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+                  className="bg-gold hover:bg-gold/80 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-glow-gold active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isBooking ? 'Ouverture...' : '💳 Réserver'}
                 </button>
-              </div>
-              <div className="flex gap-2 text-center">
-                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
-                  <p className="text-xl font-bold text-gold font-display">{travelers ?? '—'}</p>
-                  <p className="text-[10px] text-muted uppercase tracking-tighter">voyageurs</p>
-                </div>
-                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
-                  <p className="text-xl font-bold text-gold font-display">{d.summary?.nights}</p>
-                  <p className="text-[10px] text-muted uppercase tracking-tighter">nuits</p>
-                </div>
-                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
-                  <p className="text-xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
-                  <p className="text-[10px] text-muted uppercase tracking-tighter">budget total</p>
-                </div>
               </div>
             </div>
           </div>
@@ -559,7 +559,7 @@ export default function PackResults() {
                 hotels={d.hotels} 
                 focusedLocation={focusedLocation}
               />
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
                 {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} tripId={tripId ?? ''} destination={d.destination} />)}
                 {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} destination={d.destination} />)}
@@ -568,7 +568,7 @@ export default function PackResults() {
           )}
 
           {activeTab === 'hotels' && (
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {d.hotels?.map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
             </div>
           )}
@@ -586,7 +586,7 @@ export default function PackResults() {
           )}
 
           {activeTab === 'activities' && (
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {d.activities?.map((a, i) => <LocalActivityCard key={i} activity={a} />)}
             </div>
           )}
