@@ -6,12 +6,60 @@
 @layer base {
   :root {
     --gold:       #C9A84C;
-    --gold-light: #E5D5A5; /* Champagne */
+    --gold-light: #E5D5A5;
     --gold-dark:  #8B6F28;
     --ink:        #1A1410;
     --ink-deep:   #0D0B09;
     --bg:         #FAF7F2;
     --glass-border: rgba(201, 168, 76, 0.25);
+    /* Accent dynamique par mode — défaut = gold */
+    --accent:     #C9A84C;
+    --accent-rgb: 201, 168, 76;
+    --orb1:       rgba(201,168,76,0.12);
+    --orb2:       rgba(58,107,138,0.08);
+  }
+
+  /* ---- Palettes par mode de voyage ---- */
+  [data-mode="party"] {
+    --accent:     #B06EE8;
+    --accent-rgb: 176, 110, 232;
+    --orb1:       rgba(176,110,232,0.15);
+    --orb2:       rgba(224,64,251,0.08);
+    --glass-border: rgba(176, 110, 232, 0.25);
+  }
+  [data-mode="luxury"] {
+    --accent:     #C9A84C;
+    --accent-rgb: 201, 168, 76;
+    --orb1:       rgba(201,168,76,0.15);
+    --orb2:       rgba(139,105,20,0.08);
+  }
+  [data-mode="relax"] {
+    --accent:     #3AAFCA;
+    --accent-rgb: 58, 175, 202;
+    --orb1:       rgba(58,175,202,0.15);
+    --orb2:       rgba(90,122,94,0.08);
+    --glass-border: rgba(58, 175, 202, 0.2);
+  }
+  [data-mode="student"] {
+    --accent:     #E07A35;
+    --accent-rgb: 224, 122, 53;
+    --orb1:       rgba(224,122,53,0.12);
+    --orb2:       rgba(201,168,76,0.06);
+    --glass-border: rgba(224, 122, 53, 0.22);
+  }
+  [data-mode="group"] {
+    --accent:     #5A9E6F;
+    --accent-rgb: 90, 158, 111;
+    --orb1:       rgba(90,158,111,0.12);
+    --orb2:       rgba(58,107,138,0.06);
+    --glass-border: rgba(90, 158, 111, 0.22);
+  }
+  [data-mode="surprise"] {
+    --accent:     #9C4DE8;
+    --accent-rgb: 156, 77, 232;
+    --orb1:       rgba(156,77,232,0.12);
+    --orb2:       rgba(201,168,76,0.06);
+    --glass-border: rgba(156, 77, 232, 0.22);
   }
 
   html { scroll-behavior: smooth; }
@@ -19,8 +67,8 @@
   body {
     @apply font-sans text-ink bg-parchment;
     background:
-      radial-gradient(ellipse at 50% -10%, rgba(201,168,76,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse at 100% 50%, rgba(58,107,138,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% -10%, var(--orb1) 0%, transparent 60%),
+      radial-gradient(ellipse at 100% 50%, var(--orb2) 0%, transparent 50%),
       #FAF7F2;
     min-height: 100vh;
   }
@@ -28,7 +76,7 @@
   .dark body {
     @apply text-parchment;
     background:
-      radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 50% 0%, var(--orb1) 0%, transparent 50%),
       #050505;
     background-attachment: fixed;
   }

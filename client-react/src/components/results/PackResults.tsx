@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -116,13 +116,14 @@ function FlightCard({ flight, tripId, destination }: { flight: any; tripId: stri
         </div>
         <div className="pl-4 border-l border-white/5 flex flex-col items-end gap-1">
           <p className="text-lg font-bold text-gold leading-none">{flight.price_per_person}</p>
-          <a 
-            href={bookingUrl} 
-            target="_blank" 
+          <p className="text-[9px] text-muted/60 italic">estimatif</p>
+          <a
+            href={bookingUrl}
+            target="_blank"
             rel="noopener noreferrer"
             className="text-[10px] font-bold text-sage hover:underline flex items-center gap-0.5"
           >
-            Réservation ↗
+            Vrai prix ↗
           </a>
         </div>
       </div>
@@ -287,8 +288,20 @@ const TABS = [
 
 export default function PackResults() {
   const { pack, tripId, isLoading, mode, departure, returnDate, travelers } = useSearchStore()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab]       = useState('overview')
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null)
+  const [showReveal, setShowReveal]     = useState(false)
+  const prevPackRef = useRef<typeof pack>(null)
+
+  // Déclenche la révélation plein écran uniquement quand un nouveau pack arrive
+  useEffect(() => {
+    if (pack && pack !== prevPackRef.current) {
+      prevPackRef.current = pack
+      setShowReveal(true)
+      const t = setTimeout(() => setShowReveal(false), 2800)
+      return () => clearTimeout(t)
+    }
+  }, [pack])
 
   if (isLoading) {
     return <PackSkeleton />
@@ -407,7 +420,7 @@ export default function PackResults() {
             📍 Carte
           </a>
           <a
-            href={activity.links?.viator || `https://www.getyourguide.fr/s/?q=${encodeURIComponent((activity.name || activity.title) + ' ' + d.destination)}`}
+            href={activity.booking_url || activity.links?.viator || `https://www.getyourguide.fr/s/?q=${encodeURIComponent((activity.name || activity.title) + ' ' + d.destination)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[11px] font-semibold text-white bg-gold hover:bg-gold-dark px-4 py-1.5 rounded-lg transition-colors shadow-glow-gold hover:shadow-none flex items-center gap-1.5"
@@ -422,7 +435,50 @@ export default function PackResults() {
 
 
   return (
+    <>
+    {/* ---- Révélation plein écran ---- */}
+    <AnimatePresence>
+      {showReveal && (
+        <motion.div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.8 } }}
+        >
+          {/* Photo de fond */}
+          <img
+            src={d.photo_url || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1920&q=90'}
+            alt={d.destination}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Dégradé sombre */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+          {/* Contenu */}
+          <motion.div
+            className="relative z-10 text-center px-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.3, duration: 0.6 } }}
+          >
+            <p className="text-white/60 text-sm font-medium uppercase tracking-[0.3em] mb-3">Votre voyage</p>
+            <h1 className="font-display text-6xl sm:text-8xl font-bold text-white leading-none drop-shadow-2xl">
+              {d.destination}
+            </h1>
+            <p className="mt-4 text-white/80 text-lg italic font-display">{d.tagline}</p>
+            <motion.div
+              className="mt-6 flex items-center justify-center gap-2"
+              initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.8 } }}
+            >
+              <span className="w-8 h-px bg-white/40" />
+              <span className="text-white/50 text-xs uppercase tracking-widest">{d.country}</span>
+              <span className="w-8 h-px bg-white/40" />
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <motion.div id="pack-results" className="mt-10 space-y-5"
+      data-mode={mode}
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}>
 
@@ -454,14 +510,15 @@ export default function PackResults() {
                   </motion.span>
                 )}
               </div>
-              <h2 className="font-display text-3xl font-bold text-ink dark:text-parchment flex items-center gap-3">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink dark:text-parchment flex flex-wrap items-center gap-2">
                 {d.destination}
-                <span className="text-muted text-xl font-normal">{d.country}</span>
-                <button 
+                <span className="text-muted text-lg sm:text-xl font-normal">{d.country}</span>
+                <button
                   onClick={handleShare}
-                  className="ml-2 bg-sage/20 hover:bg-sage/40 text-sage px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border border-sage/20"
+                  className="bg-sage/20 hover:bg-sage/40 text-sage px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border border-sage/20"
                 >
-                  <span className="text-base">📲</span> Partager
+                  <span className="text-base">📲</span>
+                  <span className="hidden sm:inline">Partager</span>
                 </button>
               </h2>
               <p className="text-gold italic font-display mt-1">{d.tagline}</p>
@@ -554,11 +611,40 @@ export default function PackResults() {
 
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              <TripMap 
-                destination={d.destination} 
-                hotels={d.hotels} 
+              <TripMap
+                destination={d.destination}
+                hotels={d.hotels}
                 focusedLocation={focusedLocation}
               />
+
+              {/* Spotify playlist */}
+              {d.spotify && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  className="glass rounded-2xl overflow-hidden">
+                  <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎵</span>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted">Playlist du voyage</p>
+                        <p className="text-sm font-semibold text-ink dark:text-parchment leading-tight">{d.spotify.name}</p>
+                      </div>
+                    </div>
+                    <a href={d.spotify.url} target="_blank" rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-[#1DB954] hover:underline flex items-center gap-1">
+                      Ouvrir Spotify ↗
+                    </a>
+                  </div>
+                  <iframe
+                    src={d.spotify.embed_url}
+                    width="100%"
+                    height="152"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    className="border-0"
+                  />
+                </motion.div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
                 {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} tripId={tripId ?? ''} destination={d.destination} />)}
@@ -595,5 +681,6 @@ export default function PackResults() {
         </motion.div>
       </AnimatePresence>
     </motion.div>
+    </>
   )
 }
