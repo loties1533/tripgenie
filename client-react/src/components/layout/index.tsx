@@ -1,34 +1,37 @@
 import { Link, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore, useThemeStore } from '../../store'
 import { logout } from '../../lib/api'
 
 export function Header() {
   const { user, clearAuth } = useAuthStore()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     try { await logout() } catch (_) {}
     clearAuth()
+    setMenuOpen(false)
   }
-  const { theme, toggle }   = useThemeStore()
+  const { theme, toggle } = useThemeStore()
   const loc = useLocation()
 
   return (
     <header className="sticky top-0 z-40 bg-white/70 dark:bg-ink/70 backdrop-blur-md border-b border-gold/10">
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
+        <Link to="/" className="flex items-center gap-2.5 group" onClick={() => setMenuOpen(false)}>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-light via-gold to-gold-dark flex items-center justify-center
                           shadow-glow-gold transition-transform group-hover:scale-105 shine-effect">
             <span className="text-white text-lg">✦</span>
           </div>
           <div className="flex flex-col">
             <span className="font-display font-bold text-ink dark:text-parchment text-xl leading-none tracking-tight">TripGenie</span>
-            <span className="text-[10px] text-gold-dark dark:text-gold font-bold uppercase tracking-widest mt-1">Conciergerie Privée</span>
+            <span className="hidden sm:block text-[10px] text-gold-dark dark:text-gold font-bold uppercase tracking-widest mt-1">Conciergerie Privée</span>
           </div>
         </Link>
 
-        {/* Nav */}
+        {/* Nav — Desktop */}
         <nav className="hidden sm:flex items-center bg-parchment-dark/50 dark:bg-ink-light/50 p-1 rounded-xl border border-gold/10">
           <Link to="/"
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
@@ -50,15 +53,17 @@ export function Header() {
         </nav>
 
         {/* Right actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button onClick={toggle}
             className="w-9 h-9 rounded-xl bg-parchment-dark dark:bg-ink-light border border-gold/10 
                        text-muted hover:text-gold transition-colors flex items-center justify-center">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
+
+          {/* Desktop user actions */}
           {user
-            ? <div className="flex items-center gap-3 pl-3 border-l border-gold/20">
-                <div className="hidden sm:flex flex-col items-end">
+            ? <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-gold/20">
+                <div className="flex flex-col items-end">
                   <span className="text-xs font-semibold text-ink dark:text-parchment leading-none">{user.name}</span>
                   <span className="text-[10px] text-muted mt-0.5">Membre</span>
                 </div>
@@ -68,12 +73,60 @@ export function Header() {
                   <LogOutIcon />
                 </button>
               </div>
-            : <Link to="/login" className="btn-primary text-sm px-5 py-2 shine-effect">
+            : <Link to="/login" className="hidden sm:inline-flex btn-primary text-sm px-5 py-2 shine-effect">
                 Connexion
               </Link>
           }
+
+          {/* Hamburger — Mobile only */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="sm:hidden w-9 h-9 rounded-xl bg-parchment-dark dark:bg-ink-light border border-gold/10
+                       flex items-center justify-center text-muted hover:text-gold transition-colors"
+            aria-label="Menu"
+          >
+            <span className="text-lg">{menuOpen ? '✕' : '☰'}</span>
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu drawer */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="sm:hidden overflow-hidden bg-white/95 dark:bg-ink/95 backdrop-blur-md border-t border-gold/10"
+          >
+            <nav className="flex flex-col gap-1 p-4">
+              <Link to="/" onClick={() => setMenuOpen(false)}
+                className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${loc.pathname === '/' ? 'bg-gold/10 text-gold' : 'text-muted hover:text-ink dark:hover:text-parchment'}`}>
+                🏠 Accueil
+              </Link>
+              <Link to="/trips" onClick={() => setMenuOpen(false)}
+                className={`px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${loc.pathname === '/trips' ? 'bg-gold text-white' : 'text-gold hover:bg-gold/10'}`}>
+                📖 Mes voyages
+              </Link>
+              <div className="h-px bg-gold/10 my-1" />
+              {user
+                ? <>
+                    <div className="px-4 py-2 text-xs text-muted">Connecté en tant que <span className="font-semibold text-ink dark:text-parchment">{user.name}</span></div>
+                    <button onClick={handleLogout}
+                      className="px-4 py-3 rounded-xl text-sm font-medium text-coral hover:bg-coral/10 transition-all text-left">
+                      🚪 Déconnexion
+                    </button>
+                  </>
+                : <Link to="/login" onClick={() => setMenuOpen(false)}
+                    className="px-4 py-3 rounded-xl text-sm font-bold bg-gold text-white text-center transition-all">
+                    ✦ Connexion
+                  </Link>
+              }
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }
@@ -109,9 +162,9 @@ export function PageLayout({ children }: { children: React.ReactNode }) {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/80 to-ink" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
 
-        <div className="relative max-w-5xl mx-auto px-8 py-16">
+        <div className="relative max-w-5xl mx-auto px-6 py-12">
           {/* Top footer */}
-          <div className="grid md:grid-cols-3 gap-12 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-12">
             {/* Brand */}
             <div>
               <div className="flex items-center gap-3 mb-5">

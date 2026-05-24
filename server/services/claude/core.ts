@@ -76,37 +76,40 @@ export function normalizeChips(chips: unknown): string[] {
 
 /**
  * Routeur multi-provider avec fallback automatique.
- * Ordre : provider configuré → Gemini → OpenRouter → Claude → Mode Survie (mocks).
+ * Ordre de priorité : Gemini (fiable, gratuit) → Claude → OpenRouter (modèles gratuits, dernière option) → Mode Survie (mocks).
+ * Note : Gemini est toujours tenté en premier car il produit du JSON valide beaucoup plus régulièrement que les modèles OpenRouter gratuits.
  */
 export async function callAI(
   userPrompt: string,
   systemPrompt: string = SYSTEM_PROMPT,
   context: AIContext = 'onboarding'
 ): Promise<string> {
-  const errors: string[]  = [];
+  const errors: string[] = [];
   const provider = process.env.AI_PROVIDER;
 
+  // Ollama (local, si configuré)
   if (provider === 'ollama' && process.env.OLLAMA_BASE_URL) {
     try { return await callOllama(systemPrompt, userPrompt); } catch (e) { errors.push(`Ollama: ${(e as Error).message}`); }
   }
-  if (provider === 'openrouter' && OPENROUTER_KEY) {
-    try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${(e as Error).message}`); }
-  }
-  if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+
+  // Gemini — priorité absolue (JSON fiable, quota généreux)
+  if (process.env.GEMINI_API_KEY) {
     try { return await callGemini(systemPrompt, userPrompt); } catch (e) { errors.push(`Gemini: ${(e as Error).message}`); }
   }
-  if (process.env.GEMINI_API_KEY && provider !== 'gemini') {
-    try { return await callGemini(systemPrompt, userPrompt); } catch (e) { errors.push(`Gemini: ${(e as Error).message}`); }
-  }
-  if (OPENROUTER_KEY && provider !== 'openrouter') {
-    try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${(e as Error).message}`); }
-  }
+
+  // Claude (Anthropic) — si clé disponible
   if (ANTHROPIC_KEY) {
     try { return await callClaude(systemPrompt, userPrompt); } catch (e) { errors.push(`Claude: ${(e as Error).message}`); }
   }
 
+  // OpenRouter (modèles gratuits) — dernier recours car JSON souvent malformé
+  if (OPENROUTER_KEY) {
+    try { return await callOpenRouter(systemPrompt, userPrompt); } catch (e) { errors.push(`OpenRouter: ${(e as Error).message}`); }
+  }
+
+  // ⚠️ MODE SURVIE — toutes les IA ont échoué → données génériques activées
   console.error('❌ AI FAILURES LOG:', JSON.stringify(errors, null, 2));
-  console.error(`🚨 TOUS LES SERVICES IA ÉPUISÉS. Activation du Mode Survie (${context}).`);
+  console.error(`⚠️ FALLBACK GÉNÉRIQUE ACTIVÉ — contexte: ${context}. Aucun provider IA disponible.`);
   if (context === 'onboarding')   return JSON.stringify(Mocks.MOCK_ONBOARDING);
   if (context === 'destinations') return JSON.stringify(Mocks.MOCK_DESTINATIONS);
   if (context === 'pack')         return JSON.stringify(Mocks.MOCK_PACK);

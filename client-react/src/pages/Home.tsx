@@ -136,7 +136,7 @@ function Hero() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="font-display text-5xl sm:text-7xl lg:text-[6rem] font-bold text-white leading-[1.0] mb-8 drop-shadow-2xl">
+          className="font-display text-4xl sm:text-6xl lg:text-[6rem] font-bold text-white leading-[1.0] mb-6 sm:mb-8 drop-shadow-2xl">
           L'Excellence,
           <br />
           <span className="text-gradient-gold italic font-serif font-light">à votre service.</span>
@@ -182,10 +182,10 @@ function ChatSection() {
       {/* Glow effect derrière le chat */}
       <div className="absolute inset-0 bg-gold/10 blur-[100px] rounded-[3rem] pointer-events-none" />
 
-      <div className="relative glass-premium rounded-[2.5rem] overflow-hidden shadow-2xl border-t border-gold/30"
-           style={{ height: 560 }}>
+      <div className="relative glass-premium rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-2xl border-t border-gold/30"
+           style={{ minHeight: 480 }}>
         {/* Chat header Minimalist */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-gold/10
+        <div className="flex items-center justify-between px-5 sm:px-8 py-4 sm:py-5 border-b border-gold/10
                         bg-gradient-to-b from-white/40 to-transparent dark:from-ink-light/40">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center shadow-glow-gold">
@@ -285,7 +285,7 @@ function TripConcepts() {
           <motion.div key={i}
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.2 }}
             onClick={() => handleSelect(c)}
-            className="group cursor-pointer relative h-[450px] rounded-3xl overflow-hidden shadow-2xl border border-gold/20 hover:border-gold/60 transition-all duration-500 hover:-translate-y-2">
+            className="group cursor-pointer relative h-[340px] sm:h-[450px] rounded-3xl overflow-hidden shadow-2xl border border-gold/20 hover:border-gold/60 transition-all duration-500 hover:-translate-y-2">
             
             {/* Image (Images Premium garanties pour la démo) */}
             <div className="absolute inset-0 bg-ink">
@@ -382,7 +382,7 @@ export default function Home() {
               <motion.div key={i}
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 + i * 0.15 }}
-                className="group relative h-[360px] rounded-2xl overflow-hidden cursor-pointer">
+                className="group relative h-[280px] sm:h-[360px] rounded-2xl overflow-hidden cursor-pointer">
 
                 {/* Image fond */}
                 <img src={f.img} alt={f.title}
