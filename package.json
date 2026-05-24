@@ -15,7 +15,8 @@
     "test": "vitest run tests/api.test.ts tests/golden_path.test.ts tests/scoring.test.ts tests/middleware.test.ts",
     "test:vitest": "vitest run tests/api.test.ts",
     "test:scoring": "vitest run tests/scoring.test.ts",
-    "test:middleware": "vitest run tests/middleware.test.ts"
+    "test:middleware": "vitest run tests/middleware.test.ts",
+    "test:coverage": "vitest run --coverage tests/api.test.ts tests/golden_path.test.ts tests/scoring.test.ts tests/middleware.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
