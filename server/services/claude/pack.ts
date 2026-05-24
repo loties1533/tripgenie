@@ -14,9 +14,10 @@
 
 import { callAI, parseJSON, sanitizeInput } from './core.js';
 import { MODES, BUDGET_RATIOS, DEFAULT_VALUES } from '../../lib/constants.js';
-import type { Pack, TravelMode } from '../../lib/types.js';
+import type { Pack, TravelMode, SpotifyPlaylist } from '../../lib/types.js';
 import type { FlightSearchResult, EventSearchResult, HotelSearchResult } from '../smartSearch.js';
 import type { WeatherData } from '../weather.js';
+import type { FoursquareVenue } from '../foursquare.js';
 
 interface AssemblePackParams {
   destination: string;
@@ -32,10 +33,13 @@ interface AssemblePackParams {
   duration?: number;
   realWeather?: WeatherData | null;
   realPhoto?: string | null;
+  spotify?: SpotifyPlaylist;
+  fsqVenues?: FoursquareVenue[];
 }
 
 interface AITextResult {
   country?: string;
+  airport_code?: string;
   tagline?: string;
   overview?: string;
   weather?: { temp?: string; cond?: string; tip?: string };
@@ -66,7 +70,7 @@ interface AITextResult {
  */
 export async function assemblePack({
   destination, flights, events, hotels: realHotels, mode, profile, travelers, budget,
-  departure, return_date, duration, realWeather, realPhoto,
+  departure, return_date, duration, realWeather, realPhoto, spotify, fsqVenues,
 }: AssemblePackParams): Promise<Pack> {
   const dest = sanitizeInput(destination);
 
@@ -101,8 +105,15 @@ export async function assemblePack({
     ? 'Tu connais tous les bons plans : max de saveurs pour min de budget.'
     : 'Tu combines intelligemment les envies du groupe avec la richesse locale.';
 
-  const realVenuesContext = events?.length
-    ? `\nLIEUX RÉELS TROUVÉS (utilise ces noms dans activities) :\n${events.slice(0, 5).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}`
+  const foursquareContext = fsqVenues?.length
+    ? `\nLIEUX FOURSQUARE VÉRIFIÉS (vrais endroits populaires — utilise ces noms exacts dans activities et itinerary) :\n${fsqVenues.map(v => `- ${v.name} (${v.category})`).join('\n')}`
+    : '';
+
+  const realVenuesContext = (events?.length || fsqVenues?.length)
+    ? [
+        events?.length ? `\nÉVÉNEMENTS RÉELS :\n${events.slice(0, 4).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}` : '',
+        foursquareContext,
+      ].filter(Boolean).join('\n')
     : '';
 
   const textRaw = await callAI(
@@ -116,6 +127,7 @@ export async function assemblePack({
     Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
     {
       "country": "Pays",
+      "airport_code": "IBZ",
       "tagline": "Accroche percutante 5-7 mots",
       "overview": "Description immersive 2-3 phrases",
       "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Conseil vestimentaire"},
@@ -168,26 +180,33 @@ export async function assemblePack({
     };
   }
 
-  // Vols
-  const volPriceEst = Math.round(budget * 0.15);
+  // Code aéroport (fourni par le LLM, ex: IBZ, CDG, BKK...)
+  const airportCode = t.airport_code?.toUpperCase() ?? 'XXX';
+
+  // Vols — prix sanity check : max 1800€/pers
+  const rawPrice       = flights?.[0]?.price ?? 0;
+  const pricePerPerson = rawPrice > 0 ? Math.round(rawPrice / (travelers || 1)) : 0;
+  const priceCapped    = pricePerPerson > 1800 ? Math.round(budget * 0.15 / travelers) : pricePerPerson;
+  const volPriceEst    = Math.round(budget * 0.15 / travelers);
+
   const flightData = flights?.length
     ? [
         {
-          from:             flights[0].outbound_time ? 'CDG' : 'CDG',
+          from:             'CDG',
           from_city:        'Paris',
-          to:               'XXX',
+          to:               airportCode,
           to_city:          dest,
           departure_time:   flights[0].outbound_time || '10:30',
           arrival_time:     flights[0].arrival_time  || '12:00',
           duration:         flights[0].duration      || '2h00',
           stops:            flights[0].stops         || 'Direct',
           airline:          flights[0].airline       || 'Air France',
-          price_per_person: `${Math.round(flights[0].price / (travelers || 1))}€`,
+          price_per_person: `${priceCapped || volPriceEst}€`,
           type:             'outbound' as const,
           links:            flights[0].links || null,
         },
         {
-          from:             'XXX',
+          from:             airportCode,
           from_city:        dest,
           to:               'CDG',
           to_city:          'Paris',
@@ -196,14 +215,14 @@ export async function assemblePack({
           duration:         flights[0].duration || '2h00',
           stops:            'Direct',
           airline:          flights[0].airline  || 'Air France',
-          price_per_person: `${Math.round(flights[0].price / (travelers || 1))}€`,
+          price_per_person: `${priceCapped || volPriceEst}€`,
           type:             'return' as const,
           links:            flights[0].links || null,
         },
       ]
     : [
-        { from: 'CDG', from_city: 'Paris', to: 'XXX', to_city: dest, departure_time: '10:30', arrival_time: '12:00', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'outbound' as const },
-        { from: 'XXX', from_city: dest,   to: 'CDG', to_city: 'Paris', departure_time: '18:00', arrival_time: '19:30', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'return' as const },
+        { from: 'CDG', from_city: 'Paris', to: airportCode, to_city: dest, departure_time: '10:30', arrival_time: '12:00', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'outbound' as const },
+        { from: airportCode, from_city: dest, to: 'CDG', to_city: 'Paris', departure_time: '18:00', arrival_time: '19:30', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'return' as const },
       ];
 
   // Événements
@@ -265,15 +284,23 @@ export async function assemblePack({
       const type    = a.type ?? 'activité';
       const isNight = ['club', 'bar', 'nightlife', 'soirée'].some(k => type.toLowerCase().includes(k));
       const isFood  = ['restaurant', 'food', 'gastronomie'].some(k => type.toLowerCase().includes(k));
-      const emoji   = isNight ? '🎉' : isFood ? '🍽' : type === 'plage' ? '🏖' : type === 'spa' ? '💆' : '🏛';
+      const isBoat  = ['bateau', 'yacht', 'boat', 'croisière'].some(k => type.toLowerCase().includes(k));
+      const emoji   = isNight ? '🎉' : isFood ? '🍽' : isBoat ? '⛵' : type === 'plage' ? '🏖' : type === 'spa' ? '💆' : '🏛';
+      const name    = a.name ?? 'Activité';
+      const booking_url = isFood
+        ? `https://www.thefork.fr/recherche?q=${encodeURIComponent(name + ' ' + dest)}`
+        : isBoat
+        ? `https://www.viator.com/fr-FR/search?text=${encodeURIComponent(name + ' ' + dest)}`
+        : `https://www.getyourguide.fr/s/?q=${encodeURIComponent(name + ' ' + dest)}`;
       return {
-        name:        a.name     ?? 'Activité',
-        category:    isNight   ? 'Nightlife' : isFood ? 'Gastronomie' : 'Culture',
+        name,
+        category:    isNight ? 'Nightlife' : isFood ? 'Gastronomie' : isBoat ? 'Nautique' : 'Culture',
         emoji,
         description: a.desc    ?? 'Incontournable',
         duration:    '2-3h',
         price:       'Variable',
         best_time:   isNight   ? 'Soir' : 'Journée',
+        booking_url,
       };
     }),
     events: eventData,
@@ -293,5 +320,6 @@ export async function assemblePack({
     local_phrases: [
       { phrase: t.phrase ?? 'Santé !', translation: t.phrase_tr ?? 'Cheers !' },
     ],
+    spotify: spotify ?? undefined,
   };
 }

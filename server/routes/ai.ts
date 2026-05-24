@@ -13,12 +13,16 @@ import { scorepack } from '../services/scoring.js';
 import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../services/smartSearch.js';
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
+import { getSpotifyPlaylist } from '../services/spotify.js';
+import { getFoursquareVenues } from '../services/foursquare.js';
+import type { FoursquareVenue } from '../services/foursquare.js';
 import supabase from '../db/supabase.js';
 import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
 import { AppError } from '../lib/AppError.js';
 import type { TravelMode } from '../lib/types.js';
 import type { FlightSearchResult, EventSearchResult, HotelSearchResult } from '../services/smartSearch.js';
 import type { WeatherData } from '../services/weather.js';
+import type { SpotifyPlaylist } from '../lib/types.js';
 
 const router = express.Router();
 
@@ -139,27 +143,35 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       PromiseSettledResult<EventSearchResult[]>,
       PromiseSettledResult<HotelSearchResult[]>,
       PromiseSettledResult<WeatherData | null>,
-      PromiseSettledResult<string | null>
+      PromiseSettledResult<string | null>,
+      PromiseSettledResult<SpotifyPlaylist | null>,
+      PromiseSettledResult<FoursquareVenue[]>
     ] = [] as unknown as [
       PromiseSettledResult<FlightSearchResult | null>,
       PromiseSettledResult<EventSearchResult[]>,
       PromiseSettledResult<HotelSearchResult[]>,
       PromiseSettledResult<WeatherData | null>,
-      PromiseSettledResult<string | null>
+      PromiseSettledResult<string | null>,
+      PromiseSettledResult<SpotifyPlaylist | null>,
+      PromiseSettledResult<FoursquareVenue[]>
     ];
     try {
       results = await withTimeout(Promise.allSettled([
         smartFlightSearch({ origin, destination, departure, return_date }),
         smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
         smartHotelSearch({ location: destination, mode }),
-        getRealWeather(destination),
-        getDestinationPhoto(destination)
-      ]), 15000); // 15 secondes max pour le web
+        getRealWeather(destination, departure),
+        getDestinationPhoto(destination),
+        getSpotifyPlaylist(destination, mode as TravelMode),
+        getFoursquareVenues(destination, mode as TravelMode)
+      ]), 15000);
     } catch (err) {
       console.warn('⚠️ Web search timeout or error, falling back to pure AI generation.');
       results = [
-        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' }, 
-        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' }
+        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' },
+        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' },
+        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' },
+        { status: 'rejected', reason: 'timeout' }
       ];
     }
 
@@ -186,11 +198,14 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       }];
     }
 
-    const events      = results[1].status === 'fulfilled' ? results[1].value : [];
-    const realHotels  = results[2].status === 'fulfilled' ? results[2].value : [];
-    const realWeather = results[3].status === 'fulfilled' ? results[3].value : null;
-    const realPhoto   = results[4].status === 'fulfilled' ? results[4].value : null;
+    const events          = results[1].status === 'fulfilled' ? results[1].value : [];
+    const realHotels      = results[2].status === 'fulfilled' ? results[2].value : [];
+    const realWeather     = results[3].status === 'fulfilled' ? results[3].value : null;
+    const realPhoto       = results[4].status === 'fulfilled' ? results[4].value : null;
+    const spotifyPlaylist = results[5].status === 'fulfilled' ? results[5].value : null;
+    const fsqVenues       = results[6].status === 'fulfilled' ? results[6].value : [];
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);
+    if (spotifyPlaylist) console.error(`🎵 Spotify OK: "${spotifyPlaylist.name}" (${spotifyPlaylist.tracks_total} titres)`);
 
     const pack = await assemblePack({
       destination,
@@ -203,7 +218,9 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       departure,
       return_date,
       realWeather,
-      realPhoto
+      realPhoto,
+      spotify:   spotifyPlaylist ?? undefined,
+      fsqVenues: fsqVenues.length ? fsqVenues : undefined
     });
 
     // ---- Scoring réel via scoring.js ----

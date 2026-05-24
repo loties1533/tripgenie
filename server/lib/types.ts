@@ -89,6 +89,7 @@ export interface Activite {
   price: string | number;
   price_range?: string;
   best_time?: string;
+  booking_url?: string;
   links?: ActivityLinks;
 }
 
@@ -163,7 +164,18 @@ export interface Pack {
   local_phrases?: LocalPhrase[];
   score?: ResultatScore;
   photo_url?: string;
+  spotify?: SpotifyPlaylist;
   isMock?: boolean;
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  embed_url: string;
+  image: string | null;
+  tracks_total: number;
 }
 
 export interface ResultatOnboarding {
