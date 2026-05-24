@@ -69,13 +69,20 @@ export async function suggestDestinations({
     const webContext = await searchWeb(query);
     const budgetPerPers = budget && travelers ? Math.round(budget / travelers) : 0;
 
+    const budgetTier = budgetPerPers >= 3000
+      ? `BUDGET PREMIUM (${budgetPerPers}€/pers) : le budget permet des vols long-courrier + hôtels haut de gamme. Propose des destinations qui correspondent à CE NIVEAU DE BUDGET — raisonne par rapport au coût réel de la vie, du vol et de l'hébergement dans chaque destination. Varie les continents. La 3ème destination doit être une pépite originale que peu de gens connaissent.`
+      : budgetPerPers >= 1500
+      ? `BUDGET CONFORTABLE (${budgetPerPers}€/pers) : le budget couvre un vol moyen-courrier + bon hébergement, ou un long-courrier accessible. Adapte tes suggestions au coût réel de chaque destination. La 3ème destination doit surprendre.`
+      : `BUDGET SERRÉ (${budgetPerPers}€/pers) : privilégie des destinations où ce budget est suffisant pour bien vivre — raisonne par rapport au coût de la vie local et au prix des vols depuis ${origin ?? 'France'}. La 3ème destination doit être une vraie pépite peu chère et méconnue.`;
+
     const raw = await callAI(
       `CONTEXTE WEB RÉCENT : ${webContext}
       MISSION : Suggère 3 destinations parfaites pour un voyage en ${month}.
-      PROFIL : ${profile}, MODE : ${mode}.
+      PROFIL : ${profile ?? 'voyageur'}, MODE : ${mode}.
       BUDGET TOTAL : ${budget}€ pour ${travelers ?? 2} personne(s) = ${budgetPerPers}€/personne.
 
-      STRATÉGIE : 2 destinations CLASSIQUES + 1 destination PÉPITE (Hidden Gem).
+      ${budgetTier}
+      STRATÉGIE : varie les continents, évite de proposer 3 destinations du même pays ou de la même région.
 
       FORMAT JSON STRICT :
       {"destinations": [{"city": "Nom", "country": "Pays", "tagline": "Accroche courte", "reason": "Raison MAX 8 mots", "budget_estimate": "~${budgetPerPers}€/pers", "match_score": 95}]}`,

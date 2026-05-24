@@ -89,7 +89,7 @@ export async function callOpenRouter(systemPrompt: string, userPrompt: string): 
         console.warn(`Model ${model} unavailable, trying next...`);
         continue;
       }
-      console.log(`✅ Using model: ${model}`);
+      console.error(`✅ Using model: ${model}`);
       return data.choices[0].message.content;
     } catch (err) {
       console.warn(`Model ${model} failed: ${(err as Error).message}`);

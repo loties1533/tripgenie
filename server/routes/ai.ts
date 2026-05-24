@@ -17,6 +17,8 @@ import supabase from '../db/supabase.js';
 import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
 import { AppError } from '../lib/AppError.js';
 import type { TravelMode } from '../lib/types.js';
+import type { FlightSearchResult, EventSearchResult, HotelSearchResult } from '../services/smartSearch.js';
+import type { WeatherData } from '../services/weather.js';
 
 const router = express.Router();
 
@@ -132,7 +134,19 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
     ]);
 
-    let results: PromiseSettledResult<any>[] = [];
+    let results: [
+      PromiseSettledResult<FlightSearchResult | null>,
+      PromiseSettledResult<EventSearchResult[]>,
+      PromiseSettledResult<HotelSearchResult[]>,
+      PromiseSettledResult<WeatherData | null>,
+      PromiseSettledResult<string | null>
+    ] = [] as unknown as [
+      PromiseSettledResult<FlightSearchResult | null>,
+      PromiseSettledResult<EventSearchResult[]>,
+      PromiseSettledResult<HotelSearchResult[]>,
+      PromiseSettledResult<WeatherData | null>,
+      PromiseSettledResult<string | null>
+    ];
     try {
       results = await withTimeout(Promise.allSettled([
         smartFlightSearch({ origin, destination, departure, return_date }),
@@ -150,6 +164,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
     }
 
     const aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let flights: any[] = [];
 
     if (aiFlight) {

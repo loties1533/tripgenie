@@ -286,7 +286,7 @@ const TABS = [
 ]
 
 export default function PackResults() {
-  const { pack, tripId, isLoading, mode, departure, returnDate } = useSearchStore()
+  const { pack, tripId, isLoading, mode, departure, returnDate, travelers } = useSearchStore()
   const [activeTab, setActiveTab] = useState('overview')
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null)
 
@@ -482,14 +482,18 @@ export default function PackResults() {
                   {isBooking ? 'Ouverture...' : '💳 Réserver'}
                 </button>
               </div>
-              <div className="flex gap-4 text-center">
-                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
-                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.nights}</p>
-                  <p className="text-xs text-muted uppercase tracking-tighter">nuits</p>
+              <div className="flex gap-2 text-center">
+                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
+                  <p className="text-xl font-bold text-gold font-display">{travelers ?? '—'}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-tighter">voyageurs</p>
                 </div>
-                <div className="glass rounded-xl px-4 py-2 min-w-[80px]">
-                  <p className="text-2xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
-                  <p className="text-xs text-muted uppercase tracking-tighter">budget</p>
+                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
+                  <p className="text-xl font-bold text-gold font-display">{d.summary?.nights}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-tighter">nuits</p>
+                </div>
+                <div className="glass rounded-xl px-3 py-2 min-w-[72px]">
+                  <p className="text-xl font-bold text-gold font-display">{d.summary?.total_budget}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-tighter">budget total</p>
                 </div>
               </div>
             </div>
@@ -497,11 +501,13 @@ export default function PackResults() {
 
           {/* Weather */}
           {d.weather && (
-            <div className="mt-4 flex items-center gap-3 text-sm text-muted">
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted">
               <span className="text-xl">🌤</span>
               <span className="font-medium text-ink dark:text-parchment">{d.weather.avg_temp}</span>
               <span>·</span>
               <span>{d.weather.conditions}</span>
+              {d.weather.humidity != null && <><span>·</span><span>💧 {d.weather.humidity}%</span></>}
+              {d.weather.wind && <><span>·</span><span>💨 {d.weather.wind}</span></>}
               <span>·</span>
               <span className="italic">{d.weather.tip}</span>
             </div>

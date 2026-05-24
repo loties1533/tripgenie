@@ -33,7 +33,7 @@ export async function getDestinationPhoto(query: string): Promise<string> {
         const data = (await res.json()) as UnsplashSearchResponse;
         const photo = data.results?.[0]?.urls?.regular;
         if (photo) {
-          console.log(`📸 Unsplash OK: ${query} → ${photo.slice(0, 60)}...`);
+          console.error(`📸 Unsplash OK: ${query} → ${photo.slice(0, 60)}...`);
           return photo;
         }
         console.warn(`Unsplash: aucun résultat pour "${query}"`);

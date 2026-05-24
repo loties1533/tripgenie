@@ -101,12 +101,17 @@ export async function assemblePack({
     ? 'Tu connais tous les bons plans : max de saveurs pour min de budget.'
     : 'Tu combines intelligemment les envies du groupe avec la richesse locale.';
 
+  const realVenuesContext = events?.length
+    ? `\nLIEUX RÉELS TROUVÉS (utilise ces noms dans activities) :\n${events.slice(0, 5).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}`
+    : '';
+
   const textRaw = await callAI(
     `Tu es le concierge privé de TripGenie. Destination : ${dest}.
     VOYAGEURS : ${travelers} personne(s). PROFIL : ${profile ?? mode}. VIBE : ${mode}. BUDGET : ${budgetPerPers}€/pers. DURÉE : ${nights} nuits.
 
     ${modePersona}
     ${budgetTone}
+    ${realVenuesContext}
 
     Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
     {
@@ -115,17 +120,18 @@ export async function assemblePack({
       "overview": "Description immersive 2-3 phrases",
       "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Conseil vestimentaire"},
       "hotels": [
-        {"name": "Vrai nom hôtel", "loc": "Quartier précis", "hl": "Point fort unique"},
-        {"name": "Alternative", "loc": "Quartier", "hl": "Point fort"}
+        {"name": "Vrai nom hôtel connu", "loc": "Quartier précis", "hl": "Point fort unique"},
+        {"name": "Alternative connue", "loc": "Quartier", "hl": "Point fort"}
       ],
       "itinerary": [
-        {"day": 1, "title": "Titre évocateur", "am": "Activité matin concrète", "pm": "Activité soir concrète", "plan_b": "Alternative si imprévu"}
+        {"day": 1, "title": "Titre évocateur", "am": "Lieu/activité nommé concrètement", "pm": "Restaurant ou club nommé concrètement", "plan_b": "Alternative si imprévu"}
       ],
       "activities": [
-        {"name": "Vrai nom lieu", "desc": "Max 60 chars", "type": "bar|club|restaurant|activité|plage|spa", "plan_b": "Alternative"}
+        {"name": "NOM RÉEL EXACT (ex: Pacha Ibiza, Nobu Restaurant, location bateau SunSail)", "desc": "Max 60 chars — spécifique", "type": "bar|club|restaurant|activité|plage|spa|bateau", "plan_b": "Alternative concrète"}
       ],
-      "tip1": "Conseil pratique local", "tip2": "Adresse food incontournable", "phrase": "Mot argot local", "phrase_tr": "Traduction"
-    }`,
+      "tip1": "Conseil pratique local", "tip2": "Adresse food incontournable avec nom", "phrase": "Mot argot local", "phrase_tr": "Traduction"
+    }
+    ⚠️ RÈGLE ABSOLUE pour "activities" : nomme des VRAIS lieux connus (restaurants avec leur vrai nom, clubs avec leur vrai nom, compagnies de location bateau, spas réels). INTERDIT : "Gastronomie locale", "Découverte de ${dest}", "Expérience culturelle" — trop vague.`,
     undefined,
     'pack'
   );
@@ -134,7 +140,8 @@ export async function assemblePack({
   try {
     t = parseJSON(textRaw) as AITextResult;
   } catch (err) {
-    console.warn('Fallback IA activé suite à un problème.', (err as Error).message);
+    console.error('⚠️ FALLBACK GÉNÉRIQUE ACTIVÉ — JSON malformé reçu du LLM. Raison:', (err as Error).message);
+    console.error('⚠️ Réponse brute du LLM (200 premiers chars):', textRaw.slice(0, 200));
     t = {
       country:   'Destination',
       tagline:   `Découvrez les secrets de ${dest}`,
@@ -231,7 +238,7 @@ export async function assemblePack({
     overview:    t.overview ?? `Découvrez ${dest} sous son meilleur jour.`,
     photo_url:   realPhoto ?? undefined,
     weather: realWeather
-      ? { avg_temp: realWeather.temp, conditions: realWeather.cond, tip: t.weather?.tip ?? 'Prévoyez des couches' }
+      ? { avg_temp: realWeather.temp, conditions: realWeather.cond, tip: t.weather?.tip ?? 'Prévoyez des couches', humidity: realWeather.humidity, wind: realWeather.wind }
       : { avg_temp: t.weather?.temp ?? '20°C', conditions: t.weather?.cond ?? 'Ensoleillé', tip: t.weather?.tip ?? 'Prévoyez des couches' },
     summary: { total_budget: `${budget}€`, nights, activities_count: (t.activities ?? []).length },
     flights: flightData,

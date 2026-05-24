@@ -8,6 +8,8 @@ export interface Meteo {
   avg_temp: string;   // ex : "22°C"
   conditions: string; // ex : "Ensoleillé"
   tip: string;        // conseil vestimentaire
+  humidity?: number;  // ex : 65 (%)
+  wind?: string;      // ex : "15 km/h"
 }
 
 export type FlightType = 'outbound' | 'return';
