@@ -23,7 +23,7 @@ import votesRoutes from './routes/votes.js';
 import photosRoutes from './routes/photos.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Configuration ESM pour les chemins statiques
 const __filename = fileURLToPath(import.meta.url);
@@ -86,10 +86,18 @@ export default app;
 
 // ---- Lancement du serveur (pas en mode test) ----
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`\n🚀 Serveur backend démarré sur http://localhost:${PORT}`);
     console.log(`🛠️  Environnement : ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔑 Supabase Configuré : ${process.env.SUPABASE_URL ? 'OUI' : 'NON'}`);
     console.log(`🧠 AI Provider: ${process.env.AI_PROVIDER || 'NON DÉFINI'}`);
   });
+
+  // Arrêt propre pour éviter EADDRINUSE lors des redémarrages nodemon
+  const shutdown = () => {
+    server.closeAllConnections?.();
+    server.close(() => process.exit(0));
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT',  shutdown);
 }

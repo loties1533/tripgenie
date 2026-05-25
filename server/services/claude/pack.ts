@@ -124,26 +124,9 @@ export async function assemblePack({
     ${budgetTone}
     ${realVenuesContext}
 
-    Génère ce JSON (itinerary doit contenir EXACTEMENT ${nights} jours, max 7) :
-    {
-      "country": "Pays",
-      "airport_code": "IBZ",
-      "tagline": "Accroche percutante 5-7 mots",
-      "overview": "Description immersive 2-3 phrases",
-      "weather": {"temp": "22°C", "cond": "Soleil", "tip": "Conseil vestimentaire"},
-      "hotels": [
-        {"name": "Vrai nom hôtel connu", "loc": "Quartier précis", "hl": "Point fort unique"},
-        {"name": "Alternative connue", "loc": "Quartier", "hl": "Point fort"}
-      ],
-      "itinerary": [
-        {"day": 1, "title": "Titre évocateur", "am": "Lieu/activité nommé concrètement", "pm": "Restaurant ou club nommé concrètement", "plan_b": "Alternative si imprévu"}
-      ],
-      "activities": [
-        {"name": "NOM RÉEL EXACT (ex: Pacha Ibiza, Nobu Restaurant, location bateau SunSail)", "desc": "Max 60 chars — spécifique", "type": "bar|club|restaurant|activité|plage|spa|bateau", "plan_b": "Alternative concrète"}
-      ],
-      "tip1": "Conseil pratique local", "tip2": "Adresse food incontournable avec nom", "phrase": "Mot argot local", "phrase_tr": "Traduction"
-    }
-    ⚠️ RÈGLE ABSOLUE pour "activities" : nomme des VRAIS lieux connus (restaurants avec leur vrai nom, clubs avec leur vrai nom, compagnies de location bateau, spas réels). INTERDIT : "Gastronomie locale", "Découverte de ${dest}", "Expérience culturelle" — trop vague.`,
+    Génère ce JSON COMPACT (itinerary = 3 jours, activities = 3) :
+    {"country":"Pays","airport_code":"IBZ","tagline":"5-7 mots accrocheurs","overview":"1 phrase","weather":{"temp":"22°C","cond":"Soleil","tip":"Conseil"},"hotels":[{"name":"Vrai hôtel","loc":"Quartier","hl":"Point fort"},{"name":"Alternative","loc":"Quartier","hl":"Point fort"}],"itinerary":[{"day":1,"title":"Titre","am":"Activité réelle","pm":"Club/resto réel"},{"day":2,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"},{"day":3,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"}],"activities":[{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"}],"tip1":"Conseil","tip2":"Adresse food","phrase":"Mot local","phrase_tr":"Traduction"}
+    ⚠️ VRAIS noms uniquement. Pas de "Gastronomie locale" ou "Découverte de ${dest}".`,
     undefined,
     'pack'
   );
@@ -183,9 +166,9 @@ export async function assemblePack({
   // Code aéroport (fourni par le LLM, ex: IBZ, CDG, BKK...)
   const airportCode = t.airport_code?.toUpperCase() ?? 'XXX';
 
-  // Vols — prix sanity check : max 1800€/pers
+  // Vols — FlightSearchResult.price est DÉJÀ par personne (voir smartSearch prompt)
   const rawPrice       = flights?.[0]?.price ?? 0;
-  const pricePerPerson = rawPrice > 0 ? Math.round(rawPrice / (travelers || 1)) : 0;
+  const pricePerPerson = rawPrice > 0 ? rawPrice : 0; // pas de division, déjà /pers
   const priceCapped    = pricePerPerson > 1800 ? Math.round(budget * 0.15 / travelers) : pricePerPerson;
   const volPriceEst    = Math.round(budget * 0.15 / travelers);
 
@@ -248,7 +231,7 @@ export async function assemblePack({
   const activites = Math.round(budget * ratio.activites);
   const resto     = Math.round(budget * ratio.resto);
   const trans     = Math.round(budget * ratio.trans);
-  const divers    = budget - vols - heberg - activites - resto - trans;
+  const divers    = Math.max(0, budget - vols - heberg - activites - resto - trans);
 
   return {
     destination: dest,

@@ -46,17 +46,17 @@ export async function callClaude(systemPrompt: string, userPrompt: string): Prom
 
 const FREE_MODELS = [
   'openai/gpt-oss-20b:free',
-  'z-ai/glm-4.5-air:free',
-  'mistralai/mistral-7b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
   'google/gemma-3-27b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'mistralai/mistral-7b-instruct:free',
   'google/gemma-3-12b-it:free',
   'microsoft/phi-3-medium-128k-instruct:free',
   'qwen/qwen-2-7b-instruct:free',
   'nvidia/nemotron-nano-9b-v2:free',
-  'google/gemma-4-26b-a4b-it:free',
   'google/gemma-3-4b-it:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
   'liquid/lfm-2.5-1.2b-instruct:free',
+  'z-ai/glm-4.5-air:free', // ⚠️ Limite ~1240 chars output — en dernier recours uniquement
 ];
 
 interface OpenRouterResponse {

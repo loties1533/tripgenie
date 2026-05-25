@@ -34,12 +34,25 @@ export function parseJSON(raw: string): unknown {
     .replace(/```\s*/gi, '')
     .trim();
 
-  const start = str.indexOf('{');
+  // Trouver le début du JSON (objet ou tableau)
+  const startObj = str.indexOf('{');
+  const startArr = str.indexOf('[');
+  const start = startObj === -1 ? startArr
+              : startArr === -1 ? startObj
+              : Math.min(startObj, startArr);
   if (start !== -1) str = str.slice(start);
+
+  // Normaliser les newlines brutes dans les valeurs de string
+  // (certains modèles comme gpt-oss-20b injectent de vraies newlines à l'intérieur des strings)
+  str = str.replace(/[\r\n\t]+/g, ' ');
+
+  // Déterminer le délimiteur de fin selon le type de JSON
+  const isArray = str.startsWith('[');
+  const closeChar = isArray ? ']' : '}';
 
   const attempts = [
     str,
-    str.slice(0, str.lastIndexOf('}') + 1),
+    str.slice(0, str.lastIndexOf(closeChar) + 1),
     str.replace(/,(\s*[}\]])/g, '$1'),
   ];
 
@@ -47,8 +60,21 @@ export function parseJSON(raw: string): unknown {
     try { return JSON.parse(attempt); } catch { /* continue */ }
   }
 
+  // Tentative 4 : fermer les brackets/braces manquants
   try {
     let fixed = str;
+    fixed = fixed.replace(/,\s*$/, '');
+    const opens  = (fixed.match(/\[/g) ?? []).length - (fixed.match(/\]/g) ?? []).length;
+    const braces = (fixed.match(/\{/g) ?? []).length - (fixed.match(/\}/g) ?? []).length;
+    fixed += ']'.repeat(Math.max(0, opens)) + '}'.repeat(Math.max(0, braces));
+    return JSON.parse(fixed);
+  } catch { /* continue */ }
+
+  // Tentative 5 : supprimer le champ final incomplet puis fermer
+  try {
+    let fixed = str;
+    // Supprime le dernier champ tronqué : ,"key":"val_incomplete ou ,"key":{... ou ,"key":[...
+    fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*(?:"[^"]*|[^,}\]]+)?$/, '');
     fixed = fixed.replace(/,\s*$/, '');
     const opens  = (fixed.match(/\[/g) ?? []).length - (fixed.match(/\]/g) ?? []).length;
     const braces = (fixed.match(/\{/g) ?? []).length - (fixed.match(/\}/g) ?? []).length;

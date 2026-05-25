@@ -121,8 +121,18 @@ export async function chatModify({ currentPack, userMessage, mode }: ChatModifyP
     }
   }`;
 
-  const raw    = await callAI(`${systemPrompt}\n\nMessage de l'utilisateur : "${sanitizeInput(userMessage)}"`);
-  const result = parseJSON(raw) as ChatModifyResult;
-  if (result.chips) result.chips = normalizeChips(result.chips);
-  return result;
+  try {
+    const raw    = await callAI(`${systemPrompt}\n\nMessage de l'utilisateur : "${sanitizeInput(userMessage)}"`);
+    const result = parseJSON(raw) as ChatModifyResult;
+    if (result.chips) result.chips = normalizeChips(result.chips);
+    return result;
+  } catch (err) {
+    console.error('⚠️ ChatModify failed:', (err as Error).message);
+    return {
+      response:      "Je n'ai pas pu modifier le pack, réessaie avec une autre formulation.",
+      needs_full_regen: false,
+      modifications: {},
+      chips:         ['Réessayer', 'Modifier un hôtel', 'Changer une activité'],
+    };
+  }
 }

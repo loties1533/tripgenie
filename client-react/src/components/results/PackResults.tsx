@@ -243,8 +243,8 @@ function EventCard({ event, destination }: { event: any; destination: string }) 
     <div className="flex gap-3 p-3 glass rounded-xl">
       <div className="w-10 h-10 bg-coral/10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">🎭</div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-ink dark:text-parchment truncate">{event.name}</p>
-        <p className="text-xs text-muted mt-0.5">{event.date} · {event.venue}</p>
+        <p className="font-medium text-sm text-ink dark:text-parchment truncate">{event.title}</p>
+        <p className="text-xs text-muted mt-0.5">{event.start} · {event.venue}</p>
         {event.description && <p className="text-xs text-muted mt-1 line-clamp-2">{event.description}</p>}
         <a href={bookingUrl} target="_blank" rel="noopener noreferrer"
           className="inline-block mt-2 text-[10px] font-bold text-sage hover:underline">
@@ -341,7 +341,6 @@ export default function PackResults() {
     window.open(waUrl, '_blank')
   }
 
-  const [isBooking] = useState(false)
   const handleBooking = () => {
     toast.info('Paiement en ligne bientôt disponible. Contactez-nous pour réserver.')
   }
@@ -547,10 +546,9 @@ export default function PackResults() {
                 </button>
                 <button 
                   onClick={handleBooking}
-                  disabled={isBooking}
-                  className="bg-gold hover:bg-gold/80 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-glow-gold active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                  className="bg-gold hover:bg-gold/80 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-glow-gold active:scale-95 flex items-center gap-1.5"
                 >
-                  {isBooking ? 'Ouverture...' : '💳 Réserver'}
+                  💳 Réserver
                 </button>
               </div>
             </div>

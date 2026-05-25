@@ -53,13 +53,20 @@ export async function suggestDestinations({
   try {
     const intStr  = interests?.join(', ') ?? 'voyage';
     const moodStr = moods?.join(', ')     ?? '';
-    const month   = departure
-      ? new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date(departure))
+    const depDate = departure ? new Date(departure) : null;
+    const month   = depDate && !isNaN(depDate.getTime())
+      ? new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(depDate)
       : 'actuellement';
 
     let query = `Meilleures destinations ${mode} pour ${profile} en ${month}. `;
     if (mode === 'party') {
-      query += `Focus sur la vie nocturne, clubs underground, festivals, ambiance électrique et branchée. `;
+      query += `Destinations reconnues mondialement pour la fête : beach clubs, clubs de nuit, festivals, vie nocturne intense. Exemples : Ibiza, Mykonos, Tulum, Miami, Bangkok, Phuket, Bali, Barcelone, Monaco, Hvar, Zrce, Marbella, Rimini, Chypre, Dubaï. `;
+    } else if (mode === 'luxury') {
+      query += `Destinations ultra-luxe : Saint-Tropez, Monaco, Maldives, Dubaï, Bora Bora, Santorini, Amalfi, Positano, Capri. `;
+    } else if (mode === 'relax') {
+      query += `Destinations calmes et ressourçantes : Bali, Thaïlande, Îles grecques, Canaries, Madère, Açores, Corse, Sardaigne. `;
+    } else if (mode === 'student') {
+      query += `Destinations pas chères et animées : Prague, Budapest, Lisbonne, Porto, Bangkok, Hanoï, Cracovie, Bucarest. `;
     }
     query += `Budget total ${budget}€ pour ${travelers} personnes. Intérêts: ${intStr} ${moodStr}.`;
     if (discoveryMode === 'hidden_gem') {
@@ -82,7 +89,7 @@ export async function suggestDestinations({
       BUDGET TOTAL : ${budget}€ pour ${travelers ?? 2} personne(s) = ${budgetPerPers}€/personne.
 
       ${budgetTier}
-      STRATÉGIE : varie les continents, évite de proposer 3 destinations du même pays ou de la même région.
+      STRATÉGIE : propose des destinations RECONNUES pour ce mode de voyage. Pour party = vraies destinations fête (beach clubs, clubs, festivals). Varie les continents mais reste cohérent avec le mode.
 
       FORMAT JSON STRICT :
       {"destinations": [{"city": "Nom", "country": "Pays", "tagline": "Accroche courte", "reason": "Raison MAX 8 mots", "budget_estimate": "~${budgetPerPers}€/pers", "match_score": 95}]}`,

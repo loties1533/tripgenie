@@ -4,7 +4,7 @@
  */
 
 import { searchWeb } from './tools/webSearch.js';
-import { callAI } from './claude/index.js';
+import { callAI, parseJSON } from './claude/index.js';
 import type { TravelMode, FlightLinks, HotelLinks, ActivityLinks } from '../lib/types.js';
 
 function encode(str: string): string {
@@ -123,7 +123,7 @@ Retourne UNIQUEMENT ce JSON :
 }`;
 
     const resRaw = await callAI(prompt, undefined, 'pack');
-    const data = JSON.parse(resRaw.replace(/```json/g, '').replace(/```/g, '').trim()) as Omit<FlightSearchResult, 'links'>;
+    const data = parseJSON(resRaw) as Omit<FlightSearchResult, 'links'>;
     return { ...data, links: flightLinks(origin, destination, departure) };
   } catch (err) {
     console.error('SmartFlightSearch error:', (err as Error).message);
@@ -234,8 +234,8 @@ Extrais les 3 meilleurs événements. Retourne UNIQUEMENT un tableau JSON :
 ]`;
 
     const resRaw = await callAI(prompt, undefined, 'destinations');
-    const parsed = JSON.parse(resRaw.replace(/```json/g, '').replace(/```/g, '').trim()) as Omit<EventSearchResult, 'links'>[];
-    const events = Array.isArray(parsed) ? parsed : [];
+    const parsed = parseJSON(resRaw);
+    const events: Omit<EventSearchResult, 'links'>[] = Array.isArray(parsed) ? parsed : [];
 
     return events.map(e => ({ ...e, links: activityLinks(e.title, location) }));
   } catch (err) {
@@ -270,8 +270,8 @@ Extrais les 2 meilleurs hôtels. Retourne UNIQUEMENT un tableau JSON :
 ]`;
 
     const resRaw = await callAI(prompt, undefined, 'destinations');
-    const parsed = JSON.parse(resRaw.replace(/```json/g, '').replace(/```/g, '').trim()) as Omit<HotelSearchResult, 'links'>[];
-    const hotels = Array.isArray(parsed) ? parsed : [];
+    const parsed = parseJSON(resRaw);
+    const hotels: Omit<HotelSearchResult, 'links'>[] = Array.isArray(parsed) ? parsed : [];
 
     return hotels.map(h => ({ ...h, links: hotelLinks(h.name, location) }));
   } catch (err) {

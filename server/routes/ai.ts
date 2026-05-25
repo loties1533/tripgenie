@@ -155,16 +155,21 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       PromiseSettledResult<SpotifyPlaylist | null>,
       PromiseSettledResult<FoursquareVenue[]>
     ];
+    // Photo et météo : rapides (Wikipedia <1s, Open-Meteo <2s) → séparées du batch Tavily
+    // pour ne pas être tuées par le timeout de 15s si Tavily est lent
+    const photoPromise   = getDestinationPhoto(destination).catch(() => null);
+    const weatherPromise = getRealWeather(destination, departure).catch(() => null);
+
     try {
       results = await withTimeout(Promise.allSettled([
         smartFlightSearch({ origin, destination, departure, return_date }),
         smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
         smartHotelSearch({ location: destination, mode }),
-        getRealWeather(destination, departure),
-        getDestinationPhoto(destination),
+        Promise.resolve(null),  // placeholder météo (fetchée séparément)
+        Promise.resolve(null),  // placeholder photo (fetchée séparément)
         getSpotifyPlaylist(destination, mode as TravelMode),
         getFoursquareVenues(destination, mode as TravelMode)
-      ]), 15000);
+      ]), 25000);
     } catch (err) {
       console.warn('⚠️ Web search timeout or error, falling back to pure AI generation.');
       results = [
@@ -174,6 +179,10 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
         { status: 'rejected', reason: 'timeout' }
       ];
     }
+
+    // On attend photo et météo indépendamment du timeout Tavily
+    const realPhoto   = await photoPromise;
+    const realWeather = await weatherPromise;
 
     const aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,7 +196,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
         outbound: {
           from: origin, to: destination, airline: aiFlight.airline,
           departure_time: aiFlight.outbound_time, arrival_time: aiFlight.arrival_time,
-          duration_min: parseInt(aiFlight.duration) * 60 || 180,
+          duration_min: (() => { const m = aiFlight.duration?.match(/(\d+)h(\d+)?/); return m ? (parseInt(m[1]||'0')*60 + parseInt(m[2]||'0')) : 180; })(),
           stops: aiFlight.stops === 'Direct' ? 0 : 1
         },
         return: {
@@ -200,8 +209,6 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
 
     const events          = results[1].status === 'fulfilled' ? results[1].value : [];
     const realHotels      = results[2].status === 'fulfilled' ? results[2].value : [];
-    const realWeather     = results[3].status === 'fulfilled' ? results[3].value : null;
-    const realPhoto       = results[4].status === 'fulfilled' ? results[4].value : null;
     const spotifyPlaylist = results[5].status === 'fulfilled' ? results[5].value : null;
     const fsqVenues       = results[6].status === 'fulfilled' ? results[6].value : [];
     if (results[1].status === 'rejected') console.warn('Events API fallback:', results[1].reason);

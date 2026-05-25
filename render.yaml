@@ -39,3 +39,17 @@ services:
       # --- Eventbrite (événements réels — optionnel) ---
       - key: EVENTBRITE_API_KEY
         sync: false
+      # --- CORS (frontend URL en production) ---
+      - key: CLIENT_URL
+        value: https://tripgenie.onrender.com
+      # --- Yelp (lieux locaux — optionnel) ---
+      - key: YELP_API_KEY
+        sync: false
+      # --- OpenTripMap (POI — optionnel) ---
+      - key: OPENTRIPMAP_API_KEY
+        sync: false
+      # --- Spotify (playlist — optionnel) ---
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false

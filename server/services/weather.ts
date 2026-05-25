@@ -153,10 +153,10 @@ export async function getRealWeather(city: string, departureDate?: string): Prom
     if (daysUntil <= 0) {
       return await getCurrentWeather(lat, lon);
     } else if (daysUntil <= 16) {
-      console.error(`🌤️  Météo forecast J+${daysUntil} pour ${city}`);
+      console.log(`🌤️  Météo forecast J+${daysUntil} pour ${city}`);
       return await getForecastWeather(lat, lon, departureDate.slice(0, 10));
     } else {
-      console.error(`🌡️  Météo climatique (J+${daysUntil}) pour ${city}`);
+      console.log(`🌡️  Météo climatique (J+${daysUntil}) pour ${city}`);
       return await getClimateWeather(lat, lon, departureDate.slice(0, 10));
     }
   } catch (err) {
