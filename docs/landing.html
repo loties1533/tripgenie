@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TripGenie — AI Travel Pack Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple: #6B4FE8;
+      --purple-light: #8B6FF0;
+      --purple-dim: #1a1035;
+      --teal: #0BA88A;
+      --orange: #E8680A;
+      --blue: #2980D9;
+      --bg: #0D0B1A;
+      --card: #141225;
+      --border: #2a2545;
+      --text: #E8E6F0;
+      --muted: #7B7898;
+      --white: #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px; height: 64px;
+      background: rgba(13,11,26,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-weight: 800; font-size: 1.2rem; color: var(--white); display: flex; align-items: center; gap: 8px; }
+    .nav-logo span { color: var(--purple-light); }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--white); }
+    .nav-cta {
+      background: var(--purple); color: var(--white);
+      padding: 8px 20px; border-radius: 8px; text-decoration: none;
+      font-size: 0.9rem; font-weight: 600; transition: background .2s;
+    }
+    .nav-cta:hover { background: var(--purple-light); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 120px 24px 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(107,79,232,0.25) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(107,79,232,0.15); border: 1px solid rgba(107,79,232,0.4);
+      padding: 6px 16px; border-radius: 100px; font-size: 0.8rem; color: var(--purple-light);
+      margin-bottom: 28px; font-weight: 500;
+    }
+    .hero-badge::before { content: ''; width: 6px; height: 6px; background: var(--purple-light); border-radius: 50%; }
+    .hero h1 {
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 800; line-height: 1.1;
+      background: linear-gradient(135deg, #fff 0%, var(--purple-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 24px;
+    }
+    .hero p {
+      font-size: 1.2rem; color: var(--muted); max-width: 600px; margin: 0 auto 40px;
+    }
+    .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      background: var(--purple); color: var(--white);
+      padding: 14px 32px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 1rem; transition: all .2s;
+      box-shadow: 0 4px 24px rgba(107,79,232,0.4);
+    }
+    .btn-primary:hover { background: var(--purple-light); transform: translateY(-2px); }
+    .btn-secondary {
+      background: transparent; color: var(--text);
+      padding: 14px 32px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 1rem; border: 1px solid var(--border);
+      transition: all .2s;
+    }
+    .btn-secondary:hover { border-color: var(--purple); color: var(--purple-light); }
+
+    .hero-stats {
+      display: flex; gap: 48px; margin-top: 72px; flex-wrap: wrap; justify-content: center;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--white); }
+    .stat-value span { color: var(--purple-light); }
+    .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── SECTIONS ── */
+    section { padding: 96px 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px; color: var(--purple-light); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; color: var(--white);
+      margin-bottom: 16px;
+    }
+    .section-sub { font-size: 1.05rem; color: var(--muted); max-width: 600px; margin-bottom: 56px; }
+
+    /* ── PIPELINE ── */
+    .pipeline-bg {
+      background: linear-gradient(180deg, var(--bg) 0%, rgba(107,79,232,0.05) 50%, var(--bg) 100%);
+    }
+    .pipeline {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px 40px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+      color: #a89fd8; line-height: 2; overflow-x: auto;
+    }
+    .pipeline .comment { color: var(--muted); }
+    .pipeline .arrow { color: var(--purple-light); }
+    .pipeline .fn { color: var(--teal); }
+    .pipeline .kw { color: var(--orange); }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+    }
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover { border-color: var(--purple); transform: translateY(-4px); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 16px;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── STACK ── */
+    .stack-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;
+    }
+    .stack-group { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+    .stack-group h3 {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--purple-light); margin-bottom: 16px;
+    }
+    .stack-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    }
+    .stack-item:last-child { border-bottom: none; }
+    .stack-item .name { font-weight: 600; color: var(--white); }
+    .stack-item .role { color: var(--muted); font-size: 0.82rem; }
+
+    /* ── SECURITY ── */
+    .security-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;
+    }
+    .security-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 24px;
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .security-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+    .security-item h4 { font-size: 0.92rem; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+    .security-item p { font-size: 0.82rem; color: var(--muted); }
+
+    /* ── DIAGRAMS ── */
+    .diagram-block { margin-bottom: 56px; }
+    .diagram-block h3 {
+      font-size: 1.1rem; font-weight: 700; color: var(--white);
+      margin-bottom: 8px;
+    }
+    .diagram-block p { font-size: 0.9rem; color: var(--muted); margin-bottom: 20px; }
+    .diagram-block img {
+      width: 100%; border-radius: 12px; border: 1px solid var(--border);
+      background: white; padding: 16px;
+    }
+    .diagrams-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 700px) { .diagrams-row { grid-template-columns: 1fr; } }
+
+    /* ── TESTS ── */
+    .tests-bg { background: rgba(107,79,232,0.04); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .tests-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
+    @media (max-width: 700px) { .tests-grid { grid-template-columns: 1fr; } }
+    .test-result {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+      line-height: 2;
+    }
+    .test-pass { color: var(--teal); }
+    .test-total { color: var(--white); font-weight: 700; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+    .test-file { color: var(--muted); }
+    .test-count { color: var(--purple-light); }
+
+    .tests-info h3 { font-size: 1.5rem; font-weight: 800; color: var(--white); margin-bottom: 16px; }
+    .tests-info p { color: var(--muted); margin-bottom: 12px; font-size: 0.95rem; }
+    .tests-info ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .tests-info ul li { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--muted); }
+    .tests-info ul li::before { content: '✓'; color: var(--teal); font-weight: 700; }
+
+    /* ── FALLBACK ── */
+    .fallback-chain {
+      display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px 32px; margin-top: 32px;
+    }
+    .fallback-step {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 16px 24px; flex: 1; min-width: 120px;
+    }
+    .fallback-step .icon { font-size: 1.6rem; }
+    .fallback-step .label { font-size: 0.8rem; font-weight: 700; color: var(--white); }
+    .fallback-step .sub { font-size: 0.72rem; color: var(--muted); text-align: center; }
+    .fallback-arrow { color: var(--border); font-size: 1.4rem; padding: 0 4px; }
+
+    /* ── DB ── */
+    .db-tables {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+    }
+    .db-table {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .db-table-header {
+      background: var(--purple); padding: 12px 20px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      color: var(--white); font-size: 0.9rem;
+    }
+    .db-table-body { padding: 8px 0; }
+    .db-field {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    }
+    .db-field:hover { background: rgba(107,79,232,0.08); }
+    .db-field .fname { color: var(--text); }
+    .db-field .ftype { color: var(--purple-light); }
+    .db-field .ftag {
+      font-size: 0.68rem; background: rgba(107,79,232,0.2);
+      color: var(--purple-light); padding: 2px 7px; border-radius: 4px;
+    }
+    .db-field .ftag.fk { background: rgba(11,168,138,0.15); color: var(--teal); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 40px 24px;
+      text-align: center; color: var(--muted); font-size: 0.88rem;
+    }
+    footer strong { color: var(--white); }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--border); max-width: 1100px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">✈️ Trip<span>Genie</span></div>
+  <div class="nav-links">
+    <a href="#features">Fonctionnalités</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#database">Base de données</a>
+    <a href="#tests">Tests</a>
+    <a href="#stack">Stack</a>
+  </div>
+  <a href="https://tripgenie.onrender.com" class="nav-cta" target="_blank">Demo Live →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Projet solo — Formation Holberton School</div>
+  <h1>TripGenie</h1>
+  <p>Décris ton voyage en langage naturel. L'IA génère un pack complet clé en main — vols, hôtels, itinéraire, budget — en moins de 30 secondes.</p>
+  <div class="hero-buttons">
+    <a href="https://tripgenie.onrender.com" class="btn-primary" target="_blank">Voir la démo live</a>
+    <a href="https://github.com/loties1533/tripgenie" class="btn-secondary" target="_blank">GitHub →</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-value">77<span>+</span></div>
+      <div class="stat-label">Tests automatisés</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">5<span></span></div>
+      <div class="stat-label">Modes de voyage</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">3<span></span></div>
+      <div class="stat-label">LLM en fallback</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">0<span>s</span></div>
+      <div class="stat-label">Dépendance unique</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Fonctionnalités</div>
+    <h2 class="section-title">Tout en une seule génération</h2>
+    <p class="section-sub">Un pipeline IA orchestré côté serveur qui agrège vols réels, météo, hôtels et génère un pack structuré et scoré.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(107,79,232,0.15)">🤖</div>
+        <h3>Onboarding conversationnel</h3>
+        <p>L'IA pose des questions naturelles pour extraire destination, budget, dates et style. Pas de formulaire complexe.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(11,168,138,0.15)">🔍</div>
+        <h3>Données temps réel</h3>
+        <p>Vols, hôtels et événements recherchés via Tavily (web scraping IA) — pas d'hallucination sur les prix.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(232,104,10,0.15)">🎛️</div>
+        <h3>5 modes de voyage</h3>
+        <p>party · luxury · student · group · relax — chaque mode adapte le prompt, le scoring et le budget.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(41,128,217,0.15)">💬</div>
+        <h3>Chat de modification</h3>
+        <p>Modifie le pack après génération en langage naturel. Seule partie véritablement agentique du pipeline.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(107,79,232,0.15)">📊</div>
+        <h3>Score déterministe 0–1</h3>
+        <p>Algorithme pur sans IA. Pondération différente selon le mode. Même entrée = même score à chaque appel.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(11,168,138,0.15)">🔗</div>
+        <h3>Partage & vote collectif</h3>
+        <p>Lien public par voyage. En mode groupe, chaque membre vote pour construire un consensus.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ARCHITECTURE -->
+<section id="architecture" class="pipeline-bg">
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Pipeline IA orchestré</h2>
+    <p class="section-sub">Les étapes sont prédéfinies et s'enchaînent toujours dans le même ordre. Ce n'est pas un agent autonome.</p>
+
+    <div class="diagram-block">
+      <img src="./assets/diagrams/architecture.png" alt="Architecture 3 couches" />
+    </div>
+
+    <div class="pipeline">
+<span class="comment">// POST /api/ai/generate</span>
+│
+├─ <span class="kw">1.</span> Validation <span class="fn">Zod</span>               <span class="comment">← inputs validés avant tout</span>
+│
+├─ <span class="kw">2.</span> <span class="fn">Promise.allSettled</span>([        <span class="comment">← 5 recherches en parallèle</span>
+│     <span class="fn">smartFlightSearch</span>(),       <span class="comment">← Tavily : vols réels</span>
+│     <span class="fn">smartEventsSearch</span>(),       <span class="comment">← Tavily : événements locaux</span>
+│     <span class="fn">smartHotelSearch</span>(),        <span class="comment">← Tavily : hôtels</span>
+│     <span class="fn">getRealWeather</span>(),          <span class="comment">← OpenWeatherMap</span>
+│     <span class="fn">getDestinationPhoto</span>()      <span class="comment">← Unsplash (proxy backend)</span>
+│   ])
+│
+├─ <span class="kw">3.</span> <span class="fn">assemblePack</span>()            <span class="comment">← LLM + données réelles injectées</span>
+│     Gemini <span class="arrow">→</span> Claude <span class="arrow">→</span> OpenRouter  <span class="comment">← fallback automatique</span>
+│
+├─ <span class="kw">4.</span> <span class="fn">scorepack</span>()               <span class="comment">← algorithme déterministe 0–1</span>
+│
+└─ <span class="kw">5.</span> Sauvegarde Supabase       <span class="comment">← si utilisateur connecté</span>
+    </div>
+
+    <div style="margin-top: 48px;">
+      <h3 style="color:var(--white); font-size:1.1rem; margin-bottom:12px;">Chaîne de résilience LLM</h3>
+      <p style="color:var(--muted); font-size:0.9rem; margin-bottom:20px;">Si un provider échoue, le suivant prend le relais automatiquement. Les mocks statiques garantissent que l'app ne crashe jamais.</p>
+      <div class="fallback-chain">
+        <div class="fallback-step">
+          <div class="icon">🟡</div>
+          <div class="label">Gemini</div>
+          <div class="sub">LLM principal<br>JSON fiable</div>
+        </div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step">
+          <div class="icon">🟠</div>
+          <div class="label">Claude</div>
+          <div class="sub">LLM secondaire<br>Anthropic</div>
+        </div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step">
+          <div class="icon">🔵</div>
+          <div class="label">OpenRouter</div>
+          <div class="sub">12 modèles<br>gratuits</div>
+        </div>
+        <div class="fallback-arrow">→</div>
+        <div class="fallback-step">
+          <div class="icon">⚫</div>
+          <div class="label">Mocks</div>
+          <div class="sub">Données JSON<br>hardcodées</div>
+        </div>
+      </div>
+      <div style="margin-top:24px;">
+        <img src="./assets/diagrams/llm_fallback.png" alt="Fallback LLM" style="width:100%;border-radius:12px;border:1px solid var(--border);background:white;padding:16px;" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- DATABASE -->
+<section id="database">
+  <div class="container">
+    <div class="section-label">Base de données</div>
+    <h2 class="section-title">3 tables PostgreSQL</h2>
+    <p class="section-sub">Schéma conçu manuellement. Aucun ORM — requêtes paramétrées via le client Supabase JS. Supabase Auth non utilisé — JWT custom.</p>
+
+    <div class="db-tables">
+      <div class="db-table">
+        <div class="db-table-header">USERS</div>
+        <div class="db-table-body">
+          <div class="db-field"><span class="fname">id</span><span class="ftype">UUID</span><span class="ftag">PK</span></div>
+          <div class="db-field"><span class="fname">email</span><span class="ftype">TEXT</span><span class="ftag">UNIQUE</span></div>
+          <div class="db-field"><span class="fname">password</span><span class="ftype">TEXT</span><span class="ftag" style="background:rgba(214,48,85,0.15);color:#E8698A">bcrypt</span></div>
+          <div class="db-field"><span class="fname">name</span><span class="ftype">TEXT</span></div>
+          <div class="db-field"><span class="fname">created_at</span><span class="ftype">TIMESTAMPTZ</span></div>
+        </div>
+      </div>
+      <div class="db-table">
+        <div class="db-table-header">TRIPS</div>
+        <div class="db-table-body">
+          <div class="db-field"><span class="fname">id</span><span class="ftype">UUID</span><span class="ftag">PK</span></div>
+          <div class="db-field"><span class="fname">user_id</span><span class="ftype">UUID</span><span class="ftag fk">FK → users</span></div>
+          <div class="db-field"><span class="fname">destination</span><span class="ftype">TEXT</span></div>
+          <div class="db-field"><span class="fname">mode</span><span class="ftype">TEXT</span></div>
+          <div class="db-field"><span class="fname">pack_data</span><span class="ftype">JSONB</span><span class="ftag" style="background:rgba(232,104,10,0.15);color:#E8680A">variable</span></div>
+          <div class="db-field"><span class="fname">score</span><span class="ftype">FLOAT</span><span class="ftag" style="background:rgba(11,168,138,0.15);color:var(--teal)">0–1</span></div>
+          <div class="db-field"><span class="fname">status</span><span class="ftype">TEXT</span></div>
+        </div>
+      </div>
+      <div class="db-table">
+        <div class="db-table-header">TRIP_VOTES</div>
+        <div class="db-table-body">
+          <div class="db-field"><span class="fname">id</span><span class="ftype">UUID</span><span class="ftag">PK</span></div>
+          <div class="db-field"><span class="fname">trip_id</span><span class="ftype">UUID</span><span class="ftag fk">FK → trips</span></div>
+          <div class="db-field"><span class="fname">item_id</span><span class="ftype">TEXT</span></div>
+          <div class="db-field"><span class="fname">voter_name</span><span class="ftype">TEXT</span></div>
+          <div class="db-field"><span class="fname">vote_type</span><span class="ftype">BOOLEAN</span></div>
+          <div class="db-field"><span class="fname">created_at</span><span class="ftype">TIMESTAMPTZ</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:40px;">
+      <img src="./assets/diagrams/erd.png" alt="ERD" style="max-width:500px;width:100%;border-radius:12px;border:1px solid var(--border);background:white;padding:16px;" />
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SEQUENCES -->
+<section>
+  <div class="container">
+    <div class="section-label">Diagrammes de séquence</div>
+    <h2 class="section-title">Interactions clés</h2>
+    <p class="section-sub">Les deux flux principaux de l'application documentés étape par étape.</p>
+    <div class="diagrams-row">
+      <div class="diagram-block">
+        <h3>Génération de pack</h3>
+        <p>De la requête utilisateur jusqu'au pack JSON scoré et sauvegardé.</p>
+        <img src="./assets/diagrams/seq_generate.png" alt="Séquence génération" />
+      </div>
+      <div class="diagram-block">
+        <h3>Authentification JWT</h3>
+        <p>Login → cookie httpOnly → validation middleware sur chaque route protégée.</p>
+        <img src="./assets/diagrams/seq_auth.png" alt="Séquence auth" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SCORING -->
+<section style="padding-top:64px;padding-bottom:64px;">
+  <div class="container">
+    <div class="section-label">Scoring</div>
+    <h2 class="section-title">Algorithme déterministe</h2>
+    <p class="section-sub">100% calcul pur — zéro IA. Même entrée → même sortie. Pondération différente selon le mode de voyage.</p>
+    <img src="./assets/diagrams/scoring.png" alt="Scoring" style="width:100%;border-radius:12px;border:1px solid var(--border);background:white;padding:16px;" />
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TESTS -->
+<section id="tests" class="tests-bg">
+  <div class="container">
+    <div class="section-label">Qualité & Tests</div>
+    <h2 class="section-title">77 tests automatisés</h2>
+    <div class="tests-grid">
+      <div class="test-result">
+        <div><span class="test-pass">✓</span> <span class="test-file">api.test.ts</span>       <span class="test-count">40 tests</span></div>
+        <div><span class="test-pass">✓</span> <span class="test-file">golden_path.test.ts</span> <span class="test-count">15 tests</span></div>
+        <div><span class="test-pass">✓</span> <span class="test-file">scoring.test.ts</span>    <span class="test-count">12 tests</span></div>
+        <div><span class="test-pass">✓</span> <span class="test-file">middleware.test.ts</span> <span class="test-count">10 tests</span></div>
+        <div class="test-total">77 tests passed in 0.4s</div>
+      </div>
+      <div class="tests-info">
+        <h3>Stratégie de test</h3>
+        <p>Tous les services externes sont mockés — les tests tournent sans aucune clé API.</p>
+        <ul>
+          <li>Routes HTTP : auth, trips, votes, rate limiting, CORS</li>
+          <li>Flux end-to-end : génération complète, chat, photos</li>
+          <li>Scoring sur tous les modes (luxury, party, student…)</li>
+          <li>JWT : token absent, expiré, invalide, malformé</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SECURITY -->
+<section>
+  <div class="container">
+    <div class="section-label">Sécurité</div>
+    <h2 class="section-title">Défense en profondeur</h2>
+    <p class="section-sub">Chaque vecteur d'attaque est adressé à son niveau optimal.</p>
+    <div class="security-grid">
+      <div class="security-item">
+        <div class="security-icon">🍪</div>
+        <div>
+          <h4>Cookie httpOnly</h4>
+          <p>JWT inaccessible depuis JavaScript → XSS ne peut pas voler le token.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🔒</div>
+        <div>
+          <h4>sameSite: strict</h4>
+          <p>Cookie non envoyé sur requêtes cross-site → protection CSRF.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">✅</div>
+        <div>
+          <h4>Validation Zod</h4>
+          <p>Chaque endpoint valide ses inputs avant tout traitement. Injection impossible.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🛡️</div>
+        <div>
+          <h4>Isolation SQL</h4>
+          <p><code>.eq('user_id', req.user.id)</code> sur chaque requête. Aucun accès inter-utilisateurs.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">⚡</div>
+        <div>
+          <h4>Rate Limiting</h4>
+          <p>10 req/h sur les routes IA, 100 req/15min global. Protection DDoS par IP.</p>
+        </div>
+      </div>
+      <div class="security-item">
+        <div class="security-icon">🔑</div>
+        <div>
+          <h4>Clés API côté serveur</h4>
+          <p>Proxy backend pour Unsplash, variables d'env pour les LLM. Jamais dans le client.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- STACK -->
+<section id="stack">
+  <div class="container">
+    <div class="section-label">Stack technique</div>
+    <h2 class="section-title">Technologies choisies</h2>
+    <p class="section-sub">Full-stack TypeScript — un seul langage du frontend au backend jusqu'aux tests.</p>
+    <div class="stack-grid">
+      <div class="stack-group">
+        <h3>Frontend</h3>
+        <div class="stack-item"><span class="name">React 18 + Vite</span><span class="role">UI + HMR</span></div>
+        <div class="stack-item"><span class="name">TypeScript</span><span class="role">Typage statique</span></div>
+        <div class="stack-item"><span class="name">Zustand v5</span><span class="role">State global</span></div>
+        <div class="stack-item"><span class="name">React Query v5</span><span class="role">Cache + fetch</span></div>
+        <div class="stack-item"><span class="name">Tailwind CSS</span><span class="role">Styles</span></div>
+        <div class="stack-item"><span class="name">Framer Motion</span><span class="role">Animations</span></div>
+        <div class="stack-item"><span class="name">Leaflet</span><span class="role">Carte interactive</span></div>
+      </div>
+      <div class="stack-group">
+        <h3>Backend</h3>
+        <div class="stack-item"><span class="name">Node.js + Express 4</span><span class="role">Runtime + HTTP</span></div>
+        <div class="stack-item"><span class="name">TypeScript</span><span class="role">Typage statique</span></div>
+        <div class="stack-item"><span class="name">Zod v4</span><span class="role">Validation</span></div>
+        <div class="stack-item"><span class="name">JWT + bcryptjs</span><span class="role">Auth + hash</span></div>
+        <div class="stack-item"><span class="name">Helmet + CORS</span><span class="role">Sécurité HTTP</span></div>
+        <div class="stack-item"><span class="name">express-rate-limit</span><span class="role">Anti-DDoS</span></div>
+        <div class="stack-item"><span class="name">Vitest + Supertest</span><span class="role">Tests</span></div>
+      </div>
+      <div class="stack-group">
+        <h3>IA & Services</h3>
+        <div class="stack-item"><span class="name">Google Gemini</span><span class="role">LLM principal</span></div>
+        <div class="stack-item"><span class="name">Anthropic Claude</span><span class="role">LLM fallback</span></div>
+        <div class="stack-item"><span class="name">OpenRouter</span><span class="role">LLM fallback #3</span></div>
+        <div class="stack-item"><span class="name">Tavily</span><span class="role">Recherche web</span></div>
+        <div class="stack-item"><span class="name">OpenWeatherMap</span><span class="role">Météo</span></div>
+        <div class="stack-item"><span class="name">Unsplash</span><span class="role">Photos (proxy)</span></div>
+        <div class="stack-item"><span class="name">Supabase</span><span class="role">PostgreSQL host</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FOOTER -->
+<footer>
+  <p><strong>TripGenie</strong> — Projet solo · Formation Holberton School · Mai 2026</p>
+  <p style="margin-top:8px;">
+    <a href="https://tripgenie.onrender.com" target="_blank" style="color:var(--purple-light);text-decoration:none;">Demo Live</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/loties1533/tripgenie" target="_blank" style="color:var(--purple-light);text-decoration:none;">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="./DIAGRAMS_VISUAL.md" style="color:var(--purple-light);text-decoration:none;">Diagrammes</a>
+  </p>
+</footer>
+
+</body>
+</html>
