@@ -45,7 +45,7 @@ router.get('/share/:id', async (req: Request, res: Response, next: NextFunction)
 
     const { data: trip, error } = await supabase
       .from('trips')
-      .select('*')
+      .select('id, title, destination, pack_data, score, mode, departure, return_date, travelers')
       .eq('id', req.params.id)
       .single();
 
