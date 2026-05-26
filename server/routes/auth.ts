@@ -8,7 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import supabase from '../db/supabase.js';
+import pool from '../db/pool.js';
 
 // Schemas de validation
 const registerSchema = z.object({
@@ -41,19 +41,18 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
     }
     const { email, password, name } = parsed.data;
 
-    if (!supabase) {
+    if (!pool) {
       res.status(500).json({ error: 'Base de données non configurée.' });
       return;
     }
 
     // 1. Vérifier si l'utilisateur existe déjà
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM users WHERE email = $1 LIMIT 1',
+      [email]
+    );
 
-    if (existingUser) {
+    if (existing.length > 0) {
       res.status(400).json({ error: 'Cet email est déjà utilisé' });
       return;
     }
@@ -63,13 +62,13 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
     const password_hash = await bcrypt.hash(password, salt);
 
     // 3. Insérer l'utilisateur
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert({ email, password: password_hash, name })
-      .select('id, email, name, created_at')
-      .single();
-
-    if (error || !user) throw error;
+    const { rows } = await pool.query(
+      `INSERT INTO users (email, password, name)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, name, created_at`,
+      [email, password_hash, name || null]
+    );
+    const user = rows[0];
 
     // 4. Générer le JWT
     const token = jwt.sign(
@@ -80,7 +79,6 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
 
     // 5. Envoyer le cookie
     res.cookie('tg_token', token, COOKIE_OPTIONS);
-    
     res.status(201).json({ user, token });
 
   } catch (err) {
@@ -99,19 +97,19 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
     }
     const { email, password } = parsed.data;
 
-    if (!supabase) {
+    if (!pool) {
       res.status(500).json({ error: 'Base de données non configurée.' });
       return;
     }
 
     // 1. Chercher l'utilisateur avec son hash
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, name, password, created_at')
-      .eq('email', email)
-      .single();
+    const { rows } = await pool.query(
+      'SELECT id, email, name, password, created_at FROM users WHERE email = $1 LIMIT 1',
+      [email]
+    );
 
-    if (error || !user) {
+    const user = rows[0];
+    if (!user) {
       res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       return;
     }
@@ -133,7 +131,6 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
     // 4. Set Cookie & Response
     res.cookie('tg_token', token, COOKIE_OPTIONS);
 
-    // On enlève le hash de la réponse
     const { password: _pw, ...userWithoutPassword } = user;
     res.json({ user: userWithoutPassword, token });
 
@@ -159,19 +156,19 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction): Promi
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
-    
-    if (!supabase) {
+
+    if (!pool) {
       res.status(500).json({ error: 'Base de données non configurée.' });
       return;
     }
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, name, avatar_url, created_at')
-      .eq('id', decoded.id)
-      .single();
+    const { rows } = await pool.query(
+      'SELECT id, email, name, created_at FROM users WHERE id = $1 LIMIT 1',
+      [decoded.id]
+    );
 
-    if (error || !user) {
+    const user = rows[0];
+    if (!user) {
       res.status(401).json({ error: 'Utilisateur introuvable' });
       return;
     }

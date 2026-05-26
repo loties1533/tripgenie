@@ -16,7 +16,7 @@ import { getDestinationPhoto } from '../services/photo.js';
 import { getSpotifyPlaylist } from '../services/spotify.js';
 import { getFoursquareVenues } from '../services/foursquare.js';
 import type { FoursquareVenue } from '../services/foursquare.js';
-import supabase from '../db/supabase.js';
+import pool from '../db/pool.js';
 import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
 import { AppError } from '../lib/AppError.js';
 import type { TravelMode } from '../lib/types.js';
@@ -260,27 +260,27 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
 
     // Sauvegarde si user connecté
     let tripId = null;
-    if (req.user && supabase) {
-      const { data: trip } = await supabase
-        .from('trips')
-        .insert({
-          user_id:    req.user.id,
-          title:      `Voyage à ${destination}`,
+    if (req.user && pool) {
+      const { rows } = await pool.query(
+        `INSERT INTO trips
+           (user_id, title, destination, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft')
+         RETURNING id`,
+        [
+          req.user.id,
+          `Voyage à ${destination}`,
           destination,
-          origin,
-          departure,
-          return_date,
+          origin || null,
+          departure || null,
+          return_date || null,
           travelers,
-          budget:     String(budget),
+          String(budget),
           mode,
-          pack_data:  scoredPack,
-          score:      scoreResult.total,
-          status:     'draft'
-        })
-        .select('id')
-        .single();
-
-      tripId = trip?.id;
+          JSON.stringify(scoredPack),
+          scoreResult.total
+        ]
+      );
+      tripId = rows[0]?.id;
     }
 
     res.json({
@@ -331,12 +331,12 @@ router.post('/chat', aiChatLimiter, optionalAuth, async (req: Request, res: Resp
     });
 
     // MAJ DB si user connecté et trip existant
-    if (req.user && trip_id && result.modifications && supabase) {
-      await supabase
-        .from('trips')
-        .update({ pack_data: { ...current_pack, ...result.modifications }, updated_at: new Date().toISOString() })
-        .eq('id', trip_id)
-        .eq('user_id', req.user.id);
+    if (req.user && trip_id && result.modifications && pool) {
+      const updatedPack = { ...current_pack, ...result.modifications };
+      await pool.query(
+        'UPDATE trips SET pack_data = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
+        [JSON.stringify(updatedPack), trip_id, req.user.id]
+      );
     }
 
     res.json(result);

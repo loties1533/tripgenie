@@ -6,7 +6,7 @@
 import express from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import supabase from '../db/supabase.js';
+import pool from '../db/pool.js';
 import type { Request, Response, NextFunction } from 'express';
 
 const voteSchema = z.object({
@@ -30,7 +30,7 @@ const voteLimiter = rateLimit({
 router.use(voteLimiter);
 
 // ---- POST /api/votes ----
-// Permet de voter pour un élément du pack (public via lien)
+// Permet de voter pour un élément du pack (public via lien partagé)
 router.post('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsed = voteSchema.safeParse(req.body);
@@ -40,28 +40,19 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const { trip_id, item_id, voter_name, vote_type } = parsed.data;
 
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
+    if (!pool) {
+      res.status(500).json({ error: 'Base de données non configurée' });
       return;
     }
 
-    const { data, error } = await supabase
-      .from('trip_votes')
-      .insert({
-        trip_id,
-        item_id,
-        voter_name: voter_name || 'Anonyme',
-        vote_type
-      })
-      .select()
-      .single();
+    const { rows } = await pool.query(
+      `INSERT INTO trip_votes (trip_id, item_id, voter_name, vote_type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [trip_id, item_id, voter_name || 'Anonyme', vote_type]
+    );
 
-    if (error) {
-      console.error('❌ SUPABASE VOTE ERROR:', JSON.stringify(error, null, 2));
-      throw error;
-    }
-
-    res.status(201).json({ message: 'Vote enregistré !', vote: data });
+    res.status(201).json({ message: 'Vote enregistré !', vote: rows[0] });
 
   } catch (err) {
     console.error('Vote error:', err);
@@ -70,22 +61,19 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
 });
 
 // ---- GET /api/votes/:trip_id ----
-// Récupérer tous les votes pour un voyage donné
 router.get('/:trip_id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
+    if (!pool) {
+      res.status(500).json({ error: 'Base de données non configurée' });
       return;
     }
 
-    const { data, error } = await supabase
-      .from('trip_votes')
-      .select('*')
-      .eq('trip_id', req.params.trip_id);
+    const { rows } = await pool.query(
+      'SELECT * FROM trip_votes WHERE trip_id = $1 ORDER BY created_at DESC',
+      [req.params.trip_id]
+    );
 
-    if (error) throw error;
-
-    res.json({ votes: data });
+    res.json({ votes: rows });
 
   } catch (err) {
     console.error('Fetch votes error:', err);

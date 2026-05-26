@@ -5,7 +5,7 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import supabase from '../db/supabase.js';
+import pool from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { MODES_LIST, TRIP_STATUS_LIST } from '../lib/constants.js';
 import type { TravelMode } from '../lib/types.js';
@@ -38,18 +38,19 @@ const router = express.Router();
 // ---- GET /api/trips/share/:id (Public) ----
 router.get('/share/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
+    if (!pool) {
+      res.status(500).json({ error: 'Base de données non configurée' });
       return;
     }
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('id', req.params.id)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT id, title, destination, pack_data, score, mode, departure, return_date, travelers
+       FROM trips WHERE id = $1 LIMIT 1`,
+      [req.params.id]
+    );
 
-    if (error || !trip) {
+    const trip = rows[0];
+    if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
@@ -66,31 +67,36 @@ router.use(requireAuth);
 // ---- GET /api/trips ----
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
+    if (!pool || !req.user) {
       res.status(500).json({ error: 'Configuration manquante' });
       return;
     }
 
     const { mode, status } = req.query;
-
-    // Cap à 50 max, défaut 20, minimum 1
     const limit  = Math.min(Math.max(parseInt((req.query.limit as string) || '20'), 1), 50);
     const offset = Math.max(parseInt((req.query.offset as string) || '0'), 0);
 
-    // Filtre systématique par user_id : chaque utilisateur ne voit que ses voyages.
-    // C'est la seule barrière d'isolation des données (RLS Supabase non activé).
-    let query = supabase
-      .from('trips')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Construction de la requête avec filtres optionnels
+    const params: unknown[] = [req.user.id];
+    let whereClause = 'WHERE user_id = $1';
 
-    if (mode && typeof mode === 'string')     query = query.eq('mode', mode);
-    if (status && typeof status === 'string') query = query.eq('status', status);
+    if (mode && typeof mode === 'string') {
+      params.push(mode);
+      whereClause += ` AND mode = $${params.length}`;
+    }
+    if (status && typeof status === 'string') {
+      params.push(status);
+      whereClause += ` AND status = $${params.length}`;
+    }
 
-    const { data: trips, error } = await query;
-    if (error) throw error;
+    params.push(limit, offset);
+
+    const { rows: trips } = await pool.query(
+      `SELECT * FROM trips ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
 
     res.json({ trips, count: trips.length, limit, offset });
 
@@ -110,29 +116,33 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const { title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score } = parsed.data;
 
-    if (!supabase || !req.user) {
+    if (!pool || !req.user) {
       res.status(500).json({ error: 'Configuration manquante' });
       return;
     }
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .insert({
-        user_id:    req.user.id,
-        title:      title || `Voyage à ${destination}`,
-        destination, country, origin,
-        departure, return_date,
-        travelers:  travelers || 1,
-        budget:     String(budget),
-        mode, pack_data, score,
-        status: 'draft'
-      })
-      .select()
-      .single();
+    const { rows } = await pool.query(
+      `INSERT INTO trips
+         (user_id, title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'draft')
+       RETURNING *`,
+      [
+        req.user.id,
+        title || `Voyage à ${destination}`,
+        destination,
+        country || null,
+        origin || null,
+        departure || null,
+        return_date || null,
+        travelers || 1,
+        String(budget || ''),
+        mode,
+        pack_data ? JSON.stringify(pack_data) : null,
+        score || null
+      ]
+    );
 
-    if (error) throw error;
-
-    res.status(201).json({ trip });
+    res.status(201).json({ trip: rows[0] });
 
   } catch (err) {
     console.error('POST trip error:', err);
@@ -143,19 +153,18 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
 // ---- GET /api/trips/:id ----
 router.get('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
+    if (!pool || !req.user) {
       res.status(500).json({ error: 'Configuration manquante' });
       return;
     }
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .select('*, packs(*)')
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .single();
+    const { rows } = await pool.query(
+      'SELECT * FROM trips WHERE id = $1 AND user_id = $2 LIMIT 1',
+      [req.params.id, req.user.id]
+    );
 
-    if (error || !trip) {
+    const trip = rows[0];
+    if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
@@ -176,22 +185,34 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const updates = { ...parsed.data, updated_at: new Date().toISOString() };
 
-    if (!supabase || !req.user) {
+    if (!pool || !req.user) {
       res.status(500).json({ error: 'Configuration manquante' });
       return;
     }
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .update(updates)
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .select()
-      .single();
+    const fields = parsed.data;
+    const keys = Object.keys(fields) as (keyof typeof fields)[];
+    if (keys.length === 0) {
+      res.status(400).json({ error: 'Aucun champ à modifier' });
+      return;
+    }
 
-    if (error || !trip) {
+    // Construire le SET dynamiquement
+    const setClauses = keys.map((k, i) => `${k} = $${i + 1}`);
+    setClauses.push(`updated_at = NOW()`);
+    const values: unknown[] = keys.map(k => k === 'pack_data' ? JSON.stringify(fields[k]) : fields[k]);
+    values.push(req.params.id, req.user.id);
+
+    const { rows } = await pool.query(
+      `UPDATE trips SET ${setClauses.join(', ')}
+       WHERE id = $${values.length - 1} AND user_id = $${values.length}
+       RETURNING *`,
+      values
+    );
+
+    const trip = rows[0];
+    if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
@@ -207,18 +228,15 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
 // ---- DELETE /api/trips/:id ----
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
+    if (!pool || !req.user) {
       res.status(500).json({ error: 'Configuration manquante' });
       return;
     }
 
-    const { error } = await supabase
-      .from('trips')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
-
-    if (error) throw error;
+    await pool.query(
+      'DELETE FROM trips WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
 
     res.json({ message: 'Voyage supprimé' });
 
