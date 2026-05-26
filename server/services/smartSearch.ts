@@ -202,7 +202,7 @@ export async function smartEventsSearch({
   try {
     const realEvents = await eventbriteSearch({ location, dateFrom, dateTo, mode });
     if (realEvents?.length) {
-      console.error(`✅ Eventbrite: ${realEvents.length} événements réels pour ${location}`);
+      console.log(`✅ Eventbrite: ${realEvents.length} événements réels pour ${location}`);
       return realEvents;
     }
   } catch (err) {

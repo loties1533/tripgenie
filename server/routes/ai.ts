@@ -130,7 +130,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
 
     if (!destination?.trim()) return next(new AppError('destination requise', 400));
     if (!departure)           return next(new AppError('date de départ requise', 400));
-    if (!budget || budget <= 0) return next(new AppError('budget invalide', 400));
+    if (!budget || budget <= 0 || budget > 50000) return next(new AppError('budget invalide (1 - 50000)', 400));
+    if (!travelers || travelers < 1 || travelers > 20) return next(new AppError('nombre de voyageurs invalide (1 - 20)', 400));
 
     // ---- RECHERCHE WEB (Tavily + IA) avec Timeout de sécurité ----
     const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => Promise.race([
