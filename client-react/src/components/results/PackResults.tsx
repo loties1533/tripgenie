@@ -330,10 +330,6 @@ export default function PackResults() {
     window.open(waUrl, '_blank')
   }
 
-  const handleBooking = () => {
-    toast.info('Paiement en ligne bientôt disponible. Contactez-nous pour réserver.')
-  }
-
   // ---- Internal Cards with Locate & Vote button ----
   const LocalHotelCard = ({ hotel }: { hotel: any }) => (
     <div className="glass rounded-xl p-4 flex flex-col gap-3 group hover:border-gold/30 transition-colors">
@@ -527,17 +523,11 @@ export default function PackResults() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => toast.success("Génération de votre carnet de voyage PDF en cours...")}
                   className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-3 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-1"
                 >
                   <span>📄</span> <span className="hidden sm:inline">PDF</span>
-                </button>
-                <button 
-                  onClick={handleBooking}
-                  className="bg-gold hover:bg-gold/80 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-glow-gold active:scale-95 flex items-center gap-1.5"
-                >
-                  💳 Réserver
                 </button>
               </div>
             </div>
@@ -603,34 +593,6 @@ export default function PackResults() {
                 hotels={d.hotels}
                 focusedLocation={focusedLocation}
               />
-
-              {/* Spotify playlist */}
-              {d.spotify && (
-                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="glass rounded-2xl overflow-hidden">
-                  <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🎵</span>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-muted">Playlist du voyage</p>
-                        <p className="text-sm font-semibold text-ink dark:text-parchment leading-tight">{d.spotify.name}</p>
-                      </div>
-                    </div>
-                    <a href={d.spotify.url} target="_blank" rel="noopener noreferrer"
-                      className="text-[10px] font-bold text-[#1DB954] hover:underline flex items-center gap-1">
-                      Ouvrir Spotify ↗
-                    </a>
-                  </div>
-                  <iframe
-                    src={d.spotify.embed_url}
-                    width="100%"
-                    height="152"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    className="border-0"
-                  />
-                </motion.div>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}

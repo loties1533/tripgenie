@@ -14,10 +14,9 @@
 
 import { callAI, parseJSON, sanitizeInput } from './core.js';
 import { MODES, BUDGET_RATIOS, DEFAULT_VALUES } from '../../lib/constants.js';
-import type { Pack, TravelMode, SpotifyPlaylist } from '../../lib/types.js';
+import type { Pack, TravelMode } from '../../lib/types.js';
 import type { FlightSearchResult, EventSearchResult, HotelSearchResult } from '../smartSearch.js';
 import type { WeatherData } from '../weather.js';
-import type { FoursquareVenue } from '../foursquare.js';
 
 interface AssemblePackParams {
   destination: string;
@@ -33,8 +32,6 @@ interface AssemblePackParams {
   duration?: number;
   realWeather?: WeatherData | null;
   realPhoto?: string | null;
-  spotify?: SpotifyPlaylist;
-  fsqVenues?: FoursquareVenue[];
 }
 
 interface AITextResult {
@@ -70,7 +67,7 @@ interface AITextResult {
  */
 export async function assemblePack({
   destination, flights, events, hotels: realHotels, mode, profile, travelers, budget,
-  departure, return_date, duration, realWeather, realPhoto, spotify, fsqVenues,
+  departure, return_date, duration, realWeather, realPhoto,
 }: AssemblePackParams): Promise<Pack> {
   const dest = sanitizeInput(destination);
 
@@ -105,15 +102,8 @@ export async function assemblePack({
     ? 'Tu connais tous les bons plans : max de saveurs pour min de budget.'
     : 'Tu combines intelligemment les envies du groupe avec la richesse locale.';
 
-  const foursquareContext = fsqVenues?.length
-    ? `\nLIEUX FOURSQUARE VÉRIFIÉS (vrais endroits populaires — utilise ces noms exacts dans activities et itinerary) :\n${fsqVenues.map(v => `- ${v.name} (${v.category})`).join('\n')}`
-    : '';
-
-  const realVenuesContext = (events?.length || fsqVenues?.length)
-    ? [
-        events?.length ? `\nÉVÉNEMENTS RÉELS :\n${events.slice(0, 4).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}` : '',
-        foursquareContext,
-      ].filter(Boolean).join('\n')
+  const realVenuesContext = events?.length
+    ? `\nÉVÉNEMENTS RÉELS :\n${events.slice(0, 4).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}`
     : '';
 
   const textRaw = await callAI(
@@ -303,6 +293,5 @@ export async function assemblePack({
     local_phrases: [
       { phrase: t.phrase ?? 'Santé !', translation: t.phrase_tr ?? 'Cheers !' },
     ],
-    spotify: spotify ?? undefined,
   };
 }
