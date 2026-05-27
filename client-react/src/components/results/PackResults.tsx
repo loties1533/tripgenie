@@ -290,18 +290,7 @@ export default function PackResults() {
   const { pack, tripId, isLoading, mode, departure, returnDate, travelers } = useSearchStore()
   const [activeTab, setActiveTab]       = useState('overview')
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null)
-  const [showReveal, setShowReveal]     = useState(false)
-  const prevPackRef = useRef<typeof pack>(null)
-
-  // Déclenche la révélation plein écran uniquement quand un nouveau pack arrive
-  useEffect(() => {
-    if (pack && pack !== prevPackRef.current) {
-      prevPackRef.current = pack
-      setShowReveal(true)
-      const t = setTimeout(() => setShowReveal(false), 2800)
-      return () => clearTimeout(t)
-    }
-  }, [pack])
+  const showReveal = false // Révélation désactivée — affichage direct du pack
 
   if (isLoading) {
     return <PackSkeleton />

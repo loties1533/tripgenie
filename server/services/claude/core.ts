@@ -46,6 +46,12 @@ export function parseJSON(raw: string): unknown {
   // (certains modèles comme gpt-oss-20b injectent de vraies newlines à l'intérieur des strings)
   str = str.replace(/[\r\n\t]+/g, ' ');
 
+  // Corriger les escapes Unicode Python-style \U0000XXXX → \uXXXX
+  // (gpt-oss-20b génère parfois \U00e0 au lieu de à)
+  str = str.replace(/\\U[0-9a-fA-F]{8}/g, (m) => '\\u' + m.slice(-4));
+  // Corriger aussi les \U courts (ex: \U00e0 sur 6 chars)
+  str = str.replace(/\\U[0-9a-fA-F]{4}/g, (m) => '\\u' + m.slice(2));
+
   // Déterminer le délimiteur de fin selon le type de JSON
   const isArray = str.startsWith('[');
   const closeChar = isArray ? ']' : '}';

@@ -52,11 +52,11 @@ const FREE_MODELS = [
   'google/gemma-3-12b-it:free',
   'microsoft/phi-3-medium-128k-instruct:free',
   'qwen/qwen-2-7b-instruct:free',
-  'nvidia/nemotron-nano-9b-v2:free',
-  'google/gemma-3-4b-it:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'z-ai/glm-4.5-air:free', // ⚠️ Limite ~1240 chars output — en dernier recours uniquement
+  // 'nvidia/nemotron-nano-9b-v2:free',   ❌ trop petit — tronque le JSON à ~338 chars
+  // 'google/gemma-3-4b-it:free',          ❌ trop petit
+  // 'meta-llama/llama-3.2-3b-instruct:free', ❌ trop petit
+  // 'liquid/lfm-2.5-1.2b-instruct:free', ❌ trop petit
+  // 'z-ai/glm-4.5-air:free',             ❌ limite ~1240 chars output
 ];
 
 interface OpenRouterResponse {

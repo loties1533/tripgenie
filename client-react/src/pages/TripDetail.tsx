@@ -9,8 +9,8 @@ import { useSearchStore } from '../store'
 import { useEffect } from 'react'
 
 export default function TripDetail() {
-  const { id }             = useParams()
-  const { setPack, setField } = useSearchStore()
+  const { id }                            = useParams()
+  const { setPack, setField, tripId }     = useSearchStore()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['trip', id],
@@ -18,9 +18,10 @@ export default function TripDetail() {
     enabled: !!id,
   })
 
-  // Injecter le trip dans le store pour que PackResults l'affiche
+  // Injecter le trip dans le store uniquement si ce n'est pas déjà chargé
+  // (évite le double-set quand on vient de /generate → navigate('/trip/:id'))
   useEffect(() => {
-    if (data?.trip?.pack_data) {
+    if (data?.trip?.pack_data && tripId !== data.trip.id) {
       setPack(data.trip.pack_data, data.trip.id)
       setField('mode', data.trip.mode || 'party')
     }

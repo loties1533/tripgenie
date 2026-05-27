@@ -29,6 +29,7 @@ function CityPhoto({ city, photo }: { city: string, photo?: string }) {
   )
 }
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
 import PackResults from '../components/results/PackResults'
@@ -221,6 +222,7 @@ function ChatSection() {
 function TripConcepts() {
   const { concepts, setField, setLoading, setPack } = useSearchStore()
   const { chatData, addMessage, setTyping } = useChatStore()
+  const navigate = useNavigate()
 
   if (!concepts) return null
 
@@ -248,6 +250,7 @@ function TripConcepts() {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           destination: dest.city,
           origin:      chatData.origin || 'Paris',
@@ -261,6 +264,15 @@ function TripConcepts() {
       const data = await res.json()
       if (data.pack) {
         setPack(data.pack, data.trip_id)
+        // Si l'utilisateur est connecté (trip_id dispo) → page dédiée
+        if (data.trip_id) {
+          navigate(`/trip/${data.trip_id}`)
+        } else {
+          // Sinon scroll vers le pack inline
+          setTimeout(() => {
+            document.getElementById('pack-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 300)
+        }
       } else {
         throw new Error("No pack data")
       }
@@ -329,8 +341,9 @@ export default function Home() {
 
   return (
     <PageLayout>
-      <Hero />
-      
+      {/* Cacher le Hero quand un pack est affiché inline (user non connecté) */}
+      {!pack && <Hero />}
+
       {/* N'afficher le chat que si on n'a ni concepts ni pack */}
       {!concepts && !pack && !isLoading && <ChatSection />}
       
