@@ -54,7 +54,7 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
       .single();
 
     if (existingUser) {
-      res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      res.status(409).json({ error: 'Cet email est déjà utilisé' });
       return;
     }
 

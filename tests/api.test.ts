@@ -429,7 +429,7 @@ describe('🔐 Auth — cas limites', () => {
     expect(res.body.error).toMatch(/incorrect/i);
   });
 
-  it('POST /signup — 400 si email déjà utilisé', async () => {
+  it('POST /signup — 409 si email déjà utilisé', async () => {
     const { default: supabase } = await import('../server/db/supabase.js');
     const chain = supabase.from('users') as any;
     // Simule qu'un utilisateur existe déjà avec cet email
@@ -439,7 +439,7 @@ describe('🔐 Auth — cas limites', () => {
       .post('/api/auth/signup')
       .send({ email: 'existant@test.com', password: 'Password123!', name: 'Déjà là' });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/déjà utilisé/i);
   });
 
