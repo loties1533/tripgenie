@@ -161,12 +161,15 @@ export default function Trips() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {trips.map((trip, i) => (
               <motion.div key={trip.id}
+                role="button"
+                tabIndex={0}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.4, ease: 'easeOut' }}
                 onClick={() => navigate(`/trip/${trip.id}`)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate(`/trip/${trip.id}`)}
                 className="glass-premium rounded-2xl p-5 cursor-pointer
-                           hover:shadow-glow-gold hover:-translate-y-1
+                           hover:shadow-glow-gold hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-gold/60
                            transition-all duration-300 group relative overflow-hidden border border-transparent hover:border-gold/20"
               >
                 {/* Fond déco */}

@@ -2,6 +2,8 @@ import { motion } from 'framer-motion'
 import { clsx } from 'clsx'
 import React from 'react'
 
+export { default as GenerationLoader } from './GenerationLoader'
+
 // ---- Skeleton loader ----
 export function Skeleton({ className }: { className?: string }) {
   return <div className={clsx('skeleton', className)} />

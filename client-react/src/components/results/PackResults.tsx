@@ -524,7 +524,10 @@ export default function PackResults() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => toast.success("Génération de votre carnet de voyage PDF en cours...")}
+                  onClick={() => {
+                    toast.success('Impression / Enregistrer en PDF → Ctrl+P ou ⌘+P')
+                    setTimeout(() => window.print(), 400)
+                  }}
                   className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-3 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-1"
                 >
                   <span>📄</span> <span className="hidden sm:inline">PDF</span>

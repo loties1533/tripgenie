@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
 import PackResults from '../components/results/PackResults'
-import PackSkeleton from '../components/results/PackSkeleton'
+import { GenerationLoader } from '../components/ui'
 import { useSearchStore, useChatStore } from '../store'
 import { getCityPhoto } from '../lib/api'
 
@@ -229,10 +229,13 @@ function TripConcepts() {
       <div className="grid md:grid-cols-3 gap-5">
         {concepts.map((c: any, i: number) => (
           <motion.div key={i}
+            role="button"
+            tabIndex={0}
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.15 }}
             onClick={() => handleSelect(c)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect(c)}
             className="group cursor-pointer relative h-[320px] sm:h-[420px] rounded-2xl overflow-hidden
-                       shadow-2xl border border-gold/20 hover:border-gold/60
+                       shadow-2xl border border-gold/20 hover:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/60
                        transition-all duration-500 hover:-translate-y-2">
             <div className="absolute inset-0 bg-ink">
               <CityPhoto city={c.city} photo={c.photo} />
@@ -251,9 +254,9 @@ function TripConcepts() {
                       : 'Sur devis')}
                   </p>
                 </div>
-                <button className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-gold transition-colors">
+                <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-gold transition-colors" aria-hidden="true">
                   ↗
-                </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -289,7 +292,7 @@ const FEATURES = [
    HOME PAGE
 ═══════════════════════════════════════════════════════ */
 export default function Home() {
-  const { pack, concepts, isLoading } = useSearchStore()
+  const { pack, concepts, isLoading, destination } = useSearchStore()
   const hasPack = !!pack && !isLoading
 
   return (
@@ -326,9 +329,7 @@ export default function Home() {
 
             {/* Skeleton */}
             {isLoading && (
-              <div className="max-w-3xl mx-auto mt-6">
-                <PackSkeleton />
-              </div>
+              <GenerationLoader destination={destination} />
             )}
 
             {/* Features */}

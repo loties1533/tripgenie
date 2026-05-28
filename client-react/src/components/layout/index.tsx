@@ -183,7 +183,11 @@ export function PageLayout({ children }: { children: React.ReactNode }) {
               <p className="text-[10px] uppercase tracking-widest text-gold font-semibold mb-5">Destinations Signatures</p>
               <ul className="space-y-2.5">
                 {['Côte d\'Azur', 'Ibiza', 'Mykonos', 'Amalfi', 'Maldives', 'Saint-Tropez'].map(d => (
-                  <li key={d} className="text-white/40 hover:text-gold text-sm transition-colors cursor-pointer">{d}</li>
+                  <li key={d}>
+                    <Link to="/" className="text-white/40 hover:text-gold text-sm transition-colors">
+                      {d}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -193,7 +197,11 @@ export function PageLayout({ children }: { children: React.ReactNode }) {
               <p className="text-[10px] uppercase tracking-widest text-gold font-semibold mb-5">Expériences</p>
               <ul className="space-y-2.5">
                 {['Yachting Privé', 'Dîners Étoilés', 'Soirées VIP', 'Casinos Exclusifs', 'Villas Privées', 'Jets Privés'].map(e => (
-                  <li key={e} className="text-white/40 hover:text-gold text-sm transition-colors cursor-pointer">{e}</li>
+                  <li key={e}>
+                    <Link to="/" className="text-white/40 hover:text-gold text-sm transition-colors">
+                      {e}
+                    </Link>
+                  </li>
                 ))}
               </ul>
             </div>

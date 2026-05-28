@@ -77,7 +77,7 @@ function TypingDots() {
 }
 
 // ---- Message bubble ----
-function Message({ msg }: { msg: any }) {
+function Message({ msg, onChipClick }: { msg: any; onChipClick?: (label: string) => void }) {
   const isBot = msg.role === 'bot' || msg.role === 'assistant'
   return (
     <motion.div
@@ -95,9 +95,20 @@ function Message({ msg }: { msg: any }) {
         <div className={isBot ? 'bubble-bot' : 'bubble-user'}>{msg.text}</div>
         {isBot && msg.chips?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-1">
-            {msg.chips.map((c: string | { label: string }, i: number) => (
-              <StaticChip key={i} label={typeof c === 'string' ? c : c.label} msgId={msg.id} />
-            ))}
+            {msg.chips.map((c: string | { label: string }, i: number) => {
+              const label = typeof c === 'string' ? c : c.label
+              return onChipClick ? (
+                <button
+                  key={i}
+                  onClick={() => onChipClick(label)}
+                  className="chip text-sm hover:border-gold/60 hover:bg-gold/10 active:scale-95 transition-all cursor-pointer"
+                >
+                  {label}
+                </button>
+              ) : (
+                <StaticChip key={i} label={label} msgId={msg.id} />
+              )
+            })}
           </div>
         )}
       </div>
@@ -240,6 +251,18 @@ export default function ChatWidget() {
     inputRef.current?.focus()
   }, [input, sending, chatData, turnCount])
 
+  // ---- Clic sur un chip de réponse bot (envoie le texte directement) ----
+  const sendChip = useCallback(async (label: string) => {
+    if (sending || isTyping) return
+    setSending(true)
+    addMessage({ role: 'user', text: label })
+    await processAIMessage(label, {
+      addMessage, mergeChatData, setTyping, setReady, setMockMode,
+      setLoading, setPack, setField, chatData, turnCount
+    })
+    setSending(false)
+  }, [sending, isTyping, chatData, turnCount])
+
   const onKey = (e: any) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
@@ -279,7 +302,21 @@ export default function ChatWidget() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto scroll-hide px-4 py-4 flex flex-col gap-4">
         <AnimatePresence initial={false}>
-          {messages.map(msg => <Message key={msg.id} msg={msg} />)}
+          {messages.map((msg, idx) => {
+            // Seul le dernier message bot a des chips cliquables (les anciens sont décoratifs)
+            const isLastBot = idx === messages.length - 1
+              && (msg.role === 'bot' || msg.role === 'assistant')
+              && !quizMode
+              && !sending
+              && !isTyping
+            return (
+              <Message
+                key={msg.id}
+                msg={msg}
+                onChipClick={isLastBot ? sendChip : undefined}
+              />
+            )
+          })}
         </AnimatePresence>
 
         {/* Boutons de choix de mode (état d'accueil) */}
