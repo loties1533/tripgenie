@@ -3,28 +3,58 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import React from 'react'
 import { PageLayout } from '../components/layout'
-import { SkeletonCard, ModeBadge, ScoreBadge } from '../components/ui'
+import { SkeletonCard } from '../components/ui'
 import { getTrips, deleteTrip } from '../lib/api'
 import { useAuthStore } from '../store'
 
 interface TripData {
-  id: string;
-  destination: string;
-  departure: string;
-  travelers: number;
-  score: number;
-  mode: string;
-  budget: string;
-  [key: string]: any;
+  id: string
+  destination: string
+  departure: string
+  return_date?: string
+  travelers: number
+  score: number
+  mode: string
+  budget: string
+  [key: string]: any
 }
 
 interface TripsResponse {
-  trips: TripData[];
+  trips: TripData[]
+}
+
+const MODE_COLORS: Record<string, string> = {
+  party:   'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  luxury:  'bg-gold/15 text-gold border-gold/30',
+  student: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+  group:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  relax:   'bg-teal-500/15 text-teal-400 border-teal-500/30',
+}
+
+const MODE_LABELS: Record<string, string> = {
+  party:   'Party 🥂',
+  luxury:  'Luxury ✦',
+  student: 'Student 🎒',
+  group:   'Groupe 👥',
+  relax:   'Relax 🌿',
+}
+
+function ScoreBar({ score }: { score: number }) {
+  const pct   = Math.round((score || 0) * 100)
+  const color = pct >= 80 ? 'bg-emerald-400' : pct >= 60 ? 'bg-gold' : 'bg-coral'
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
+        <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className={`text-xs font-bold ${color.replace('bg-', 'text-')}`}>{pct}%</span>
+    </div>
+  )
 }
 
 export default function Trips() {
-  const { user } = useAuthStore()
-  const navigate  = useNavigate()
+  const { user }   = useAuthStore()
+  const navigate   = useNavigate()
 
   const { data, isLoading, error, refetch } = useQuery<TripsResponse>({
     queryKey: ['trips'],
@@ -34,125 +64,174 @@ export default function Trips() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    if (!window.confirm('Voulez-vous vraiment supprimer cette escapade ?')) return
+    if (!window.confirm('Supprimer ce voyage définitivement ?')) return
     try {
       await deleteTrip(id)
       refetch()
-    } catch (err) {
+    } catch {
       alert('Erreur lors de la suppression')
     }
   }
 
+  /* ---- Non connecté ---- */
   if (!user) {
     return (
       <PageLayout>
         <div className="text-center py-24">
-          <p className="text-4xl mb-4">🔒</p>
-          <h2 className="font-display text-2xl font-bold text-ink dark:text-parchment mb-2">
-            Connexion requise
-          </h2>
-          <p className="text-muted mb-6">Connecte-toi pour voir tes voyages sauvegardés.</p>
+          <p className="text-5xl mb-4">🔒</p>
+          <h2 className="font-display text-2xl font-bold text-ink dark:text-parchment mb-2">Connexion requise</h2>
+          <p className="text-muted mb-6">Connecte-toi pour accéder à tes voyages sauvegardés.</p>
           <Link to="/login" className="btn-primary">Se connecter</Link>
         </div>
       </PageLayout>
     )
   }
 
+  const trips     = data?.trips ?? []
+  const avgScore  = trips.length
+    ? Math.round(trips.reduce((acc, t) => acc + (t.score || 0), 0) / trips.length * 100)
+    : 0
+
   return (
     <PageLayout>
-      <div className="py-4">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+      <div className="py-2">
+
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="font-display text-4xl font-bold text-ink dark:text-parchment mb-1">Mes voyages</h1>
-            <p className="text-muted">Retrouvez tous vos itinéraires générés par TripGenie</p>
+            <h1 className="font-display text-3xl font-bold text-ink dark:text-parchment">Mes Voyages</h1>
+            <p className="text-sm text-muted mt-1">
+              {trips.length > 0 ? `${trips.length} itinéraire${trips.length > 1 ? 's' : ''} sauvegardé${trips.length > 1 ? 's' : ''}` : 'Aucun voyage pour l\'instant'}
+            </p>
           </div>
-          {(data?.trips?.length ?? 0) > 0 && (
-            <div className="flex gap-4">
-              <div className="glass-premium px-4 py-2 rounded-xl text-center shadow-glow-gold">
-                <p className="text-xs text-muted uppercase tracking-wider font-semibold">Voyages</p>
-                <p className="text-xl font-bold text-gold font-display">{data!.trips.length}</p>
+
+          <div className="flex items-center gap-3">
+            {trips.length > 0 && (
+              <div className="flex gap-3">
+                <div className="glass-premium px-4 py-2.5 rounded-xl text-center">
+                  <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Voyages</p>
+                  <p className="text-xl font-bold text-gold font-display">{trips.length}</p>
+                </div>
+                <div className="glass-premium px-4 py-2.5 rounded-xl text-center">
+                  <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Score moy.</p>
+                  <p className="text-xl font-bold text-gold font-display">{avgScore}%</p>
+                </div>
               </div>
-              <div className="glass-premium px-4 py-2 rounded-xl text-center shadow-glow-gold">
-                <p className="text-xs text-muted uppercase tracking-wider font-semibold">Score Moyen</p>
-                <p className="text-xl font-bold text-gold font-display">
-                  {Math.round(data!.trips.reduce((acc, t) => acc + (t.score || 0), 0) / data!.trips.length)}%
-                </p>
-              </div>
-            </div>
-          )}
+            )}
+            <Link to="/"
+              className="flex items-center gap-2 bg-gold hover:bg-gold/80 text-white px-4 py-2.5 rounded-xl
+                         text-sm font-bold transition-all shadow-glow-gold active:scale-95">
+              + Nouveau
+            </Link>
+          </div>
         </div>
 
+        {/* ── Loading ── */}
         {isLoading && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1,2,3,4,5,6].map(i => <SkeletonCard key={i} />)}
           </div>
         )}
 
+        {/* ── Error ── */}
         {error && (
-          <div className="text-center py-24 glass rounded-3xl border-dashed border-2 border-red-500/20">
-            <p className="text-4xl mb-4">⚠️</p>
-            <h3 className="text-xl font-bold text-ink dark:text-parchment mb-2">Oups, un petit problème...</h3>
-            <p className="text-muted mb-6">Impossible de charger vos voyages pour le moment.</p>
+          <div className="text-center py-20 glass rounded-3xl border border-red-500/20">
+            <p className="text-4xl mb-3">⚠️</p>
+            <p className="text-muted mb-4">Impossible de charger vos voyages.</p>
             <button onClick={() => window.location.reload()} className="btn-primary">Réessayer</button>
           </div>
         )}
 
-        {data?.trips?.length === 0 && (
+        {/* ── Empty ── */}
+        {!isLoading && trips.length === 0 && (
           <div className="text-center py-24 glass-premium rounded-3xl shadow-glow-gold">
-            <p className="text-6xl mb-6">✈️</p>
+            <p className="text-6xl mb-5">✈️</p>
             <h3 className="font-display text-2xl font-bold text-ink dark:text-parchment mb-2">
               Votre carnet est vide
             </h3>
             <p className="text-muted mb-8 max-w-sm mx-auto">
-              Laissez TripGenie vous concocter un itinéraire sur-mesure pour votre prochaine aventure.
+              Laissez TripGenie vous concocter un itinéraire sur-mesure.
             </p>
             <Link to="/" className="btn-primary px-8">Créer un voyage</Link>
           </div>
         )}
 
-        {data?.trips && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.trips.map((trip, i) => (
+        {/* ── Grid ── */}
+        {trips.length > 0 && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {trips.map((trip, i) => (
               <motion.div key={trip.id}
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08, duration: 0.5, ease: 'easeOut' }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.4, ease: 'easeOut' }}
                 onClick={() => navigate(`/trip/${trip.id}`)}
-                className="glass-premium rounded-3xl p-6 cursor-pointer hover:shadow-glow-gold transition-all duration-300 group relative overflow-hidden">
-                
-                {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full -mr-16 -mt-16 group-hover:bg-gold/10 transition-colors" />
+                className="glass-premium rounded-2xl p-5 cursor-pointer
+                           hover:shadow-glow-gold hover:-translate-y-1
+                           transition-all duration-300 group relative overflow-hidden border border-transparent hover:border-gold/20"
+              >
+                {/* Fond déco */}
+                <div className="absolute top-0 right-0 w-28 h-28 bg-gold/5 rounded-full -mr-14 -mt-14
+                                group-hover:bg-gold/10 transition-colors pointer-events-none" />
 
-                <div className="flex items-start justify-between gap-3 mb-5 relative z-10">
+                {/* Destination + supprimer */}
+                <div className="flex items-start justify-between mb-3 relative z-10">
                   <div className="min-w-0">
-                    <h3 className="font-display text-xl font-bold text-ink dark:text-parchment truncate group-hover:text-gold transition-colors">
+                    <h3 className="font-display text-lg font-bold text-ink dark:text-parchment
+                                   truncate group-hover:text-gold transition-colors leading-tight">
                       {trip.destination}
                     </h3>
-                    <div className="flex items-center gap-2 text-xs text-muted mt-1">
-                      <span>📅 {trip.departure}</span>
-                      <span>•</span>
-                      <span>👥 {trip.travelers || 2} pers.</span>
-                    </div>
+                    <p className="text-xs text-muted mt-0.5">
+                      📅 {trip.departure}
+                      {trip.return_date && trip.return_date !== trip.departure ? ` → ${trip.return_date}` : ''}
+                      {' · '}👥 {trip.travelers || 2} pers.
+                    </p>
                   </div>
-                  <ScoreBadge score={{ total: trip.score || 0 }} />
-                </div>
-
-                <div className="flex items-center gap-2 mb-6 relative z-10">
-                  <ModeBadge mode={trip.mode} />
-                  <button 
-                    onClick={(e) => handleDelete(e, trip.id)}
-                    className="ml-auto w-8 h-8 rounded-full bg-coral/10 text-coral flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-coral hover:text-white"
-                    title="Supprimer l'escapade"
+                  <button
+                    onClick={e => handleDelete(e, trip.id)}
+                    className="ml-2 w-7 h-7 rounded-full bg-coral/10 text-coral flex-shrink-0
+                               opacity-0 group-hover:opacity-100 transition-all
+                               hover:bg-coral hover:text-white flex items-center justify-center"
+                    title="Supprimer"
                   >
                     <TrashIcon />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-gold/10 pt-4 mt-auto relative z-10">
-                  <div>
-                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold">Budget estimé</p>
-                    <p className="text-lg font-bold text-ink dark:text-parchment font-display">{trip.budget}</p>
+                {/* Mode + Statut badges */}
+                <div className="mb-4 relative z-10 flex items-center gap-2 flex-wrap">
+                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${MODE_COLORS[trip.mode] || MODE_COLORS.party}`}>
+                    {MODE_LABELS[trip.mode] || trip.mode}
+                  </span>
+                  {trip.status === 'confirmed' && (
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                      🟢 Confirmé
+                    </span>
+                  )}
+                  {trip.status === 'archived' && (
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full border bg-white/5 text-muted border-white/10">
+                      ⬛ Archivé
+                    </span>
+                  )}
+                </div>
+
+                {/* Score bar */}
+                <div className="mb-4 relative z-10">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] uppercase tracking-widest text-muted font-semibold">Score</p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center text-gold group-hover:bg-gold group-hover:text-white transition-all duration-300">
+                  <ScoreBar score={trip.score} />
+                </div>
+
+                {/* Budget + flèche */}
+                <div className="flex items-center justify-between border-t border-gold/10 pt-3 relative z-10">
+                  <div>
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-semibold">Budget</p>
+                    <p className="text-base font-bold text-ink dark:text-parchment font-display">
+                      {trip.budget || '—'}
+                    </p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-gold/10 flex items-center justify-center text-gold
+                                  group-hover:bg-gold group-hover:text-white transition-all duration-300">
                     →
                   </div>
                 </div>
@@ -167,9 +246,9 @@ export default function Trips() {
 
 function TrashIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
   )
 }
