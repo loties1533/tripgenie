@@ -3,8 +3,8 @@ services:
     name: tripgenie
     runtime: node
     region: frankfurt
-    branch: final
-    buildCommand: npm install && npm run client:build
+    branch: main
+    buildCommand: npm install && npx tsc && npm run client:build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -21,35 +21,20 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
-      # --- IA (au moins une clé requise) ---
-      - key: ANTHROPIC_API_KEY
-        sync: false
+      # --- IA ---
       - key: GEMINI_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: AI_PROVIDER
         value: gemini
-      # --- Tavily ---
+      # --- Services externes ---
       - key: TAVILY_API_KEY
         sync: false
-      # --- Unsplash (photos HD — optionnel) ---
+      - key: OPENWEATHER_API_KEY
+        sync: false
       - key: UNSPLASH_ACCESS_KEY
         sync: false
-      # --- Eventbrite (événements réels — optionnel) ---
-      - key: EVENTBRITE_API_KEY
-        sync: false
-      # --- CORS (frontend URL en production) ---
+      # --- CORS ---
       - key: CLIENT_URL
         value: https://tripgenie.onrender.com
-      # --- Yelp (lieux locaux — optionnel) ---
-      - key: YELP_API_KEY
-        sync: false
-      # --- OpenTripMap (POI — optionnel) ---
-      - key: OPENTRIPMAP_API_KEY
-        sync: false
-      # --- Spotify (playlist — optionnel) ---
-      - key: SPOTIFY_CLIENT_ID
-        sync: false
-      - key: SPOTIFY_CLIENT_SECRET
-        sync: false

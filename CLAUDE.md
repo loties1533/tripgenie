@@ -68,6 +68,9 @@ Ce n'est **pas** un agent IA autonome. TripGenie repose sur un **pipeline orches
 | **Tavily** | Recherche web temps réel (vols, événements) | Données simulées |
 | **Unsplash** | Photos de destinations | Placeholder image |
 | **OpenWeatherMap** | Météo en temps réel | Données IA simulées |
+| **Foursquare Places API** | Restaurants réels par ville (1000 req/jour gratuit) | Yelp |
+| **Yelp Fusion API** | Restaurants fallback si Foursquare vide | [] (pack sans restos) |
+| **PredictHQ** | Événements réels par ville et dates (concerts, festivals) | smartEventsSearch Tavily |
 
 ### Tests
 | Outil | Rôle |
@@ -109,6 +112,9 @@ tripgenie/
 │   │   │   ├── chat.js         # Modification conversationnelle post-génération
 │   │   │   └── webSearch.js    # Recherche web via Tavily
 │   │   ├── smartSearch.js      # Recherche vols / hôtels / événements (Tavily + IA)
+│   │   ├── foursquare.ts       # Restaurants réels Foursquare (1000/jour gratuit)
+│   │   ├── yelp.ts             # Restaurants fallback Yelp (si Foursquare vide)
+│   │   ├── predictHQ.ts        # Événements réels PredictHQ (concerts, festivals)
 │   │   ├── scoring.js          # Algorithme de scoring multi-critères par mode
 │   │   ├── weather.js          # Météo temps réel (OpenWeatherMap)
 │   │   ├── photo.js            # Photo destination (Unsplash)
@@ -139,9 +145,24 @@ tripgenie/
 │           └── api.js          # Toutes les requêtes HTTP vers l'API Express
 │
 ├── tests/
-│   ├── golden_path.test.js     # Tests d'intégration flux critiques (Vitest + Supertest)
-│   ├── scoring.test.js         # Tests unitaires algorithme de scoring
-│   └── api.test.js             # Tests routes API
+│   ├── api.test.ts             # Tests routes API de base
+│   ├── golden_path.test.ts     # Flux critiques bout en bout
+│   ├── scoring.test.ts         # Scoring algorithme
+│   ├── middleware.test.ts      # Tests middleware auth + rate limit
+│   ├── unit/
+│   │   ├── scoring-party.test.ts      # Scoring mode party (fallback nightlife)
+│   │   └── smartSearch-hotel.test.ts  # Fix bug Bangkok + withTimeout()
+│   ├── services/
+│   │   ├── predictHQ.test.ts          # PredictHQ events (mock fetch, place ID)
+│   │   ├── foursquare.test.ts         # Foursquare restaurants (prix, liens TheFork)
+│   │   └── yelp.test.ts               # Yelp fallback (Bearer token, chain FSQ→Yelp)
+│   ├── security/
+│   │   ├── auth-signup.test.ts        # Création compte (validation, bcrypt, cookie)
+│   │   ├── auth-login.test.ts         # Connexion (credentials, JWT, logout)
+│   │   ├── auth-tokens.test.ts        # JWT (expiration, alg:none, IDOR, claims)
+│   │   └── input-validation.test.ts   # Zod validation toutes routes IA
+│   └── integration/
+│       └── generate-restaurants.test.ts # Pipeline FSQ→Yelp mergé dans activities
 │
 └── docs/                       # Documentation technique
 ```
@@ -161,23 +182,30 @@ POST /api/ai/generate
         │
         ├─ 1. Validation (Zod)
         │
-        ├─ 2. Promise.allSettled([            ← PARALLÈLE (15s timeout)
+        ├─ 2. Promise.allSettled([            ← PARALLÈLE (30s timeout par service)
         │       smartFlightSearch(),          ← Tavily : vols réels
-        │       smartEventsSearch(),          ← Tavily : événements locaux
+        │       smartEventsSearch(),          ← PredictHQ ou Tavily : événements
         │       smartHotelSearch(),           ← Tavily : hôtels
         │       getRealWeather(),             ← OpenWeatherMap
         │       getDestinationPhoto()         ← Unsplash (proxy)
         │     ])
         │
+        ├─ 2b. restaurants = foursquareRestaurantSearch()  ← en parallèle aussi
+        │         .then(r => r.length > 0 ? r : yelpRestaurantSearch())
+        │         .catch(() => [])            ← jamais bloquant
+        │
         ├─ 3. assemblePack()                  ← LLM : génère le pack JSON structuré
         │      avec prompt engineering adapté au mode (LUXURY, PARTY, STUDENT...)
         │
-        ├─ 4. scorepack()                     ← Algorithme déterministe (pas d'IA)
+        ├─ 4. Merge restaurants               ← Foursquare (ou Yelp) dans activities
+        │      pack.activities = [...activitiesIA, ...restaurants]
+        │
+        ├─ 5. scorepack()                     ← Algorithme déterministe (pas d'IA)
         │      pondération par mode de voyage
         │
-        ├─ 5. Sauvegarde Supabase             ← Si utilisateur connecté
+        ├─ 6. Sauvegarde Supabase             ← Si utilisateur connecté
         │
-        └─ 6. Réponse JSON { pack, score, flights_found, events_found }
+        └─ 7. Réponse JSON { pack, score, flights_found, events_found }
 ```
 
 ### Promise.allSettled — choix technique important
@@ -396,6 +424,8 @@ GET    /api/health          → { status: 'ok' }
 | **Python OOP** (hbnb) | Même logique de séparation des responsabilités : routes → services → base de données |
 | **HBnB Part 4 solo** | JS vanilla + JWT cookie + Fetch API → directement transposé en React + cookie httpOnly dans TripGenie |
 | **TDD** | Tests Vitest + Supertest : mocks, golden path, edge cases — même approche que les exercices unittest Python |
+| **Sécurité web** | JWT alg:none attack, IDOR, XSS via cookie httpOnly — couvre les concepts de la spécialisation cybersécurité |
+| **APIs REST externes** | Foursquare, Yelp, PredictHQ — intégration, gestion d'erreurs, fallback chain, comme les exercices d'intégration d'API |
 
 ---
 
@@ -443,27 +473,55 @@ OPENWEATHER_API_KEY=...
 
 ## 12. TESTS — STRATÉGIE
 
-### Ce qui est testé
-```
-tests/golden_path.test.js   — Flux critiques bout en bout (Vitest + Supertest)
-  ✓ POST /api/ai/generate   — génération pack complet
-  ✓ Score entre 0 et 1      — scoring déterministe
-  ✓ Vol intégré dans pack   — données enrichies
-  ✓ 400 params manquants    — validation Zod
-  ✓ POST /api/ai/chat       — modification conversationnelle
-  ✓ GET /api/photos/:city   — proxy Unsplash
-  ✓ POST /api/votes         — vote consensus
-  ✓ GET /api/health         — healthcheck
+### Architecture des tests (10 fichiers organisés par couche)
 
-tests/scoring.test.js       — Tests unitaires algorithme de scoring
 ```
+tests/
+├── unit/               ← Fonctions isolées, pas de HTTP
+│   ├── scoring-party.test.ts       15 tests — mode party, fallback nightlife
+│   └── smartSearch-hotel.test.ts   12 tests — bug Bangkok URL, withTimeout()
+│
+├── services/           ← Services externes mockés (fetch global)
+│   ├── predictHQ.test.ts           15 tests — place ID → events, catégories par mode
+│   ├── foursquare.test.ts          17 tests — prix, emoji, TheFork URL, queries mode
+│   └── yelp.test.ts                10 tests — Bearer token, fallback chain FSQ→Yelp
+│
+├── security/           ← Sécurité auth + inputs
+│   ├── auth-signup.test.ts         12 tests — validation, bcrypt, cookie httpOnly
+│   ├── auth-login.test.ts          12 tests — credentials, JWT, logout, GET /me
+│   ├── auth-tokens.test.ts         13 tests — expiration, alg:none, IDOR, claims
+│   └── input-validation.test.ts    15 tests — Zod toutes routes, injections
+│
+└── integration/        ← Pipeline complet HTTP (Supertest)
+    └── generate-restaurants.test.ts  8 tests — FSQ+Yelp mergés dans activities
+```
+
+**Total : ~129 tests**
 
 ### Principe des mocks
 Tous les services externes sont mockés en test :
-- **LLM** (Claude/Gemini) → réponse JSON fixe
-- **Supabase** → chaîne de mock (from → insert → select → single)
+- **LLM** (Claude/Gemini) → `assemblePack: vi.fn()` + `vi.mocked()` pour contrôle
+- **Supabase** → chaîne de mock (`from → select → eq → single`) + `vi.hoisted()`
+- **Foursquare / Yelp / PredictHQ** → `global.fetch = vi.fn()` avant import du service
 - **Tavily / Unsplash / Météo** → données statiques
 - **Rate limiters** → passthrough (sinon les tests s'auto-bloquent après 5 requêtes)
+
+### Pattern vitest important — `vi.hoisted()`
+```typescript
+// PROBLÈME : vi.mock() est hoisté au top du fichier
+// Les const déclarées après sont inaccessibles dans la factory
+
+// ❌ CASSÉ
+const mockSingle = vi.fn();
+vi.mock('supabase', () => ({ single: mockSingle })); // ReferenceError !
+
+// ✅ CORRECT — vi.hoisted() s'exécute avant les imports
+const { mockSingle } = vi.hoisted(() => {
+  const mockSingle = vi.fn();
+  return { mockSingle };
+});
+vi.mock('supabase', () => ({ single: mockSingle })); // OK
+```
 
 ---
 
@@ -523,3 +581,47 @@ router.post('/route', middleware, async (req, res, next) => {
 
 **"Pourquoi Vitest et pas Jest ?"**
 > Vitest est natif ESM, compatible avec la configuration Vite/ES modules du projet. Jest nécessiterait une configuration de transpilation supplémentaire pour les imports ES modules. Vitest est aussi significativement plus rapide.
+
+**"C'est quoi une SPA et pourquoi ce choix ?"**
+> SPA = Single Page Application. Un seul fichier HTML est chargé, React gère ensuite toute la navigation côté client sans rechargement. TripGenie est une app derrière authentification — le SEO n'a aucune valeur (Google ne peut pas se connecter). La SPA permet de maintenir l'état de génération IA (15s de traitement) et le chat de modification en mémoire sans perdre le contexte. Pour un site vitrine public, j'aurais choisi Next.js (SSR + SEO).
+
+**"Pourquoi pas Next.js ?"**
+> Next.js est plus adapté quand on a besoin de SSR pour le SEO ou d'ISR pour des pages produit. TripGenie est une app authentifiée sans besoin de référencement Google. React + Express séparés me permettent de maîtriser clairement chaque couche indépendamment — c'est pédagogiquement plus riche pour montrer la séparation frontend / backend / base de données.
+
+**"Comment fonctionne la chaîne Foursquare → Yelp ?"**
+> Foursquare est interrogé en premier (1000 req/jour gratuites). Si la réponse est vide, Yelp prend le relais. Si les deux échouent, le pack est généré sans restaurants — le `.catch(() => [])` garantit que le pipeline ne s'arrête jamais à cause des restaurants. C'est une dégradation gracieuse.
+
+**"C'est quoi le code HTTP 409 ?"**
+> 409 Conflict = la requête est valide mais crée un conflit avec l'état actuel de la base. Typiquement utilisé quand un email est déjà enregistré. Différent du 400 (requête mal formée) — l'email est valide, c'est la donnée qui est en conflit.
+
+**"Comment tu testes la sécurité JWT ?"**
+> J'ai une suite dédiée `auth-tokens.test.ts` qui couvre : token expiré (401), mauvaise signature (401), attaque alg:none (forge de token sans secret → 401), IDOR (User A ne peut pas accéder aux trips de User B → 404), token dans cookie vs Bearer header. Tous les services externes sont mockés — seul le middleware auth est testé en conditions réelles.
+
+---
+
+## 15. RESPONSIVE MOBILE — MODIFICATIONS UI
+
+### Problèmes corrigés
+
+**TripDetail.tsx — ModifyChat inaccessible sur mobile**
+- Avant : `hidden lg:flex` → le chat était invisible sur téléphone
+- Après : Bottom sheet (88vh) avec `AnimatePresence` + spring animation
+- FAB (bouton flottant) à `bottom-20` (80px) pour passer au-dessus de la barre iOS Safari
+- Overlay backdrop cliquable pour fermer le sheet
+
+**ChatWidget.tsx — Chips non cliquables**
+- Avant : chips "Oui, montre-moi !" visuellement présentes mais inactives
+- Après : `onChipClick` prop sur le composant `Message`, seul le dernier message bot a les chips cliquables
+- `active:scale-95` + `cursor-pointer` pour feedback tactile
+
+**Footer — Liens faux**
+- Avant : `<li className="cursor-pointer">` qui ne fait rien
+- Après : `<Link to="/">` React Router real
+
+**PackResults — Bouton PDF**
+- Avant : toast "génération PDF en cours" sans rien faire
+- Après : `window.print()` → export PDF natif du navigateur
+
+**Home.tsx + Trips.tsx — Accessibilité clavier**
+- `role="button"`, `tabIndex={0}`, `onKeyDown` (Enter + Space)
+- `focus:ring-2 focus:ring-gold/60` pour la navigation clavier visible
