@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node dist-server/index.js",
     "dev": "nodemon --exec tsx server/index.ts",
+    "dev:all": "concurrently -n server,client -c cyan,magenta \"npm run dev\" \"npm run client:dev\"",
     "build:server": "npx tsc",
     "setup-db": "node scripts/setup-db.js",
     "client:dev": "cd client-react && npm run dev",
@@ -44,6 +45,7 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.8.0",
     "@types/supertest": "^7.2.0",
+    "concurrently": "^10.0.0",
     "jsdom": "^29.0.2",
     "nodemon": "^3.0.2",
     "supertest": "^7.2.2",
