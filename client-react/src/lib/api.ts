@@ -46,6 +46,8 @@ export const getTrips     = (filters: Record<string, string> = {}) => request(`/
 export const getTrip      = (id: string) => request(`/trips/${id}`)
 export const getPublicTrip = (id: string) => request(`/trips/share/${id}`)
 export const deleteTrip   = (id: string) => request(`/trips/${id}`, { method: 'DELETE' })
+export const updateTrip   = (id: string, fields: { status?: string; travelers?: number; budget?: string }) =>
+  request(`/trips/${id}`, { method: 'PUT', body: JSON.stringify(fields) })
 
 // Photos — proxy backend (clé Unsplash jamais exposée côté client)
 export const getCityPhoto = (city: string) => request(`/photos/${encodeURIComponent(city)}`)
