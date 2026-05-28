@@ -5,6 +5,7 @@
 
 import { searchWeb } from './tools/webSearch.js';
 import { callAI, parseJSON } from './claude/index.js';
+import { predictHQEventsSearch } from './predictHQ.js';
 import type { TravelMode, FlightLinks, HotelLinks, ActivityLinks } from '../lib/types.js';
 
 function encode(str: string): string {
@@ -21,8 +22,12 @@ function flightLinks(origin: string, destination: string, departure?: string): F
 }
 
 function hotelLinks(hotelName: string, city: string): HotelLinks {
+  // N'ajoute pas la ville si elle est déjà dans le nom (LLM inclut souvent "Mandarin Oriental, Miami")
+  const searchTerm = hotelName.toLowerCase().includes(city.toLowerCase())
+    ? hotelName
+    : `${hotelName} ${city}`;
   return {
-    booking: `https://www.booking.com/search.html?ss=${encode(hotelName + ' ' + city)}`,
+    booking: `https://www.booking.com/searchresults.html?ss=${encode(searchTerm)}`,
     hotels:  `https://fr.hotels.com/search.do?q-destination=${encode(city)}&q-localised-check-in=&q-room-0-adults=2`,
     google:  `https://www.google.com/travel/hotels/${encode(city)}?q=${encode(hotelName)}`,
   };
@@ -30,7 +35,7 @@ function hotelLinks(hotelName: string, city: string): HotelLinks {
 
 function activityLinks(activityName: string, city: string): ActivityLinks {
   return {
-    viator:       `https://www.viator.com/fr-FR/search?text=${encode(activityName + ' ' + city)}`,
+    viator:       `https://www.viator.com/search?q=${encode(activityName + ' ' + city)}`,
     getyourguide: `https://www.getyourguide.fr/s/?q=${encode(activityName + ' ' + city)}`,
     airbnb:       `https://www.airbnb.fr/experiences/search?q=${encode(city)}`,
   };
@@ -128,7 +133,21 @@ Retourne UNIQUEMENT ce JSON :
 export async function smartEventsSearch({
   location, dateFrom, dateTo, mode,
 }: SmartEventsParams): Promise<EventSearchResult[]> {
-  // Événements via Tavily + LLM (Eventbrite retiré — endpoint cassé depuis mai 2026)
+
+  // ── 1. PredictHQ en priorité : données structurées réelles, pas de LLM parsing ──
+  try {
+    const phqEvents = await predictHQEventsSearch(
+      location,
+      dateFrom ?? new Date().toISOString().slice(0, 10),
+      dateTo  ?? dateFrom ?? new Date().toISOString().slice(0, 10),
+      mode
+    );
+    if (phqEvents.length > 0) return phqEvents;
+  } catch (err) {
+    console.warn('⚠️ PredictHQ fallback:', (err as Error).message);
+  }
+
+  // ── 2. Fallback Tavily + LLM si PredictHQ ne retourne rien ──
   try {
     const query = (mode === 'luxury' || mode === 'party')
       ? `exclusive VIP parties private clubs best nightlife ${location} ${dateFrom ?? ''}`

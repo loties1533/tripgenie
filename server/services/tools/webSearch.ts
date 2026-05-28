@@ -20,7 +20,7 @@ export async function searchWeb(query: string): Promise<string> {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',

@@ -120,8 +120,21 @@ function scoreHotel(hotel: HotelScore | null | undefined, mode: TravelMode, trav
  * @param mode   - Mode de voyage
  * @returns      Score entre 0 et 1
  */
-function scoreEvents(events: Evenement[] | undefined, mode: TravelMode): number {
-  if (!events || events.length === 0) return 0;
+function scoreEvents(events: Evenement[] | undefined, mode: TravelMode, activities?: Activite[]): number {
+  if (!events || events.length === 0) {
+    // Fallback party : si Tavily ne trouve rien, score via les activités nightlife du pack
+    if (mode === 'party' && activities?.length) {
+      const nightlifeActs = activities.filter(a =>
+        ['club', 'bar', 'nightlife', 'festival', 'soirée', 'party', 'concert', 'boite', 'beach club'].some(k =>
+          (a.category ?? '').toLowerCase().includes(k) ||
+          (a.name ?? '').toLowerCase().includes(k)
+        )
+      ).length;
+      // Ratio activités nightlife / 4 attendues + bonus volume total
+      return Math.min(1, nightlifeActs / 4) * 0.7 + Math.min(1, activities.length / 6) * 0.3;
+    }
+    return 0;
+  }
 
   const countScore  = normalise(events.length, 0, 20);
   const partyEvents = events.filter(e =>
@@ -209,12 +222,15 @@ export function scorepack(
   const { vol, hotel, events, activities, totalPrice } = pack;
   const weights = MODE_WEIGHTS[mode] ?? MODE_WEIGHTS.party;
 
+  // Prix par personne : 30000€ pour 5 personnes = 6000€/pers (plus juste que le budget brut)
+  const pricePerPerson = travelers > 1 ? (totalPrice ?? 0) / travelers : (totalPrice ?? 0);
+
   const scores: ScoreValues = {
     vol:             scoreVol(vol, mode),
     hotel:           scoreHotel(hotel, mode, travelers),
-    events:          scoreEvents(events, mode),
+    events:          scoreEvents(events, mode, activities),   // activities en fallback nightlife
     activities:      scoreActivities(activities, mode),
-    prix:            1 - normalise(totalPrice ?? 0, 200, 10000),
+    prix:            1 - normalise(pricePerPerson, 100, 8000), // max 8000€/pers (était 10000 total)
     activities_free: scoreActivities(activities, 'student'),
     calme:           scoreCalme(destination, events),
     global:          0,

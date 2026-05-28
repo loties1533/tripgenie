@@ -106,16 +106,39 @@ export async function assemblePack({
     ? `\nÉVÉNEMENTS RÉELS :\n${events.slice(0, 4).map(e => `- ${e.title} @ ${e.venue}`).join('\n')}`
     : '';
 
+  const activityCount = 6;
+
+  const activityTypes = mode === MODES.PARTY
+    ? 'club|bar|discothèque|beach-club|festival|restaurant-lounge'
+    : mode === MODES.LUXURY
+    ? 'restaurant-étoilé|spa-5étoiles|yacht-privé|club-vip|expérience-exclusive|gastronomie'
+    : mode === MODES.STUDENT
+    ? 'bar-incontournable|street-food|marché-local|concert|activité-outdoor|visite-gratuite'
+    : mode === MODES.RELAX
+    ? 'spa|plage-privée|restaurant-vue|yoga|croisière|nature'
+    : 'restaurant|activité-phare|visite-emblématique|bateau|spa|expérience-locale';
+
+  const activityInstruction = mode === MODES.PARTY
+    ? `⚠️ MODE PARTY — OBLIGATOIRE : 6 vrais lieux nightlife (boîtes, beach clubs, bars, festivals, restos lounge). AUCUN musée ni site culturel. Exemples réels : Pacha, Ushuaïa, Hi Ibiza, Amnesia, Destino.`
+    : mode === MODES.LUXURY
+    ? `⚠️ MODE LUXURY — OBLIGATOIRE : 6 adresses ultra-premium (restos Michelin, spas palace, yachts, clubs privés). Exemples : Nobu, Cipriani, Nikki Beach. Noms réels uniquement.`
+    : mode === MODES.STUDENT
+    ? `⚠️ MODE STUDENT — OBLIGATOIRE : 6 adresses connues et accessibles (bars étudiants, marchés, street food, activités outdoor gratuites ou pas chères). Noms réels uniquement.`
+    : mode === MODES.RELAX
+    ? `⚠️ MODE RELAX — OBLIGATOIRE : 6 adresses zen et authentiques (spas, plages calmes, restos vue mer, activités nature). Noms réels uniquement.`
+    : `⚠️ OBLIGATOIRE : 6 adresses incontournables, réelles et variées adaptées au groupe. Noms exacts uniquement, pas de descriptions génériques.`;
+
   const textRaw = await callAI(
     `Tu es le concierge privé de TripGenie. Destination : ${dest}.
     VOYAGEURS : ${travelers} personne(s). PROFIL : ${profile ?? mode}. VIBE : ${mode}. BUDGET : ${budgetPerPers}€/pers. DURÉE : ${nights} nuits.
 
     ${modePersona}
     ${budgetTone}
+    ${activityInstruction}
     ${realVenuesContext}
 
-    Génère ce JSON COMPACT (itinerary = 3 jours, activities = 3) :
-    {"country":"Pays","airport_code":"IBZ","tagline":"5-7 mots accrocheurs","overview":"1 phrase","weather":{"temp":"22°C","cond":"Soleil","tip":"Conseil"},"hotels":[{"name":"Vrai hôtel","loc":"Quartier","hl":"Point fort"},{"name":"Alternative","loc":"Quartier","hl":"Point fort"}],"itinerary":[{"day":1,"title":"Titre","am":"Activité réelle","pm":"Club/resto réel"},{"day":2,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"},{"day":3,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"}],"activities":[{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"club|bar|restaurant|activité"}],"tip1":"Conseil","tip2":"Adresse food","phrase":"Mot local","phrase_tr":"Traduction"}
+    Génère ce JSON COMPACT (itinerary = 3 jours, activities = ${activityCount}) :
+    {"country":"Pays","airport_code":"IBZ","tagline":"5-7 mots accrocheurs","overview":"1 phrase","weather":{"temp":"22°C","cond":"Soleil","tip":"Conseil"},"hotels":[{"name":"Vrai hôtel","loc":"Quartier","hl":"Point fort"},{"name":"Alternative","loc":"Quartier","hl":"Point fort"}],"itinerary":[{"day":1,"title":"Titre","am":"Activité réelle","pm":"Club/resto réel"},{"day":2,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"},{"day":3,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"}],"activities":[{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"}],"tip1":"Conseil","tip2":"Adresse food","phrase":"Mot local","phrase_tr":"Traduction"}
     ⚠️ VRAIS noms uniquement. Pas de "Gastronomie locale" ou "Découverte de ${dest}".`,
     undefined,
     'pack'
@@ -260,11 +283,14 @@ export async function assemblePack({
       const isBoat  = ['bateau', 'yacht', 'boat', 'croisière'].some(k => type.toLowerCase().includes(k));
       const emoji   = isNight ? '🎉' : isFood ? '🍽' : isBoat ? '⛵' : type === 'plage' ? '🏖' : type === 'spa' ? '💆' : '🏛';
       const name    = a.name ?? 'Activité';
+      const q = encodeURIComponent(name + ' ' + dest);
       const booking_url = isFood
-        ? `https://www.thefork.fr/recherche?q=${encodeURIComponent(name + ' ' + dest)}`
+        ? `https://www.thefork.fr/recherche?q=${q}`
+        : isNight
+        ? `https://www.google.com/search?q=${q}`
         : isBoat
-        ? `https://www.viator.com/fr-FR/search?text=${encodeURIComponent(name + ' ' + dest)}`
-        : `https://www.getyourguide.fr/s/?q=${encodeURIComponent(name + ' ' + dest)}`;
+        ? `https://www.viator.com/search?q=${q}`
+        : `https://www.getyourguide.fr/s/?q=${q}`;
       return {
         name,
         category:    isNight ? 'Nightlife' : isFood ? 'Gastronomie' : isBoat ? 'Nautique' : 'Culture',

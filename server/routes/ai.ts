@@ -11,6 +11,8 @@ import { aiGenerateLimiter, aiChatLimiter } from '../middleware/limiter.js';
 import { analyzeRequest, suggestDestinations, assemblePack, chatModify, chatIntake } from '../services/claude/index.js';
 import { scorepack } from '../services/scoring.js';
 import { smartFlightSearch, smartEventsSearch, smartHotelSearch } from '../services/smartSearch.js';
+import { yelpRestaurantSearch } from '../services/yelp.js';
+import { foursquareRestaurantSearch } from '../services/foursquare.js';
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
 import supabase from '../db/supabase.js';
@@ -152,27 +154,25 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
     // tuées par le timeout de 25s si Tavily est lent
     const photoPromise   = getDestinationPhoto(destination).catch(() => null);
     const weatherPromise = getRealWeather(destination, departure).catch(() => null);
+    // Foursquare en premier (1000/jour), Yelp en fallback (500/jour) — les deux gardés
+    const restaurantsPromise = foursquareRestaurantSearch(destination, mode as TravelMode)
+      .then(r => r.length > 0 ? r : yelpRestaurantSearch(destination, mode as TravelMode))
+      .catch(() => []);
 
-    try {
-      results = await withTimeout(Promise.allSettled([
-        smartFlightSearch({ origin, destination, departure, return_date }),
-        smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }),
-        smartHotelSearch({ location: destination, mode }),
-        Promise.resolve(null),  // placeholder météo (fetchée séparément)
-        Promise.resolve(null),  // placeholder photo (fetchée séparément)
-      ]), 25000);
-    } catch (err) {
-      console.warn('⚠️ Web search timeout or error, falling back to pure AI generation.');
-      results = [
-        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' },
-        { status: 'rejected', reason: 'timeout' }, { status: 'rejected', reason: 'timeout' },
-        { status: 'rejected', reason: 'timeout' },
-      ];
-    }
+    // Timeout individuel 20s par service : si events timeout, vols + hôtels sont préservés
+    // (avant : timeout global 25s qui jetait TOUT si un seul service était lent)
+    results = await Promise.allSettled([
+      withTimeout(smartFlightSearch({ origin, destination, departure, return_date }), 30000),
+      withTimeout(smartEventsSearch({ location: destination, dateFrom: departure, dateTo: return_date || departure, mode }), 30000),
+      withTimeout(smartHotelSearch({ location: destination, mode }), 30000),
+      Promise.resolve(null),  // placeholder météo (fetchée séparément)
+      Promise.resolve(null),  // placeholder photo (fetchée séparément)
+    ]);
 
-    // On attend photo et météo indépendamment du timeout Tavily
-    const realPhoto   = await photoPromise;
-    const realWeather = await weatherPromise;
+    // On attend photo, météo et Yelp indépendamment du timeout Tavily
+    const realPhoto       = await photoPromise;
+    const realWeather     = await weatherPromise;
+    const restaurants     = await restaurantsPromise;
 
     const aiFlight = results[0].status === 'fulfilled' ? results[0].value : null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -214,6 +214,12 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       realWeather,
       realPhoto,
     });
+
+    // Merge restaurants Yelp dans les activités (si Yelp a retourné des résultats)
+    if (restaurants.length > 0) {
+      pack.activities = [...(pack.activities ?? []), ...restaurants];
+      console.log(`🍽️  Restaurants: ${restaurants.length} lieux ajoutés aux activités`);
+    }
 
     // ---- Scoring réel via scoring.js ----
     const bestFlight = flights[0] ?? null;
