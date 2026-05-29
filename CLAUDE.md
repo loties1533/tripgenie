@@ -97,9 +97,11 @@ tripgenie/
 │   │   ├── auth.js             # POST /login, /signup, /logout, GET /me
 │   │   ├── trips.js            # CRUD voyages (protégé JWT)
 │   │   ├── ai.js               # Pipeline IA : /generate, /chat, /onboarding
-│   │   ├── votes.js            # Votes consensus sur les packs partagés
+│   │   ├── votes.js            # Votes consensus — POST/GET par pack_id
 │   │   ├── photos.js           # Proxy Unsplash (clé jamais côté client)
-│   │   └── packs.js            # Gestion des packs sauvegardés
+│   │   ├── packs.js            # Gestion des packs sauvegardés
+│   │   ├── preferences.js      # GET/PUT /api/preferences (relation 1-1 users)
+│   │   └── collaborators.js    # GET/POST/DELETE /api/trips/:id/collaborators
 │   ├── middleware/
 │   │   ├── auth.js             # requireAuth / optionalAuth (lecture cookie + header)
 │   │   └── limiter.js          # Rate limiters dédiés aux routes IA
@@ -363,8 +365,8 @@ updated_at  TIMESTAMPTZ DEFAULT now()
 ### Table `trip_votes`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
-trip_id     UUID REFERENCES trips(id) ON DELETE CASCADE
-item_id     TEXT                   -- identifiant de l'élément voté
+pack_id     UUID REFERENCES packs(id) ON DELETE CASCADE  -- vote sur un pack précis
+item_id     TEXT                   -- identifiant de l'élément voté (flight_0, hotel_1...)
 voter_name  TEXT DEFAULT 'Anonyme'
 vote_type   BOOLEAN                -- true = pour, false = contre
 created_at  TIMESTAMPTZ DEFAULT now()
@@ -401,8 +403,21 @@ DELETE /api/trips/:id       (auth) → 200
 
 ### Votes
 ```
-POST   /api/votes           { trip_id, item_id, vote_type, voter_name } → 201
-GET    /api/votes/:trip_id  → votes[]
+POST   /api/votes           { pack_id, item_id, vote_type, voter_name } → 201
+GET    /api/votes/:pack_id  → votes[]
+```
+
+### Préférences
+```
+GET    /api/preferences     (auth) → { preferences }
+PUT    /api/preferences     (auth) { default_mode, preferred_prefs, home_city, currency } → { preferences }
+```
+
+### Collaborateurs
+```
+GET    /api/trips/:id/collaborators          (auth) → collaborators[]
+POST   /api/trips/:id/collaborators          (auth) { email, role } → 201 + collaborator
+DELETE /api/trips/:id/collaborators/:user_id (auth) → 200
 ```
 
 ### Divers
