@@ -22,7 +22,7 @@ vi.mock('express-rate-limit', () => ({
 
 vi.mock('../server/middleware/limiter.js', () => {
   const passthrough = (_req: any, _res: any, next: any) => next();
-  return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough };
+  return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough, authLimiter: passthrough };
 });
 
 vi.mock('../server/db/supabase.js', () => {

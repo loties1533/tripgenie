@@ -17,10 +17,11 @@ interface SearchState {
   concepts: unknown[] | null;
   pack: Pack | null;
   tripId: string | null;
+  packId: string | null;
   isLoading: boolean;
   error: string | null;
   setField: (key: keyof SearchState, val: any) => void;
-  setPack: (pack: Pack | null, tripId: string | null) => void;
+  setPack: (pack: Pack | null, tripId: string | null, packId?: string | null) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   clearPack: () => void;
@@ -31,7 +32,7 @@ export const useSearchStore = create<SearchState>()(
     (set) => ({
       // Form
       destination: '',
-      origin:      'Bordeaux',
+      origin:      'Paris',
       departure:   '',
       returnDate:  '',
       travelers:   2,
@@ -43,15 +44,17 @@ export const useSearchStore = create<SearchState>()(
       concepts:    null,
       pack:        null,
       tripId:      null,
+      packId:      null,
       isLoading:   false,
       error:       null,
 
       // Actions
       setField:    (key, val) => set({ [key]: val } as Partial<SearchState>),
-      setPack:     (pack, tripId) => set({ pack, tripId, isLoading: false, error: null }),
+      // packId optionnel : si non fourni (ex: chat de modif), on garde l'ancien
+      setPack:     (pack, tripId, packId) => set((s) => ({ pack, tripId, packId: packId !== undefined ? packId : s.packId, isLoading: false, error: null })),
       setLoading:  (v) => set({ isLoading: v }),
       setError:    (e) => set({ error: e, isLoading: false }),
-      clearPack:   () => set({ pack: null, tripId: null }),
+      clearPack:   () => set({ pack: null, tripId: null, packId: null }),
     }),
     {
       name:    'tg_v2_search',
@@ -83,6 +86,7 @@ interface ChatState {
   addMessage: (msg: ChatMessage) => void;
   setTyping: (v: boolean) => void;
   mergeChatData: (data: Record<string, any>) => void;
+  seedChatData: (data: Record<string, any>) => void;
   setReady: (v: boolean) => void;
   setMockMode: (v: boolean) => void;
   setQuizMode: (v: boolean) => void;
@@ -118,6 +122,8 @@ export const useChatStore = create<ChatState>()(
       addMessage:    (msg) => set((s) => ({ messages: [...s.messages, { id: Date.now() + Math.random(), ...msg }] })),
       setTyping:     (v) => set({ isTyping: v }),
       mergeChatData: (data) => set((s) => ({ chatData: { ...s.chatData, ...data }, turnCount: s.turnCount + 1 })),
+      // Pré-remplissage (préférences user) — ne compte PAS comme un tour de conversation
+      seedChatData:  (data) => set((s) => ({ chatData: { ...s.chatData, ...data } })),
       setReady:      (v) => set({ isReady: v }),
       setMockMode:   (v) => set({ isMockMode: v }),
       setQuizMode:   (v) => set({ quizMode: v, quizStep: 0 }),

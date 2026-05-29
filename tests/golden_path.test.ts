@@ -23,7 +23,8 @@ vi.mock('../server/middleware/limiter.js', () => {
   const passthrough = (_req: any, _res: any, next: any) => next();
   return {
     aiGenerateLimiter: passthrough,
-    aiChatLimiter:     passthrough
+    aiChatLimiter:     passthrough,
+    authLimiter:       passthrough
   };
 });
 
@@ -294,7 +295,7 @@ describe('🗳️ POST /api/votes', () => {
     const res = await request(app)
       .post('/api/votes')
       .send({
-        trip_id:    '550e8400-e29b-41d4-a716-446655440000',
+        pack_id:    '550e8400-e29b-41d4-a716-446655440000',
         item_id:    'activity-tour-eiffel',
         vote_type:  true,
         voter_name: 'Alice'
@@ -304,11 +305,11 @@ describe('🗳️ POST /api/votes', () => {
     expect([200, 201]).toContain(res.status);
   });
 
-  it('retourne 400 si trip_id n\'est pas un UUID valide', async () => {
+  it('retourne 400 si pack_id n\'est pas un UUID valide', async () => {
     const res = await request(app)
       .post('/api/votes')
       .send({
-        trip_id:   'pas-un-uuid',
+        pack_id:   'pas-un-uuid',
         item_id:   'activity-tour-eiffel',
         vote_type: true
       });
@@ -321,7 +322,7 @@ describe('🗳️ POST /api/votes', () => {
     const res = await request(app)
       .post('/api/votes')
       .send({
-        trip_id:   '550e8400-e29b-41d4-a716-446655440000',
+        pack_id:   '550e8400-e29b-41d4-a716-446655440000',
         vote_type: false
       });
 

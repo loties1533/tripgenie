@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import supabase from '../db/supabase.js';
+import { authLimiter } from '../middleware/limiter.js';
 
 // Schemas de validation
 const registerSchema = z.object({
@@ -25,14 +26,15 @@ const loginSchema = z.object({
 const router = express.Router();
 
 const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
+  httpOnly: true,                                // inaccessible au JS du navigateur → protège du vol de token par XSS
+  secure: process.env.NODE_ENV === 'production', // cookie envoyé uniquement en HTTPS en prod (http://localhost autorisé en dev)
+  sameSite: 'strict' as const,                   // anti-CSRF maximal : le cookie n'est jamais envoyé par un autre site.
+                                                 // Possible ici car le front React et l'API Express sont servis par le MÊME serveur (même origine).
+  maxAge: 7 * 24 * 60 * 60 * 1000                // 7 jours
 };
 
 // ---- POST /api/auth/signup ----
-router.post('/signup', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/signup', authLimiter, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -78,10 +80,11 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
       { expiresIn: '7d' }
     );
 
-    // 5. Envoyer le cookie
+    // 5. Envoyer le cookie httpOnly (le token n'est jamais renvoyé dans le body :
+    //    le front s'appuie uniquement sur le cookie, inaccessible au JS)
     res.cookie('tg_token', token, COOKIE_OPTIONS);
-    
-    res.status(201).json({ user, token });
+
+    res.status(201).json({ user });
 
   } catch (err) {
     console.error('Register Error:', err);
@@ -90,7 +93,7 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction): 
 });
 
 // ---- POST /api/auth/login ----
-router.post('/login', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/login', authLimiter, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -130,12 +133,12 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
       { expiresIn: '7d' }
     );
 
-    // 4. Set Cookie & Response
+    // 4. Cookie httpOnly uniquement — le token n'est pas exposé dans le body
     res.cookie('tg_token', token, COOKIE_OPTIONS);
 
     // On enlève le hash de la réponse
     const { password: _pw, ...userWithoutPassword } = user;
-    res.json({ user: userWithoutPassword, token });
+    res.json({ user: userWithoutPassword });
 
   } catch (err) {
     console.error('Login Error:', err);

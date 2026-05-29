@@ -30,7 +30,7 @@ vi.mock('express-rate-limit', () => ({
 
 vi.mock('../server/middleware/limiter.js', () => {
   const passthrough = (_req: any, _res: any, next: any) => next();
-  return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough };
+  return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough, authLimiter: passthrough };
 });
 
 vi.mock('bcryptjs', () => ({
@@ -147,7 +147,7 @@ describe('🔐 Auth — Validation des inputs', () => {
     expect(res.body.user).toBeDefined();
   });
 
-  it('POST /login — 200 avec token (mock)', async () => {
+  it('POST /login — 200, user dans le body et token en cookie httpOnly (mock)', async () => {
     // Le mock bcrypt.compare retourne true par défaut
     const res = await request(app)
       .post('/api/auth/login')
@@ -155,7 +155,10 @@ describe('🔐 Auth — Validation des inputs', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user).toBeDefined();
-    expect(res.body.token).toBeDefined();
+    // Le token ne doit PAS fuiter dans le body — il vit dans un cookie httpOnly
+    expect(res.body.token).toBeUndefined();
+    const cookies = res.headers['set-cookie'] as unknown as string[];
+    expect(cookies.some(c => c.startsWith('tg_token=') && /HttpOnly/i.test(c))).toBe(true);
   });
 
   it('GET /me — 401 sans token', async () => {
@@ -258,10 +261,10 @@ describe('🗺️ Trips — Validation Zod', () => {
 
 describe('🗳️ Votes — Validation', () => {
 
-  it('POST — 400 si trip_id n\'est pas un UUID', async () => {
+  it('POST — 400 si pack_id n\'est pas un UUID', async () => {
     const res = await request(app)
       .post('/api/votes')
-      .send({ trip_id: 'pas-un-uuid', item_id: 'hotel-1', vote_type: true });
+      .send({ pack_id: 'pas-un-uuid', item_id: 'hotel-1', vote_type: true });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/invalide/i);
   });
@@ -269,18 +272,18 @@ describe('🗳️ Votes — Validation', () => {
   it('POST — 400 si item_id absent', async () => {
     const res = await request(app)
       .post('/api/votes')
-      .send({ trip_id: TEST_TRIP_ID, vote_type: true });
+      .send({ pack_id: TEST_TRIP_ID, vote_type: true });
     expect(res.status).toBe(400);
   });
 
   it('POST — 201 vote valide (mock)', async () => {
     const res = await request(app)
       .post('/api/votes')
-      .send({ trip_id: TEST_TRIP_ID, item_id: 'hotel-ritz', vote_type: true, voter_name: 'Alice' });
+      .send({ pack_id: TEST_TRIP_ID, item_id: 'hotel-ritz', vote_type: true, voter_name: 'Alice' });
     expect([200, 201]).toContain(res.status);
   });
 
-  it('GET /:trip_id — 200 retourne les votes', async () => {
+  it('GET /:pack_id — 200 retourne les votes', async () => {
     const res = await request(app).get(`/api/votes/${TEST_TRIP_ID}`);
     expect(res.status).toBe(200);
     expect(res.body.votes).toBeDefined();

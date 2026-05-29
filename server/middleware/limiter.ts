@@ -22,3 +22,18 @@ export const aiChatLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Limiteur dédié à l'authentification (connexion + inscription).
+// Protège contre le bourrage d'identifiants (credential stuffing) et le spam
+// de comptes : 10 tentatives max par fenêtre de 15 min et par IP.
+// Une attaque par force brute a besoin de milliers d'essais → bloquée ici,
+// alors qu'un utilisateur légitime dépasse rarement 10 essais en 15 minutes.
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    error: 'Trop de tentatives de connexion. Réessaye dans 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

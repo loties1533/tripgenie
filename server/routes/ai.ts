@@ -203,6 +203,7 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
 
     const pack = await assemblePack({
       destination,
+      origin,
       flights: aiFlight ? [aiFlight] : [],
       events,
       hotels: realHotels,
@@ -250,7 +251,8 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
     };
 
     // Sauvegarde si user connecté
-    let tripId = null;
+    let tripId  = null;
+    let packId  = null;
     if (req.user && supabase) {
       const { data: trip } = await supabase
         .from('trips')
@@ -272,11 +274,28 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
         .single();
 
       tripId = trip?.id;
+
+      if (tripId) {
+        const { data: pack } = await supabase
+          .from('packs')
+          .insert({
+            trip_id:   tripId,
+            rank:      1,
+            score:     scoreResult.total,
+            pack_data: scoredPack,
+            selected:  true
+          })
+          .select('id')
+          .single();
+
+        packId = pack?.id;
+      }
     }
 
     res.json({
       pack:          scoredPack,
       trip_id:       tripId,
+      pack_id:       packId,
       flights_found: flights.length,
       events_found:  events.length,
       score:         scoreResult.total

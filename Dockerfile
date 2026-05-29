@@ -1,6 +1,21 @@
 # =============================================
 # TripGenie — Dockerfile Backend (Express / Node.js)
 # =============================================
+#
+# NOTE — Docker n'est PAS utilisé en production.
+# -----------------------------------------------------------------
+# Render déploie via le runtime Node natif (render.yaml → `runtime: node`) :
+# il exécute directement `buildCommand` puis `startCommand` et IGNORE ce
+# Dockerfile. Ce fichier n'a donc AUCUN effet sur le déploiement Render.
+#
+# Pourquoi le conserver alors ?
+#   - Portabilité : permet de lancer TripGenie sur n'importe quelle plateforme
+#     de conteneurs (Kubernetes, ECS, Fly.io...) sans réécriture.
+#   - Reproductibilité locale : `docker build` fige l'environnement et met fin
+#     au « ça marche sur ma machine ».
+# Choix pragmatique : ne pas payer la complexité Docker en prod tant que le
+# PaaS suffit, tout en gardant la porte ouverte pour plus tard.
+# =============================================
 
 FROM node:20-alpine
 

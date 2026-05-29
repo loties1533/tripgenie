@@ -21,7 +21,7 @@ vi.mock('express-rate-limit', () => ({
 }));
 vi.mock('../../server/middleware/limiter.js', () => {
   const p = (_: any, __: any, n: any) => n();
-  return { aiGenerateLimiter: p, aiChatLimiter: p };
+  return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
 // ---- Mock Supabase — vi.hoisted évite l'erreur de référence avant initialisation ----

@@ -20,6 +20,7 @@ import type { WeatherData } from '../weather.js';
 
 interface AssemblePackParams {
   destination: string;
+  origin?: string;
   flights?: FlightSearchResult[];
   events?: EventSearchResult[];
   hotels?: HotelSearchResult[];
@@ -37,6 +38,7 @@ interface AssemblePackParams {
 interface AITextResult {
   country?: string;
   airport_code?: string;
+  origin_airport_code?: string;
   tagline?: string;
   overview?: string;
   weather?: { temp?: string; cond?: string; tip?: string };
@@ -66,10 +68,12 @@ interface AITextResult {
  * @returns      Pack complet structuré prêt à être affiché côté client
  */
 export async function assemblePack({
-  destination, flights, events, hotels: realHotels, mode, profile, travelers, budget,
+  destination, origin, flights, events, hotels: realHotels, mode, profile, travelers, budget,
   departure, return_date, duration, realWeather, realPhoto,
 }: AssemblePackParams): Promise<Pack> {
   const dest = sanitizeInput(destination);
+  // Ville de départ RÉELLE de l'utilisateur (avant : toujours "Paris/CDG" en dur — bug corrigé).
+  const originCity = sanitizeInput(origin ?? DEFAULT_VALUES.ORIGIN);
 
   let nights: number = DEFAULT_VALUES.NIGHTS;
   if (departure && return_date) {
@@ -129,7 +133,7 @@ export async function assemblePack({
     : `⚠️ OBLIGATOIRE : 6 adresses incontournables, réelles et variées adaptées au groupe. Noms exacts uniquement, pas de descriptions génériques.`;
 
   const textRaw = await callAI(
-    `Tu es le concierge privé de TripGenie. Destination : ${dest}.
+    `Tu es le concierge privé de TripGenie. Destination : ${dest}. Ville de départ : ${originCity}.
     VOYAGEURS : ${travelers} personne(s). PROFIL : ${profile ?? mode}. VIBE : ${mode}. BUDGET : ${budgetPerPers}€/pers. DURÉE : ${nights} nuits.
 
     ${modePersona}
@@ -138,8 +142,9 @@ export async function assemblePack({
     ${realVenuesContext}
 
     Génère ce JSON COMPACT (itinerary = 3 jours, activities = ${activityCount}) :
-    {"country":"Pays","airport_code":"IBZ","tagline":"5-7 mots accrocheurs","overview":"1 phrase","weather":{"temp":"22°C","cond":"Soleil","tip":"Conseil"},"hotels":[{"name":"Vrai hôtel","loc":"Quartier","hl":"Point fort"},{"name":"Alternative","loc":"Quartier","hl":"Point fort"}],"itinerary":[{"day":1,"title":"Titre","am":"Activité réelle","pm":"Club/resto réel"},{"day":2,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"},{"day":3,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"}],"activities":[{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"}],"tip1":"Conseil","tip2":"Adresse food","phrase":"Mot local","phrase_tr":"Traduction"}
-    ⚠️ VRAIS noms uniquement. Pas de "Gastronomie locale" ou "Découverte de ${dest}".`,
+    {"country":"Pays","airport_code":"IBZ","origin_airport_code":"BOD","tagline":"5-7 mots accrocheurs","overview":"1 phrase","weather":{"temp":"22°C","cond":"Soleil","tip":"Conseil"},"hotels":[{"name":"Vrai hôtel","loc":"Quartier","hl":"Point fort"},{"name":"Alternative","loc":"Quartier","hl":"Point fort"}],"itinerary":[{"day":1,"title":"Titre","am":"Activité réelle","pm":"Club/resto réel"},{"day":2,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"},{"day":3,"title":"Titre","am":"Activité réelle","pm":"Soirée réelle"}],"activities":[{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"},{"name":"LIEU RÉEL","desc":"50 chars max","type":"${activityTypes}"}],"tip1":"Conseil","tip2":"Adresse food","phrase":"Mot local","phrase_tr":"Traduction"}
+    ⚠️ VRAIS noms uniquement. Pas de "Gastronomie locale" ou "Découverte de ${dest}".
+    ⚠️ airport_code = code IATA de l'aéroport de ${dest}. origin_airport_code = code IATA de l'aéroport de ${originCity} (ville de départ).`,
     undefined,
     'pack'
   );
@@ -176,8 +181,10 @@ export async function assemblePack({
     };
   }
 
-  // Code aéroport (fourni par le LLM, ex: IBZ, CDG, BKK...)
+  // Code aéroport destination (fourni par le LLM, ex: IBZ, BKK...)
   const airportCode = t.airport_code?.toUpperCase() ?? 'XXX';
+  // Code aéroport de départ, déduit de la ville d'origine réelle par le LLM
+  const originCode  = t.origin_airport_code?.toUpperCase() ?? 'XXX';
 
   // Vols — FlightSearchResult.price est DÉJÀ par personne (voir smartSearch prompt)
   const rawPrice       = flights?.[0]?.price ?? 0;
@@ -188,8 +195,8 @@ export async function assemblePack({
   const flightData = flights?.length
     ? [
         {
-          from:             'CDG',
-          from_city:        'Paris',
+          from:             originCode,
+          from_city:        originCity,
           to:               airportCode,
           to_city:          dest,
           departure_time:   flights[0].outbound_time || '10:30',
@@ -204,8 +211,8 @@ export async function assemblePack({
         {
           from:             airportCode,
           from_city:        dest,
-          to:               'CDG',
-          to_city:          'Paris',
+          to:               originCode,
+          to_city:          originCity,
           departure_time:   '18:00',
           arrival_time:     '20:00',
           duration:         flights[0].duration || '2h00',
@@ -217,8 +224,8 @@ export async function assemblePack({
         },
       ]
     : [
-        { from: 'CDG', from_city: 'Paris', to: airportCode, to_city: dest, departure_time: '10:30', arrival_time: '12:00', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'outbound' as const },
-        { from: airportCode, from_city: dest, to: 'CDG', to_city: 'Paris', departure_time: '18:00', arrival_time: '19:30', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'return' as const },
+        { from: originCode, from_city: originCity, to: airportCode, to_city: dest, departure_time: '10:30', arrival_time: '12:00', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'outbound' as const },
+        { from: airportCode, from_city: dest, to: originCode, to_city: originCity, departure_time: '18:00', arrival_time: '19:30', duration: '1h30', stops: 'Direct', airline: 'Air France', price_per_person: `${volPriceEst}€`, type: 'return' as const },
       ];
 
   // Événements
