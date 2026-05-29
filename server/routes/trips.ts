@@ -43,9 +43,10 @@ router.get('/share/:id', async (req: Request, res: Response, next: NextFunction)
       return;
     }
 
+    // JOIN sur packs : on récupère le pack pour exposer son id (cible des votes)
     const { data: trip, error } = await supabase
       .from('trips')
-      .select('id, title, destination, country, pack_data, score, mode, departure, return_date, travelers, budget')
+      .select('id, title, destination, country, pack_data, score, mode, departure, return_date, travelers, budget, packs(id, rank, selected)')
       .eq('id', req.params.id)
       .single();
 
@@ -54,7 +55,14 @@ router.get('/share/:id', async (req: Request, res: Response, next: NextFunction)
       return;
     }
 
-    res.json({ trip });
+    // Le pack sélectionné (ou rang 1) sert de cible pour les votes consensus
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const packs = ((trip as any).packs ?? []) as Array<{ id: string; rank: number; selected: boolean }>;
+    const targetPack = packs.find((p) => p.selected) ?? [...packs].sort((a, b) => a.rank - b.rank)[0] ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+    const { packs: _packs, ...tripData } = trip as any;
+
+    res.json({ trip: { ...tripData, pack_id: targetPack?.id ?? null } });
   } catch (err) {
     console.error('Public share error:', err);
     next(err);

@@ -50,6 +50,16 @@ export function Header() {
             <span className="text-lg">📖</span>
             Mes voyages
           </Link>
+          {user && (
+            <Link to="/preferences"
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                ${loc.pathname === '/preferences'
+                  ? 'text-ink dark:text-parchment bg-white dark:bg-ink-light shadow-sm'
+                  : 'text-muted hover:text-ink dark:hover:text-parchment'
+                }`}>
+              Préférences
+            </Link>
+          )}
         </nav>
 
         {/* Right actions */}
@@ -109,6 +119,12 @@ export function Header() {
                 className={`px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${loc.pathname === '/trips' ? 'bg-gold text-white' : 'text-gold hover:bg-gold/10'}`}>
                 📖 Mes voyages
               </Link>
+              {user && (
+                <Link to="/preferences" onClick={() => setMenuOpen(false)}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${loc.pathname === '/preferences' ? 'bg-gold/10 text-gold' : 'text-muted hover:text-ink dark:hover:text-parchment'}`}>
+                  ⚙️ Préférences
+                </Link>
+              )}
               <div className="h-px bg-gold/10 my-1" />
               {user
                 ? <>

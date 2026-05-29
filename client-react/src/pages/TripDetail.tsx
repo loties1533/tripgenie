@@ -25,7 +25,7 @@ export default function TripDetail() {
 
   useEffect(() => {
     if (data?.trip?.pack_data && tripId !== data.trip.id) {
-      setPack(data.trip.pack_data, data.trip.id)
+      setPack(data.trip.pack_data, data.trip.id, data.trip.pack_id ?? null)
       setField('mode', data.trip.mode || 'party')
     }
     if (data?.trip?.status) setStatus(data.trip.status)

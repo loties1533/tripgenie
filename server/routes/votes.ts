@@ -10,7 +10,7 @@ import supabase from '../db/supabase.js';
 import type { Request, Response, NextFunction } from 'express';
 
 const voteSchema = z.object({
-  trip_id:    z.string().uuid('trip_id invalide'),
+  pack_id:    z.string().uuid('pack_id invalide'),
   item_id:    z.string().min(1, 'item_id requis'),
   vote_type:  z.boolean(),
   voter_name: z.string().max(50).optional()
@@ -38,7 +38,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
       res.status(400).json({ error: parsed.error.issues?.[0]?.message ?? 'Données invalides' });
       return;
     }
-    const { trip_id, item_id, voter_name, vote_type } = parsed.data;
+    const { pack_id, item_id, voter_name, vote_type } = parsed.data;
 
     if (!supabase) {
       res.status(500).json({ error: 'Supabase non configuré' });
@@ -48,7 +48,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     const { data, error } = await supabase
       .from('trip_votes')
       .insert({
-        trip_id,
+        pack_id,
         item_id,
         voter_name: voter_name || 'Anonyme',
         vote_type
@@ -69,9 +69,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
   }
 });
 
-// ---- GET /api/votes/:trip_id ----
-// Récupérer tous les votes pour un voyage donné
-router.get('/:trip_id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// ---- GET /api/votes/:pack_id ----
+// Récupérer tous les votes pour un pack donné
+router.get('/:pack_id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!supabase) {
       res.status(500).json({ error: 'Supabase non configuré' });
@@ -81,7 +81,7 @@ router.get('/:trip_id', async (req: Request, res: Response, next: NextFunction):
     const { data, error } = await supabase
       .from('trip_votes')
       .select('*')
-      .eq('trip_id', req.params.trip_id);
+      .eq('pack_id', req.params.pack_id);
 
     if (error) throw error;
 

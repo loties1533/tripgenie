@@ -21,6 +21,8 @@ import packsRoutes from './routes/packs.js';
 import aiRoutes from './routes/ai.js';
 import votesRoutes from './routes/votes.js';
 import photosRoutes from './routes/photos.js';
+import preferencesRoutes from './routes/preferences.js';
+import collaboratorsRoutes from './routes/collaborators.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,10 +52,12 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // ---- Routes API ----
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripsRoutes);
+app.use('/api/trips', collaboratorsRoutes);
 app.use('/api/packs', packsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/votes', votesRoutes);
 app.use('/api/photos', photosRoutes);
+app.use('/api/preferences', preferencesRoutes);
 
 // Healthcheck pour s'assurer que le backend tourne
 app.get('/api/health', (req, res) => {

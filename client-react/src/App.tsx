@@ -3,10 +3,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { useThemeStore, useAuthStore, useSearchStore } from './store'
-import Home       from './pages/Home'
-import Trips      from './pages/Trips'
-import TripDetail from './pages/TripDetail'
-import Login      from './pages/Login'
+import Home        from './pages/Home'
+import Trips       from './pages/Trips'
+import TripDetail  from './pages/TripDetail'
+import Login       from './pages/Login'
+import Preferences from './pages/Preferences'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,10 +38,11 @@ export default function App() {
         <ThemeInit />
         <AppCleanup />
         <Routes>
-          <Route path="/"          element={<Home />} />
-          <Route path="/trips"     element={<Trips />} />
-          <Route path="/trip/:id"  element={<TripDetail />} />
-          <Route path="/login"     element={<Login />} />
+          <Route path="/"            element={<Home />} />
+          <Route path="/trips"       element={<Trips />} />
+          <Route path="/trip/:id"    element={<TripDetail />} />
+          <Route path="/login"       element={<Login />} />
+          <Route path="/preferences" element={<Preferences />} />
         </Routes>
         <Toaster
           position="bottom-right"

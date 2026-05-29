@@ -52,8 +52,19 @@ export const updateTrip   = (id: string, fields: { status?: string; travelers?: 
 // Photos — proxy backend (clé Unsplash jamais exposée côté client)
 export const getCityPhoto = (city: string) => request(`/photos/${encodeURIComponent(city)}`)
 
-// Votes
-export const saveVote     = (trip_id: string, item_id: string, vote_type: boolean, voter_name = '') =>
-  request('/votes', { method: 'POST', body: JSON.stringify({ trip_id, item_id, vote_type, voter_name }) })
+// Préférences utilisateur (relation 1-1) — pré-remplissent le formulaire de génération
+export interface UserPreferences {
+  default_mode?: string;
+  preferred_prefs?: string[];
+  home_city?: string;
+  currency?: string;
+}
+export const getPreferences  = () => request<{ preferences: UserPreferences | null }>('/preferences')
+export const savePreferences = (fields: UserPreferences) =>
+  request<{ preferences: UserPreferences }>('/preferences', { method: 'PUT', body: JSON.stringify(fields) })
 
-export const getVotes     = (trip_id: string) => request(`/votes/${trip_id}`)
+// Votes — on vote sur un pack précis (pack_id), pas sur le voyage entier
+export const saveVote     = (pack_id: string, item_id: string, vote_type: boolean, voter_name = '') =>
+  request('/votes', { method: 'POST', body: JSON.stringify({ pack_id, item_id, vote_type, voter_name }) })
+
+export const getVotes     = (pack_id: string) => request(`/votes/${pack_id}`)

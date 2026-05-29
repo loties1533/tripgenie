@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { saveVote } from '../../lib/api'
 
-const VoteButtons = ({ tripId, itemId }: { tripId: string, itemId: string }) => {
+const VoteButtons = ({ packId, itemId }: { packId: string, itemId: string }) => {
   const [userVote, setUserVote] = useState<boolean | null>(null)
-  const disabled = !tripId
+  const disabled = !packId
 
   const onVote = async (type: boolean) => {
     if (disabled) return
     try {
-      await saveVote(tripId, itemId, type, '')
+      await saveVote(packId, itemId, type, '')
       setUserVote(type)
     } catch (err) { console.error(err) }
   }

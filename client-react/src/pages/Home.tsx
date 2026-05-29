@@ -5,8 +5,8 @@ import { PageLayout } from '../components/layout'
 import ChatWidget from '../components/chat/ChatWidget'
 import PackResults from '../components/results/PackResults'
 import { GenerationLoader } from '../components/ui'
-import { useSearchStore, useChatStore } from '../store'
-import { getCityPhoto } from '../lib/api'
+import { useSearchStore, useChatStore, useAuthStore } from '../store'
+import { getCityPhoto, getPreferences } from '../lib/api'
 
 const FALLBACK_PHOTOS = [
   'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80',
@@ -199,7 +199,7 @@ function TripConcepts() {
       })
       const data = await res.json()
       if (data.pack) {
-        setPack(data.pack, data.trip_id)
+        setPack(data.pack, data.trip_id, data.pack_id)
         if (data.trip_id) {
           navigate(`/trip/${data.trip_id}`)
         } else {
@@ -293,7 +293,28 @@ const FEATURES = [
 ═══════════════════════════════════════════════════════ */
 export default function Home() {
   const { pack, concepts, isLoading, destination } = useSearchStore()
+  const { user }        = useAuthStore()
+  const { seedChatData } = useChatStore()
+  const seededRef        = useRef(false)
   const hasPack = !!pack && !isLoading
+
+  // Pré-remplissage du chat depuis les préférences utilisateur (Niveau 1).
+  // Ville de départ, mode et centres d'intérêt par défaut → l'IA peut ensuite les écraser
+  // si l'utilisateur précise autre chose dans la conversation.
+  useEffect(() => {
+    if (!user || seededRef.current) return
+    seededRef.current = true
+    getPreferences()
+      .then(({ preferences }) => {
+        if (!preferences) return
+        const seed: Record<string, any> = {}
+        if (preferences.home_city)               seed.origin    = preferences.home_city
+        if (preferences.default_mode)            seed.mode      = preferences.default_mode
+        if (preferences.preferred_prefs?.length) seed.interests = preferences.preferred_prefs
+        if (Object.keys(seed).length) seedChatData(seed)
+      })
+      .catch(() => {})
+  }, [user])
 
   return (
     <PageLayout>

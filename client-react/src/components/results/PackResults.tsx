@@ -74,7 +74,7 @@ function HotelCard({ hotel }: { hotel: any }) {
 }
 
 // ---- Flight card ----
-function FlightCard({ flight, tripId, destination }: { flight: any; tripId: string; destination: string }) {
+function FlightCard({ flight, packId, destination }: { flight: any; packId: string; destination: string }) {
   const isReturn  = flight.type === 'return'
   const bookingUrl = flight.links?.skyscanner
     || flight.links?.kayak
@@ -91,7 +91,7 @@ function FlightCard({ flight, tripId, destination }: { flight: any; tripId: stri
           <span className="text-xs text-muted font-medium">{flight.airline}</span>
         </div>
         <div className="flex items-center gap-3">
-          <VoteButtons tripId={tripId} itemId={`flight-${flight.type}-${flight.airline}`} />
+          <VoteButtons packId={packId} itemId={`flight-${flight.type}-${flight.airline}`} />
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${flight.stops === 'Direct' ? 'bg-sage/10 text-sage border border-sage/20' : 'bg-coral/10 text-coral border border-coral/20'}`}>
             {flight.stops}
           </span>
@@ -287,7 +287,7 @@ const TABS = [
 ]
 
 export default function PackResults() {
-  const { pack, tripId, isLoading, mode, departure, returnDate, travelers } = useSearchStore()
+  const { pack, tripId, packId, isLoading, mode, departure, returnDate, travelers } = useSearchStore()
   const [activeTab, setActiveTab]       = useState('overview')
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null)
   const showReveal = false // Révélation désactivée — affichage direct du pack
@@ -365,7 +365,7 @@ export default function PackResults() {
       <div className="flex justify-between items-center pt-2 border-t border-parchment-dark dark:border-white/10">
         <span className="text-xs font-bold text-gold">{hotel.price_per_night}</span>
         <div className="flex items-center gap-3">
-          <VoteButtons tripId={tripId ?? ''} itemId={hotel.name} />
+          <VoteButtons packId={packId ?? ''} itemId={hotel.name} />
           <TagBadge text={hotel.match_reason} />
         </div>
       </div>
@@ -412,7 +412,7 @@ export default function PackResults() {
             Réserver ↗
           </a>
         </div>
-        <VoteButtons tripId={tripId ?? ''} itemId={activity.name || activity.title} />
+        <VoteButtons packId={packId ?? ''} itemId={activity.name || activity.title} />
       </div>
     </div>
   )
@@ -599,7 +599,7 @@ export default function PackResults() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {d.hotels?.slice(0, 2).map((h, i) => <LocalHotelCard key={i} hotel={h} />)}
-                {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} tripId={tripId ?? ''} destination={d.destination} />)}
+                {d.flights?.slice(0, 2).map((f, i) => <FlightCard key={i} flight={f} packId={packId ?? ''} destination={d.destination} />)}
                 {d.events?.slice(0, 3).map((e, i) => <EventCard key={i} event={e} destination={d.destination} />)}
               </div>
             </div>
@@ -613,7 +613,7 @@ export default function PackResults() {
 
           {activeTab === 'flights' && (
             <div className="space-y-3">
-              {d.flights?.map((f, i) => <FlightCard key={i} flight={f} tripId={tripId ?? ''} destination={d.destination} />)}
+              {d.flights?.map((f, i) => <FlightCard key={i} flight={f} packId={packId ?? ''} destination={d.destination} />)}
             </div>
           )}
 
