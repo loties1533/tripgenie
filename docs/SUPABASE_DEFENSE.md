@@ -6,13 +6,13 @@ Cette fiche est ton bouclier contre les questions du jury qui pourraient sous-en
 
 ## 💡 1. Résumé Technique
 **C'est quoi ?** Supabase est un **BaaS (Backend-as-a-Service)** open-source construit au-dessus de **PostgreSQL**.
-**Ce qu'il fait pour toi :** Hébergement de la DB, Authentification (JWT), et API temps réel.
+**Ce que j'en utilise :** uniquement l'**hébergement du PostgreSQL**. (Auth, RLS, routes : tout est codé par moi — je n'utilise ni Supabase Auth ni les API temps réel.)
 
 ---
 
 ## 🎯 2. Tes arguments stratégiques (Pourquoi ce choix ?)
 1.  **Focus Métier** : "Mon projet se concentre sur l'intelligence artificielle agentique. Utiliser Supabase m'a permis de déléguer la gestion de l'infrastructure de base pour consacrer 100% de mon temps à la logique complexe de l'orchestrateur IA (Claude/Tavily)."
-2.  **Sécurité "Production-Ready"** : "Développer un système d'authentification robuste de zéro (gestion des hashs, sels, tokens, sessions) est risqué. En utilisant Supabase Auth, j'assure à mes utilisateurs une sécurité de niveau industriel dès le MVP."
+2.  **Sécurité maîtrisée, pas déléguée** : "Je n'utilise **pas** Supabase Auth. J'ai codé moi-même l'authentification (JWT signé + `bcryptjs`) et la sécurité au niveau base : un RLS « maison » avec un rôle PostgreSQL dédié sans BYPASSRLS et des policies sur ma propre variable de session. Supabase n'héberge que le PostgreSQL — toute la logique de sécurité est dans mon code."
 3.  **PostgreSQL Standard** : "Supabase n'est pas une boîte noire. C'est du PostgreSQL pur. Si je veux migrer demain vers un serveur dédié (AWS RDS ou VPS), je peux exporter mon schéma et mes données sans changer une ligne de SQL."
 
 ---
@@ -29,7 +29,10 @@ Cette fiche est ton bouclier contre les questions du jury qui pourraient sous-en
 > **Réponse :** "Le projet TripGenie nécessite une forte intégrité des données (liens entre utilisateurs, votes et voyages). Le **relationnel (SQL)** est bien plus adapté ici que le NoSQL. De plus, PostgreSQL gère nativement le format **JSONB**, ce qui me permet de stocker les itinéraires dynamiques de l'IA avec la performance du SQL et la flexibilité du NoSQL."
 
 ### Q4 : "Comment votre serveur Node.js communique-t-il avec Supabase ?"
-> **Réponse :** "J'utilise le **Supabase Client SDK** côté serveur. Les requêtes sont sécurisées via une clé de service et les données transitent en JSON. C'est une architecture moderne de type 'Micro-services' où mon backend Node.js orchestre l'IA et délègue la persistance à un service spécialisé."
+> **Réponse :** "Historiquement via le **Supabase Client SDK** (clé de service). Je bascule vers une **connexion SQL directe** (driver `pg`) avec un **rôle PostgreSQL dédié sans BYPASSRLS**, pour que le **Row Level Security s'applique vraiment** — une 2ᵉ barrière au niveau base, en plus du filtre applicatif. Supabase reste un simple hébergeur PostgreSQL ; toute la sécurité est dans mon code."
+
+### Q5 : "Le RLS, c'est Supabase qui le fait pour vous ?"
+> **Réponse :** "Non. Le RLS de Supabase est lié à Supabase Auth, que je n'utilise pas. J'ai recréé le mien : un rôle PostgreSQL dédié **sans BYPASSRLS**, une variable de session **transaction-locale** posée par requête, et des policies **fail-closed** (sans utilisateur posé → zéro ligne). C'est de la **défense en profondeur** que je maîtrise de bout en bout, prouvée par un script de test (isolation A/B vérifiée)."
 
 ---
 

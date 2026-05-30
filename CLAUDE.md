@@ -56,8 +56,8 @@ Ce n'est **pas** un agent IA autonome. TripGenie repose sur un **pipeline orches
 | **Supabase** | Hébergeur PostgreSQL + client JavaScript |
 | **@supabase/supabase-js** | Client SDK pour requêtes depuis Node.js |
 
-> **Important :** Supabase est utilisé uniquement comme hébergeur PostgreSQL et client SQL.
-> Ni Supabase Auth, ni le Row Level Security ne sont utilisés — la sécurité est gérée au niveau applicatif (voir section Sécurité).
+> **Important :** Supabase est utilisé uniquement comme hébergeur PostgreSQL.
+> Supabase Auth n'est pas utilisé (auth maison via JWT signé). Le Row Level Security, lui, est désormais **géré par nous** : rôle PostgreSQL dédié sans BYPASSRLS + policies sur notre propre variable de session `app.current_user_id` (voir section 6 et `docs/RLS_MAISON.md`). Socle posé et validé (6/6 tests) ; bascule des routes en cours sur la branche `feat/postgres-rls`.
 
 ### IA & Services externes
 | Service | Rôle | Fallback |
@@ -276,7 +276,7 @@ Ici le modèle peut choisir quoi modifier dans le pack sans étapes prédéfinie
 | Spam / DDoS | express-rate-limit (global + par route) |
 | Injection SQL | Supabase client (requêtes paramétrées) |
 | Inputs malveillants | Validation Zod sur tous les endpoints |
-| Accès données inter-utilisateurs | `.eq('user_id', req.user.id)` sur chaque requête SQL |
+| Accès données inter-utilisateurs | **Défense en profondeur** : filtre applicatif `user_id` **+** RLS PostgreSQL « maison » (rôle dédié sans BYPASSRLS, fail-closed) |
 
 ### Rate limiting en détail
 ```
@@ -286,13 +286,15 @@ Chat /api/ai/chat :         30 req / 15 min  / IP
 Votes /api/votes :          10 req / 1 min   / IP
 ```
 
-### RLS Supabase — compromis documenté
-Le Row Level Security de Supabase ne s'applique qu'avec Supabase Auth. TripGenie utilise une auth custom (JWT signé par notre serveur). La sécurité est donc appliquée **au niveau applicatif** :
-```js
-// Chaque requête filtre par user_id côté serveur
-supabase.from('trips').select('*').eq('user_id', req.user.id)
-```
-C'est un compromis assumé et documenté, pas un oubli.
+### RLS « maison » — sécurité au niveau base (défense en profondeur)
+Les policies d'origine (`schema.sql`) reposaient sur `auth.uid()`, une fonction de **Supabase Auth qu'on n'utilise pas** (auth maison via JWT). De plus le code se connecte avec la `SERVICE_KEY` (attribut `BYPASSRLS`) → le RLS y est ignoré.
+
+On a donc recréé le RLS pour qu'il soit **géré par nous** (migration `server/db/migrations/0001_rls_self_managed.sql`) :
+- un **rôle PostgreSQL dédié** `tripgenie_app`, **sans BYPASSRLS** et sans droit DDL (moindre privilège) ;
+- une variable de session **transaction-locale** `app.current_user_id`, posée par requête via `withUser()` (`server/db/pg.ts`) ;
+- des policies **fail-closed** : sans contexte utilisateur, **aucune** ligne n'est renvoyée.
+
+Résultat : **2 barrières** (filtre applicatif `.eq('user_id')` **+** RLS Postgres). Socle validé par `scripts/test-rls.ts` (6/6). Bascule des routes de `supabase.ts` vers `pg.ts` **en cours** (branche `feat/postgres-rls`) ; tant qu'une route n'est pas migrée, elle utilise encore la `SERVICE_KEY`.
 
 ---
 
@@ -591,8 +593,8 @@ router.post('/route', middleware, async (req, res, next) => {
 **"Comment tu sécurises les données utilisateur ?"**
 > Trois niveaux : JWT en cookie httpOnly (vol de token impossible par XSS), validation Zod sur chaque input (injection impossible), filtrage par `user_id` sur chaque requête SQL (isolation des données inter-utilisateurs).
 
-**"Ton RLS Supabase est activé ?"**
-> Non, et c'est un compromis documenté. Le RLS ne fonctionne qu'avec Supabase Auth. Comme j'utilise une auth custom, la sécurité est gérée au niveau applicatif avec des filtres SQL systématiques. En production à grande échelle, je passerais à Supabase Auth + RLS pour une défense en profondeur.
+**"Ton RLS est activé ?"**
+> Oui, mais c'est un RLS **que je gère moi-même**, pas celui de Supabase Auth. Les policies d'origine utilisaient `auth.uid()` (Supabase Auth, que je n'utilise pas), et le code se connectait avec la clé de service qui contourne le RLS. J'ai donc créé un rôle PostgreSQL dédié **sans BYPASSRLS**, qui lit ma propre variable de session `app.current_user_id` posée par transaction (`withUser()`). Ça me donne deux barrières : le filtre applicatif **et** le RLS au niveau base. Le comportement par défaut est **fail-closed** : sans utilisateur posé, la base ne renvoie aucune ligne. Je bascule les routes une par une vers cette couche (branche `feat/postgres-rls`).
 
 **"Pourquoi Vitest et pas Jest ?"**
 > Vitest est natif ESM, compatible avec la configuration Vite/ES modules du projet. Jest nécessiterait une configuration de transpilation supplémentaire pour les imports ES modules. Vitest est aussi significativement plus rapide.

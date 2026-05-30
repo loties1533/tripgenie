@@ -90,8 +90,10 @@ CREATE INDEX IF NOT EXISTS idx_votes_pack_id      ON trip_votes(pack_id);
 CREATE INDEX IF NOT EXISTS idx_collaborators_user ON trip_collaborators(user_id);
 
 -- ---- RLS (Row Level Security) ----
--- Note : actif mais contourné par la service_role_key côté serveur.
--- La sécurité est gérée au niveau applicatif (.eq('user_id', req.user.id)).
+-- ATTENTION : les policies ci-dessous utilisent auth.uid() (Supabase Auth, NON utilisé) →
+-- elles sont HISTORIQUES. La migration server/db/migrations/0001_rls_self_managed.sql les
+-- REMPLACE par un RLS « maison » : rôle dédié tripgenie_app (sans BYPASSRLS) + policies sur
+-- notre variable de session app.current_user_id, posée par withUser(). Voir docs/RLS_MAISON.md.
 ALTER TABLE users               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trips               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packs               ENABLE ROW LEVEL SECURITY;
