@@ -6,7 +6,7 @@
 import express from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import supabase from '../db/supabase.js';
+import { query } from '../db/pg.js';
 import type { Request, Response, NextFunction } from 'express';
 
 const voteSchema = z.object({
@@ -40,28 +40,17 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const { pack_id, item_id, voter_name, vote_type } = parsed.data;
 
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
-      return;
-    }
+    // trip_votes est PUBLIC (policies RLS votes_insert_all/votes_select_all = true) :
+    // les amis votent via le lien de partage, sans compte. Pas de contexte
+    // utilisateur → query() simple (le RLS autorise l'insert).
+    const { rows } = await query(
+      `INSERT INTO trip_votes (pack_id, item_id, voter_name, vote_type)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [pack_id, item_id, voter_name || 'Anonyme', vote_type]
+    );
 
-    const { data, error } = await supabase
-      .from('trip_votes')
-      .insert({
-        pack_id,
-        item_id,
-        voter_name: voter_name || 'Anonyme',
-        vote_type
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ SUPABASE VOTE ERROR:', JSON.stringify(error, null, 2));
-      throw error;
-    }
-
-    res.status(201).json({ message: 'Vote enregistré !', vote: data });
+    res.status(201).json({ message: 'Vote enregistré !', vote: rows[0] });
 
   } catch (err) {
     console.error('Vote error:', err);
@@ -73,19 +62,12 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
 // Récupérer tous les votes pour un pack donné
 router.get('/:pack_id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
-      return;
-    }
+    const { rows } = await query(
+      `SELECT * FROM trip_votes WHERE pack_id = $1 ORDER BY created_at`,
+      [req.params.pack_id]
+    );
 
-    const { data, error } = await supabase
-      .from('trip_votes')
-      .select('*')
-      .eq('pack_id', req.params.pack_id);
-
-    if (error) throw error;
-
-    res.json({ votes: data });
+    res.json({ votes: rows });
 
   } catch (err) {
     console.error('Fetch votes error:', err);

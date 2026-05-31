@@ -8,7 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import supabase from '../db/supabase.js';
+import { query, withUser } from '../db/pg.js';
 import { authLimiter } from '../middleware/limiter.js';
 
 // Schemas de validation
@@ -43,35 +43,25 @@ router.post('/signup', authLimiter, async (req: Request, res: Response, next: Ne
     }
     const { email, password, name } = parsed.data;
 
-    if (!supabase) {
-      res.status(500).json({ error: 'Base de données non configurée.' });
-      return;
-    }
-
-    // 1. Vérifier si l'utilisateur existe déjà
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (existingUser) {
+    // 1. Email déjà pris ? Lecture PRÉ-AUTH (pas encore d'utilisateur identifié)
+    //    → fonction SECURITY DEFINER au périmètre minimal (cf. migration 0002).
+    const { rows: existing } = await query('SELECT id FROM auth_user_by_email($1)', [email]);
+    if (existing.length > 0) {
       res.status(409).json({ error: 'Cet email est déjà utilisé' });
       return;
     }
 
-    // 2. Hasher le mot de passe
+    // 2. Hasher le mot de passe (le hash bcrypt est calculé ICI, côté serveur)
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // 3. Insérer l'utilisateur
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert({ email, password: password_hash, name })
-      .select('id, email, name, created_at')
-      .single();
-
-    if (error || !user) throw error;
+    // 3. Insérer l'utilisateur — insertion PRÉ-AUTH → fonction SECURITY DEFINER
+    const { rows } = await query<{ id: string; email: string; name: string | null; created_at: string }>(
+      'SELECT * FROM auth_create_user($1, $2, $3)',
+      [email, password_hash, name ?? null]
+    );
+    const user = rows[0];
+    if (!user) throw new Error('Échec de la création de l\'utilisateur');
 
     // 4. Générer le JWT
     const token = jwt.sign(
@@ -102,19 +92,14 @@ router.post('/login', authLimiter, async (req: Request, res: Response, next: Nex
     }
     const { email, password } = parsed.data;
 
-    if (!supabase) {
-      res.status(500).json({ error: 'Base de données non configurée.' });
-      return;
-    }
-
-    // 1. Chercher l'utilisateur avec son hash
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, name, password, created_at')
-      .eq('email', email)
-      .single();
-
-    if (error || !user) {
+    // 1. Chercher l'utilisateur (avec son hash) — lecture PRÉ-AUTH → SECURITY DEFINER.
+    //    Même message d'erreur pour email inconnu ET mauvais mot de passe (anti-énumération).
+    const { rows } = await query<{ id: string; email: string; name: string | null; password: string; created_at: string }>(
+      'SELECT * FROM auth_user_by_email($1)',
+      [email]
+    );
+    const user = rows[0];
+    if (!user) {
       res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       return;
     }
@@ -162,19 +147,15 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction): Promi
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
-    
-    if (!supabase) {
-      res.status(500).json({ error: 'Base de données non configurée.' });
-      return;
-    }
 
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, name, avatar_url, created_at')
-      .eq('id', decoded.id)
-      .single();
-
-    if (error || !user) {
+    // Lecture de SON PROPRE profil : l'id vient du JWT déjà vérifié.
+    // withUser pose app.current_user_id → la policy users (id = app.current_user_id)
+    // autorise la lecture de cette seule ligne (fail-closed sur toutes les autres).
+    const { rows } = await withUser(decoded.id as string, (c) =>
+      c.query('SELECT id, email, name, avatar_url, created_at FROM users WHERE id = $1', [decoded.id])
+    );
+    const user = rows[0];
+    if (!user) {
       res.status(401).json({ error: 'Utilisateur introuvable' });
       return;
     }

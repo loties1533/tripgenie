@@ -17,8 +17,7 @@ console.log('='.repeat(50));
 // ---- Vérifier les variables d'environnement ----
 const required = [
   'JWT_SECRET',
-  'SUPABASE_URL',
-  'SUPABASE_SERVICE_KEY',
+  'DATABASE_URL',
   'ANTHROPIC_API_KEY'
 ];
 

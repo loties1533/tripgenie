@@ -25,25 +25,17 @@ vi.mock('../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough, authLimiter: passthrough };
 });
 
-vi.mock('../server/db/supabase.js', () => {
-  const chain = {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq:     vi.fn().mockReturnThis(),
-    order:  vi.fn().mockReturnThis(),
-    range:  vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({
-      data: { id: '550e8400-e29b-41d4-a716-446655440000', email: 'pilot@tripgenie.test', name: 'Test Pilot' },
-      error: null
-    }),
-    then: vi.fn().mockImplementation((resolve: any) =>
-      resolve({ data: [], error: null })
-    )
-  };
-  return { default: { from: vi.fn().mockReturnValue(chain) } };
-});
+// (mock supabase retiré — la couche DB est 100 % pg/RLS maison)
+
+// Mock pg : GET /api/trips est migré vers withUser() (RLS maison). On simule
+// withUser pour qu'il exécute le callback contre un faux client renvoyant [].
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+}));
+mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 });
 
 // ============================================================
 // requireAuth — routes protégées (/api/trips nécessite auth)

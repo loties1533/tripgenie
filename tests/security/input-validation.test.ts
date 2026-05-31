@@ -43,7 +43,7 @@ vi.mock('../../server/services/weather.js',      () => ({ getRealWeather:      v
 vi.mock('../../server/services/photo.js',         () => ({ getDestinationPhoto: vi.fn().mockResolvedValue(null) }));
 vi.mock('../../server/services/foursquare.js',    () => ({ foursquareRestaurantSearch: vi.fn().mockResolvedValue([]) }));
 vi.mock('../../server/services/yelp.js',          () => ({ yelpRestaurantSearch: vi.fn().mockResolvedValue([]) }));
-vi.mock('../../server/db/supabase.js',            () => ({ default: null }));
+// (mock supabase retiré — la couche DB est 100 % pg/RLS maison)
 
 // ============================================================
 // POST /api/ai/generate — validation des inputs

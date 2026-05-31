@@ -24,24 +24,16 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// vi.hoisted() — évite l'erreur de référence avant initialisation due au hoisting de vi.mock
-const { mockThen, mockChain } = vi.hoisted(() => {
-  const mockThen = vi.fn();
-  const mockChain = {
-    insert:  vi.fn().mockReturnThis(),
-    select:  vi.fn().mockReturnThis(),
-    update:  vi.fn().mockReturnThis(),
-    delete:  vi.fn().mockReturnThis(),
-    eq:      vi.fn().mockReturnThis(),
-    order:   vi.fn().mockReturnThis(),
-    range:   vi.fn().mockReturnThis(),  // requis par GET /api/trips (pagination)
-    single:  vi.fn().mockResolvedValue({ data: null, error: null }),
-    then:    mockThen
-  };
-  return { mockThen, mockChain };
-});
-vi.mock('../../server/db/supabase.js', () => ({
-  default: { from: vi.fn().mockReturnValue(mockChain) }
+// (mock supabase retiré — les routes /api/trips tournent 100 % sur pg/RLS maison)
+
+// Mock pg : les routes /api/trips migrées passent par withUser() (RLS maison).
+// withUser exécute le callback de la route contre un faux client dont query()
+// renvoie des lignes contrôlées par mockPgQuery (par défaut : [] → fail-closed / 404).
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
 }));
 
 const USER_A = { id: 'user-a-uuid', email: 'a@test.com', name: 'User A' };
@@ -52,7 +44,10 @@ function makeToken(payload: object, secret = process.env.JWT_SECRET!, options: j
   return jwt.sign(payload, secret, { expiresIn: '1d', ...options });
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 }); // défaut : aucune ligne (fail-closed)
+});
 
 // ============================================================
 // Tokens invalides
@@ -108,7 +103,7 @@ describe('JWT — extraction depuis cookie et header', () => {
 
   it('accepte le token depuis le header Authorization Bearer', async () => {
     const token = makeToken(USER_A);
-    mockThen.mockImplementationOnce((cb: any) => cb({ data: [], error: null }));
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${token}`);
     // 200 ou 404 — pas 401
     expect(res.status).not.toBe(401);
@@ -116,7 +111,7 @@ describe('JWT — extraction depuis cookie et header', () => {
 
   it('accepte le token depuis le cookie tg_token', async () => {
     const token = makeToken(USER_A);
-    mockThen.mockImplementationOnce((cb: any) => cb({ data: [], error: null }));
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Cookie', `tg_token=${token}`);
     expect(res.status).not.toBe(401);
   });
@@ -129,8 +124,9 @@ describe('JWT — isolation des données entre utilisateurs', () => {
 
   it('User A ne peut pas accéder au voyage de User B', async () => {
     const tokenA = makeToken(USER_A);
-    // La vraie DB applique .eq('user_id', userA.id) → retourne null pour un trip d'un autre user
-    mockChain.single.mockResolvedValueOnce({ data: null, error: null });
+    // GET /:id migré : withUser() + RLS PostgreSQL + filtre WHERE user_id = $2
+    // → 0 ligne pour le voyage d'un autre utilisateur.
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app)
       .get(`/api/trips/${TRIP_B}`)
       .set('Authorization', `Bearer ${tokenA}`);
@@ -140,8 +136,7 @@ describe('JWT — isolation des données entre utilisateurs', () => {
 
   it('User B ne peut pas modifier le voyage de User A', async () => {
     const tokenB = makeToken(USER_B);
-    // Simule: le trip appartient à A, pas à B
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    // PATCH n'est pas une route définie (trips = GET/PUT/DELETE) → 404 attendu
     const res = await request(app)
       .patch(`/api/trips/trip-belongs-to-a`)
       .set('Authorization', `Bearer ${tokenB}`)
@@ -157,8 +152,8 @@ describe('JWT — claims requis', () => {
 
   it('token sans "id" → rejeté ou accès refusé', async () => {
     const noId = makeToken({ email: 'alice@test.com' }); // pas de id
-    // Préparer mockThen pour que GET /trips puisse résoudre
-    mockThen.mockImplementationOnce((cb: any) => cb({ data: [], error: null }));
+    // GET /trips passe par pg/withUser → liste vide (fail-closed)
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${noId}`);
     // Sans id, le serveur peut renvoyer 200 (liste vide) ou 401 — pas de crash 500
     expect([200, 401]).toContain(res.status);
@@ -166,7 +161,7 @@ describe('JWT — claims requis', () => {
 
   it('token avec id null → rejeté', async () => {
     const nullId = makeToken({ id: null, email: 'alice@test.com' });
-    mockThen.mockImplementationOnce((cb: any) => cb({ data: [], error: null }));
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${nullId}`);
     expect([200, 401]).toContain(res.status);
   });

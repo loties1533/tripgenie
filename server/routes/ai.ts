@@ -15,7 +15,7 @@ import { yelpRestaurantSearch } from '../services/yelp.js';
 import { foursquareRestaurantSearch } from '../services/foursquare.js';
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
-import supabase from '../db/supabase.js';
+import { withUser } from '../db/pg.js';
 import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
 import { AppError } from '../lib/AppError.js';
 import type { TravelMode } from '../lib/types.js';
@@ -98,7 +98,7 @@ router.post('/onboarding', aiChatLimiter, optionalAuth, async (req: Request, res
  *    - smartFlightSearch  → Tavily : vols réels
  *    - smartEventsSearch  → Tavily : événements locaux
  *    - smartHotelSearch   → Tavily : hôtels
- *    - getRealWeather     → OpenWeatherMap
+ *    - getRealWeather     → Open-Meteo
  *    - getDestinationPhoto → Unsplash (proxy)
  *
  *    Promise.allSettled est utilisé à la place de Promise.all pour que
@@ -250,46 +250,44 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       score: scoreResult
     };
 
-    // Sauvegarde si user connecté
-    let tripId  = null;
-    let packId  = null;
-    if (req.user && supabase) {
-      const { data: trip } = await supabase
-        .from('trips')
-        .insert({
-          user_id:    req.user.id,
-          title:      `Voyage à ${destination}`,
-          destination,
-          origin,
-          departure,
-          return_date,
-          travelers,
-          budget:     String(budget),
-          mode,
-          pack_data:  scoredPack,
-          score:      scoreResult.total,
-          status:     'draft'
-        })
-        .select('id')
-        .single();
+    // Sauvegarde si user connecté — trip + pack dans UNE transaction (même contexte RLS
+    // via withUser). Si l'insert du pack échoue, ROLLBACK : pas de trip orphelin sans pack.
+    let tripId: string | null = null;
+    let packId: string | null = null;
+    if (req.user) {
+      const saved = await withUser(req.user.id, async (c) => {
+        const { rows: tripRows } = await c.query<{ id: string }>(
+          `INSERT INTO trips
+             (user_id, title, destination, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft')
+           RETURNING id`,
+          [
+            req.user!.id,
+            `Voyage à ${destination}`,
+            destination,
+            origin,
+            departure,
+            return_date ?? null,
+            travelers,
+            String(budget),
+            mode,
+            scoredPack,          // objet → jsonb (node-pg sérialise automatiquement)
+            scoreResult.total
+          ]
+        );
+        const newTripId = tripRows[0]?.id ?? null;
+        if (!newTripId) return { tripId: null as string | null, packId: null as string | null };
 
-      tripId = trip?.id;
-
-      if (tripId) {
-        const { data: pack } = await supabase
-          .from('packs')
-          .insert({
-            trip_id:   tripId,
-            rank:      1,
-            score:     scoreResult.total,
-            pack_data: scoredPack,
-            selected:  true
-          })
-          .select('id')
-          .single();
-
-        packId = pack?.id;
-      }
+        const { rows: packRows } = await c.query<{ id: string }>(
+          `INSERT INTO packs (trip_id, rank, score, pack_data, selected)
+           VALUES ($1, 1, $2, $3, true)
+           RETURNING id`,
+          [newTripId, scoreResult.total, scoredPack]
+        );
+        return { tripId: newTripId, packId: packRows[0]?.id ?? null };
+      });
+      tripId = saved.tripId;
+      packId = saved.packId;
     }
 
     res.json({
@@ -340,13 +338,13 @@ router.post('/chat', aiChatLimiter, optionalAuth, async (req: Request, res: Resp
       mode: mode as TravelMode
     });
 
-    // MAJ DB si user connecté et trip existant
-    if (req.user && trip_id && result.modifications && supabase) {
-      await supabase
-        .from('trips')
-        .update({ pack_data: { ...current_pack, ...result.modifications }, updated_at: new Date().toISOString() })
-        .eq('id', trip_id)
-        .eq('user_id', req.user.id);
+    // MAJ DB si user connecté et trip existant — withUser pose le contexte RLS,
+    // et on garde le double filtre id + user_id (défense en profondeur).
+    if (req.user && trip_id && result.modifications) {
+      await withUser(req.user.id, (c) => c.query(
+        'UPDATE trips SET pack_data = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
+        [{ ...current_pack, ...result.modifications }, trip_id, req.user!.id]
+      ));
     }
 
     res.json(result);

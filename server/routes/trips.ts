@@ -5,7 +5,7 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import supabase from '../db/supabase.js';
+import { query, withUser } from '../db/pg.js';
 import { requireAuth } from '../middleware/auth.js';
 import { MODES_LIST, TRIP_STATUS_LIST } from '../lib/constants.js';
 import type { TravelMode } from '../lib/types.js';
@@ -36,31 +36,42 @@ const updateTripSchema = z.object({
 const router = express.Router();
 
 // ---- GET /api/trips/share/:id (Public) ----
+type SharedTrip = {
+  id: string;
+  title: string | null;
+  destination: string;
+  country: string | null;
+  pack_data: unknown;
+  score: number | null;
+  mode: string;
+  departure: string | null;
+  return_date: string | null;
+  travelers: number | null;
+  budget: string | null;
+  packs: Array<{ id: string; rank: number; selected: boolean }>;
+};
+
 router.get('/share/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase) {
-      res.status(500).json({ error: 'Supabase non configuré' });
-      return;
-    }
+    // Lecture PUBLIQUE (aucun utilisateur connecté) : trips/packs sont RLS fail-closed,
+    // une lecture directe via le rôle applicatif ne renverrait donc rien. On passe par
+    // une fonction SECURITY DEFINER au périmètre minimal — elle n'expose AUCUNE donnée
+    // utilisateur (ni email ni hash), juste le voyage et l'id de ses packs.
+    const { rows } = await query<{ trip: SharedTrip | null }>(
+      'SELECT public_shared_trip($1) AS trip',
+      [req.params.id]
+    );
+    const trip = rows[0]?.trip ?? null;
 
-    // JOIN sur packs : on récupère le pack pour exposer son id (cible des votes)
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .select('id, title, destination, country, pack_data, score, mode, departure, return_date, travelers, budget, packs(id, rank, selected)')
-      .eq('id', req.params.id)
-      .single();
-
-    if (error || !trip) {
+    if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
     // Le pack sélectionné (ou rang 1) sert de cible pour les votes consensus
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const packs = ((trip as any).packs ?? []) as Array<{ id: string; rank: number; selected: boolean }>;
+    const packs = trip.packs ?? [];
     const targetPack = packs.find((p) => p.selected) ?? [...packs].sort((a, b) => a.rank - b.rank)[0] ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-    const { packs: _packs, ...tripData } = trip as any;
+    const { packs: _packs, ...tripData } = trip;
 
     res.json({ trip: { ...tripData, pack_id: targetPack?.id ?? null } });
   } catch (err) {
@@ -74,10 +85,11 @@ router.use(requireAuth);
 // ---- GET /api/trips ----
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
-      res.status(500).json({ error: 'Configuration manquante' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Non authentifié' });
       return;
     }
+    const userId = req.user.id;
 
     const { mode, status } = req.query;
 
@@ -85,20 +97,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const limit  = Math.min(Math.max(parseInt((req.query.limit as string) || '20'), 1), 50);
     const offset = Math.max(parseInt((req.query.offset as string) || '0'), 0);
 
-    // Filtre systématique par user_id : chaque utilisateur ne voit que ses voyages.
-    // C'est la seule barrière d'isolation des données (RLS Supabase non activé).
-    let query = supabase
-      .from('trips')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Défense en profondeur : filtre applicatif user_id = $1 (1re barrière)
+    // ET RLS PostgreSQL via withUser() (2e barrière). On ne s'appuie pas que sur le RLS.
+    const conditions = ['user_id = $1'];
+    const params: unknown[] = [userId];
 
-    if (mode && typeof mode === 'string')     query = query.eq('mode', mode);
-    if (status && typeof status === 'string') query = query.eq('status', status);
+    if (mode && typeof mode === 'string')     { params.push(mode);   conditions.push(`mode = $${params.length}`); }
+    if (status && typeof status === 'string') { params.push(status); conditions.push(`status = $${params.length}`); }
 
-    const { data: trips, error } = await query;
-    if (error) throw error;
+    params.push(limit);  const limitIdx  = params.length;
+    params.push(offset); const offsetIdx = params.length;
+
+    const sql = `SELECT * FROM trips
+                 WHERE ${conditions.join(' AND ')}
+                 ORDER BY created_at DESC
+                 LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
+
+    const { rows: trips } = await withUser(userId, (c) => c.query(sql, params));
 
     res.json({ trips, count: trips.length, limit, offset });
 
@@ -118,29 +133,34 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const { title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score } = parsed.data;
 
-    if (!supabase || !req.user) {
-      res.status(500).json({ error: 'Configuration manquante' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Non authentifié' });
       return;
     }
+    const userId = req.user.id;
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .insert({
-        user_id:    req.user.id,
-        title:      title || `Voyage à ${destination}`,
-        destination, country, origin,
-        departure, return_date,
-        travelers:  travelers || 1,
-        budget:     String(budget),
-        mode, pack_data, score,
-        status: 'draft'
-      })
-      .select()
-      .single();
+    const { rows } = await withUser(userId, (c) => c.query(
+      `INSERT INTO trips
+         (user_id, title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'draft')
+       RETURNING *`,
+      [
+        userId,
+        title || `Voyage à ${destination}`,
+        destination,
+        country     ?? null,
+        origin      ?? null,
+        departure   ?? null,
+        return_date ?? null,
+        travelers || 1,
+        budget != null ? String(budget) : null,
+        mode,
+        pack_data ?? null,
+        score     ?? null
+      ]
+    ));
 
-    if (error) throw error;
-
-    res.status(201).json({ trip });
+    res.status(201).json({ trip: rows[0] });
 
   } catch (err) {
     console.error('POST trip error:', err);
@@ -151,24 +171,30 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
 // ---- GET /api/trips/:id ----
 router.get('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
-      res.status(500).json({ error: 'Configuration manquante' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Non authentifié' });
       return;
     }
+    const userId = req.user.id;
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .select('*, packs(*)')
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .single();
+    // LEFT JOIN + json_agg reconstruit l'agrégat `trip + packs` en une requête.
+    // FILTER (WHERE p.id IS NOT NULL) → [] si le voyage n'a aucun pack (et non [null]).
+    const { rows } = await withUser(userId, (c) => c.query(
+      `SELECT t.*,
+              COALESCE(json_agg(p ORDER BY p.rank) FILTER (WHERE p.id IS NOT NULL), '[]'::json) AS packs
+       FROM trips t
+       LEFT JOIN packs p ON p.trip_id = t.id
+       WHERE t.id = $1 AND t.user_id = $2
+       GROUP BY t.id`,
+      [req.params.id, userId]
+    ));
 
-    if (error || !trip) {
+    if (rows.length === 0) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    res.json({ trip });
+    res.json({ trip: rows[0] });
 
   } catch (err) {
     console.error('GET trip error:', err);
@@ -184,27 +210,43 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
       res.status(400).json({ error: parsed.error.issues[0].message });
       return;
     }
-    const updates = { ...parsed.data, updated_at: new Date().toISOString() };
-
-    if (!supabase || !req.user) {
-      res.status(500).json({ error: 'Configuration manquante' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Non authentifié' });
       return;
     }
+    const userId = req.user.id;
 
-    const { data: trip, error } = await supabase
-      .from('trips')
-      .update(updates)
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .select()
-      .single();
+    // SET dynamique avec allowlist de colonnes : on n'interpole jamais une clé venue du
+    // client dans le SQL, uniquement des noms de colonnes validés ici → pas d'injection.
+    const ALLOWED = ['title', 'status', 'pack_data', 'score', 'travelers', 'budget'] as const;
+    const setParts: string[] = [];
+    const params: unknown[] = [];
 
-    if (error || !trip) {
+    for (const key of ALLOWED) {
+      if (!(key in parsed.data)) continue;
+      let value: unknown = (parsed.data as Record<string, unknown>)[key];
+      if (key === 'budget' && value != null) value = String(value);
+      params.push(value ?? null);
+      setParts.push(`${key} = $${params.length}`);
+    }
+
+    setParts.push('updated_at = NOW()');
+
+    params.push(req.params.id); const idIdx   = params.length;
+    params.push(userId);        const userIdx = params.length;
+
+    const sql = `UPDATE trips SET ${setParts.join(', ')}
+                 WHERE id = $${idIdx} AND user_id = $${userIdx}
+                 RETURNING *`;
+
+    const { rows } = await withUser(userId, (c) => c.query(sql, params));
+
+    if (rows.length === 0) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    res.json({ trip });
+    res.json({ trip: rows[0] });
 
   } catch (err) {
     console.error('PUT trip error:', err);
@@ -215,18 +257,16 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
 // ---- DELETE /api/trips/:id ----
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (!supabase || !req.user) {
-      res.status(500).json({ error: 'Configuration manquante' });
+    if (!req.user) {
+      res.status(401).json({ error: 'Non authentifié' });
       return;
     }
+    const userId = req.user.id;
 
-    const { error } = await supabase
-      .from('trips')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id);
-
-    if (error) throw error;
+    await withUser(userId, (c) => c.query(
+      'DELETE FROM trips WHERE id = $1 AND user_id = $2',
+      [req.params.id, userId]
+    ));
 
     res.json({ message: 'Voyage supprimé' });
 

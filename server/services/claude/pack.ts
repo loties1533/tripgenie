@@ -2,7 +2,7 @@
  * @fileoverview Génération du pack voyage complet via LLM.
  *
  * Ce service constitue le cœur du prompt engineering de TripGenie.
- * Il injecte les données réelles (vols Tavily, météo OpenWeatherMap,
+ * Il injecte les données réelles (vols Tavily, météo Open-Meteo,
  * hôtels, événements) dans un prompt structuré pour que le LLM génère
  * un pack JSON cohérent et adapté au mode de voyage.
  *

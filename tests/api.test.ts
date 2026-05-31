@@ -41,33 +41,21 @@ vi.mock('bcryptjs', () => ({
   }
 }));
 
-// ---- Mock Supabase ----
-// Le mock expose un objet `chain` accessible depuis les tests via vi.mocked()
-// pour configurer les réponses per-describe avec mockResolvedValueOnce.
-const mockSingle = vi.fn();
-const mockEq = vi.fn();
+// (mock supabase retiré — toutes les routes tournent 100 % sur pg/RLS maison)
 
-vi.mock('../server/db/supabase.js', () => {
-  const thenCb = vi.fn().mockImplementation(
-    (resolve: (v: { data: any[]; error: null }) => void) =>
-      resolve({ data: [{ id: '550e8400-e29b-41d4-a716-446655440000', destination: 'Tokyo', mode: 'party', score: 0.8, departure: '2025-06-01', budget: '2000' }], error: null })
-  );
-
-  const chain = {
-    insert:  vi.fn().mockReturnThis(),
-    select:  vi.fn().mockReturnThis(),
-    update:  vi.fn().mockReturnThis(),
-    delete:  vi.fn().mockReturnThis(),
-    eq:      vi.fn().mockReturnThis(),
-    neq:     vi.fn().mockReturnThis(),
-    order:   vi.fn().mockReturnThis(),
-    range:   vi.fn().mockReturnThis(),
-    limit:   vi.fn().mockReturnThis(),
-    single:  vi.fn().mockResolvedValue({ data: { id: '550e8400-e29b-41d4-a716-446655440000', email: 'pilot@tripgenie.test', name: 'Test Pilot', destination: 'Tokyo', mode: 'party', departure: '2025-06-01', budget: '2000', status: 'draft', password: '$2b$hashed' }, error: null }),
-    then:    thenCb
-  };
-
-  return { default: { from: vi.fn().mockReturnValue(chain) } };
+// ---- Mock pg (RLS « maison ») ----
+// Les routes /api/trips migrées n'appellent plus supabase mais withUser() + SQL direct (driver pg).
+// On simule withUser : il exécute le callback de la route contre un faux client dont query()
+// renvoie des lignes contrôlées par mockPgQuery (équivalent du mock supabase ci-dessus).
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+}));
+mockPgQuery.mockResolvedValue({
+  rows: [{ id: '550e8400-e29b-41d4-a716-446655440000', destination: 'Tokyo', country: 'Japon', mode: 'party', score: 0.8, departure: '2025-06-01', budget: '2000', status: 'confirmed' }],
+  rowCount: 1,
 });
 
 vi.mock('../server/services/claude/index.js', () => ({
@@ -132,12 +120,10 @@ describe('🔐 Auth — Validation des inputs', () => {
   });
 
   it('POST /register — 201 avec utilisateur créé (mock)', async () => {
-    // Le mock supabase retourne null au 1er appel (email libre) puis l'utilisateur créé
-    const { default: supabase } = await import('../server/db/supabase.js');
-    const chain = supabase.from('users') as any;
-    chain.single
-      .mockResolvedValueOnce({ data: null, error: null })           // email non pris
-      .mockResolvedValueOnce({ data: { id: TEST_TRIP_ID, email: 'pilot@tripgenie.test', name: 'Test Pilot' }, error: null }); // utilisateur créé
+    // signup migré → pg : auth_user_by_email (email libre) puis auth_create_user (créé)
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })  // email non pris
+      .mockResolvedValueOnce({ rows: [{ id: TEST_TRIP_ID, email: 'pilot@tripgenie.test', name: 'Test Pilot', created_at: new Date().toISOString() }], rowCount: 1 }); // utilisateur créé
 
     const res = await request(app)
       .post('/api/auth/signup')
@@ -167,6 +153,8 @@ describe('🔐 Auth — Validation des inputs', () => {
   });
 
   it('GET /me — 200 avec Bearer token valide', async () => {
+    // /me migré → pg : SELECT ... FROM users WHERE id = $1 (via withUser)
+    mockPgQuery.mockResolvedValueOnce({ rows: [{ id: TEST_USER.id, email: TEST_USER.email, name: TEST_USER.name, avatar_url: null, created_at: new Date().toISOString() }], rowCount: 1 });
     const res = await request(app)
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${TEST_TOKEN}`);
@@ -236,6 +224,8 @@ describe('🗺️ Trips — Validation Zod', () => {
   });
 
   it('GET /share/:id — 200 accès public', async () => {
+    // /share migré → pg : SELECT public_shared_trip($1) AS trip (fonction SECURITY DEFINER)
+    mockPgQuery.mockResolvedValueOnce({ rows: [{ trip: { id: TEST_TRIP_ID, title: 'Tokyo', destination: 'Tokyo', country: 'Japon', pack_data: {}, score: 0.8, mode: 'party', departure: '2025-06-01', return_date: null, travelers: 2, budget: '2000', packs: [{ id: 'pack-1', rank: 1, selected: true }] } }], rowCount: 1 });
     const res = await request(app).get(`/api/trips/share/${TEST_TRIP_ID}`);
     expect(res.status).toBe(200);
     expect(res.body.trip).toBeDefined();
@@ -433,10 +423,8 @@ describe('🔐 Auth — cas limites', () => {
   });
 
   it('POST /signup — 409 si email déjà utilisé', async () => {
-    const { default: supabase } = await import('../server/db/supabase.js');
-    const chain = supabase.from('users') as any;
-    // Simule qu'un utilisateur existe déjà avec cet email
-    chain.single.mockResolvedValueOnce({ data: { id: 'existing-id' }, error: null });
+    // auth_user_by_email renvoie une ligne → email déjà pris → 409 Conflict
+    mockPgQuery.mockResolvedValueOnce({ rows: [{ id: 'existing-id' }], rowCount: 1 });
 
     const res = await request(app)
       .post('/api/auth/signup')

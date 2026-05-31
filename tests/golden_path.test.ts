@@ -110,15 +110,20 @@ vi.mock('../server/services/photo.js', () => ({
   getDestinationPhoto: vi.fn().mockResolvedValue('https://example.com/photo.jpg')
 }));
 
-vi.mock('../server/db/supabase.js', () => {
-  const chain = {
-    insert:  vi.fn().mockReturnThis(),
-    select:  vi.fn().mockReturnThis(),
-    update:  vi.fn().mockReturnThis(),
-    eq:      vi.fn().mockReturnThis(),
-    single:  vi.fn().mockResolvedValue({ data: { id: 'test-trip-uuid' }, error: null })
-  };
-  return { default: { from: vi.fn().mockReturnValue(chain) } };
+// (mock supabase retiré — votes/generate tournent 100 % sur pg/RLS maison)
+
+// Mock pg (RLS « maison ») : /api/votes passe par query() (table trip_votes publique),
+// et la sauvegarde de /generate par withUser(). Ici les requêtes /generate sont
+// envoyées SANS token → req.user absent → aucune écriture DB. Seuls les votes touchent pg.
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+}));
+mockPgQuery.mockResolvedValue({
+  rows: [{ id: 'vote-uuid', pack_id: '550e8400-e29b-41d4-a716-446655440000', item_id: 'x', voter_name: 'Alice', vote_type: true }],
+  rowCount: 1,
 });
 
 // ============================================================
@@ -301,7 +306,7 @@ describe('🗳️ POST /api/votes', () => {
         voter_name: 'Alice'
       });
 
-    // Le mock supabase renvoie { data: { id: 'test-trip-uuid' }, error: null }
+    // Le mock pg (mockPgQuery) renvoie une ligne de vote → 200/201
     expect([200, 201]).toContain(res.status);
   });
 

@@ -26,7 +26,6 @@
     "diagrams": "npx @mermaid-js/mermaid-cli -i /tmp/erd.mmd -o docs/assets/diagrams/erd.png -b white --width 900 && npx @mermaid-js/mermaid-cli -i /tmp/seq_generate.mmd -o docs/assets/diagrams/seq_generate.png -b white --width 1000 && npx @mermaid-js/mermaid-cli -i /tmp/seq_auth.mmd -o docs/assets/diagrams/seq_auth.png -b white --width 900 && npx @mermaid-js/mermaid-cli -i /tmp/arch.mmd -o docs/assets/diagrams/architecture.png -b white --width 1000 && npx @mermaid-js/mermaid-cli -i /tmp/scoring.mmd -o docs/assets/diagrams/scoring.png -b white --width 900 && npx @mermaid-js/mermaid-cli -i /tmp/llm_fallback.mmd -o docs/assets/diagrams/llm_fallback.png -b white --width 800"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.4",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -37,6 +36,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pg": "^8.21.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -52,6 +52,7 @@
     "@types/node": "^25.8.0",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.2.0",
+    "@types/swagger-ui-express": "^4.1.8",
     "concurrently": "^10.0.0",
     "jsdom": "^29.0.2",
     "nodemon": "^3.0.2",

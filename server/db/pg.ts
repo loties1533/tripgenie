@@ -5,9 +5,9 @@
 //
 // POURQUOI ce module existe (objectif : RLS gérée par NOUS, pas par Supabase)
 // ---------------------------------------------------------------------------
-// - supabase-js parle à PostgREST avec la SERVICE_KEY, qui a l'attribut
-//   BYPASSRLS : le RLS ne s'applique JAMAIS. La sécurité repose alors
-//   uniquement sur nos `.eq('user_id', ...)` applicatifs.
+// - Avant, supabase-js parlait à PostgREST avec la SERVICE_KEY, qui a
+//   l'attribut BYPASSRLS : le RLS ne s'appliquait JAMAIS. La sécurité ne
+//   reposait alors que sur nos `.eq('user_id', ...)` applicatifs.
 // - Ici on se connecte en SQL direct avec un rôle dédié SANS BYPASSRLS
 //   (voir migrations/0001_rls_self_managed.sql). Le RLS s'applique donc
 //   réellement, comme une 2ᵉ barrière (défense en profondeur).
@@ -15,9 +15,9 @@
 //   Le driver `pg`, lui, peut ouvrir une transaction et fixer
 //   `app.current_user_id` que les policies RLS liront.
 //
-// IMPORTANT : ce module n'est encore branché sur AUCUNE route (migration par
-// étapes). Le code actuel continue de tourner via supabase.ts tant qu'on n'a
-// pas basculé les routes une par une.
+// ÉTAT : ce module est désormais LA couche d'accès BDD du projet. Toutes les
+// routes qui touchent la base passent par query()/withUser() ici.
+// supabase-js a été retiré — plus aucun fallback PostgREST ni SERVICE_KEY.
 // =============================================
 
 import pg from 'pg';
@@ -49,7 +49,7 @@ if (connectionString) {
   pool.on('error', (err: Error) => console.error('❌ Erreur pool PostgreSQL:', err.message));
   console.log('✅ PostgreSQL (pg) prêt — RLS applicative active');
 } else {
-  console.warn('⚠️  DATABASE_URL absent — couche pg/RLS désactivée (fallback supabase.ts)');
+  console.warn('⚠️  DATABASE_URL absent — couche pg/RLS désactivée (aucun accès BDD possible)');
 }
 
 export default pool;

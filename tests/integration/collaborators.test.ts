@@ -24,23 +24,16 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// mockThen : pour les requêtes awaitées sans .single() (liste + delete)
-const { mockChain, mockThen } = vi.hoisted(() => {
-  const mockThen = vi.fn();
-  const mockChain = {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    upsert: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq:     vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: null, error: null }),
-    then:   mockThen
-  };
-  return { mockChain, mockThen };
-});
-vi.mock('../../server/db/supabase.js', () => ({
-  default: { from: vi.fn().mockReturnValue(mockChain) }
+// (mock supabase retiré — la route collaborators tourne 100 % sur pg/RLS maison)
+
+// Mock pg (RLS « maison ») : propriété vérifiée via withUser(), recherche cross-user
+// (auth_user_by_email) et JOIN collaborateurs (trip_collaborators_for_owner) via query().
+// Toutes les requêtes de la route traversent mockPgQuery, dans l'ordre.
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
 }));
 
 const OWNER = { id: 'owner-uuid', email: 'owner@test.com', name: 'Owner' };
@@ -50,15 +43,8 @@ const TRIP  = 'trip-123';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // mockReset vide aussi la file "Once" → isolation stricte entre tests
-  mockChain.single.mockReset().mockResolvedValue({ data: null, error: null });
-  mockThen.mockReset().mockImplementation((cb: any) => cb({ data: [], error: null }));
-  mockChain.insert.mockReturnThis();
-  mockChain.select.mockReturnThis();
-  mockChain.update.mockReturnThis();
-  mockChain.upsert.mockReturnThis();
-  mockChain.delete.mockReturnThis();
-  mockChain.eq.mockReturnThis();
+  // Défaut fail-closed : aucune ligne (→ 404). Chaque test fournit ses lignes via Once.
+  mockPgQuery.mockReset().mockResolvedValue({ rows: [], rowCount: 0 });
 });
 
 // ============================================================
@@ -72,21 +58,22 @@ describe('GET /api/trips/:id/collaborators', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
     const res = await auth(request(app).get(`/api/trips/${TRIP}/collaborators`));
     expect(res.status).toBe(404);
   });
 
   it('liste les collaborateurs du voyage', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: { id: TRIP }, error: null }); // propriété OK
-    mockThen.mockImplementationOnce((cb: any) => cb({
-      data: [{ user_id: 'u2', role: 'viewer', invited_at: '2026-01-01', users: { name: 'Bob', email: 'bob@test.com' } }],
-      error: null
-    }));
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK (withUser)
+      // 2) trip_collaborators_for_owner renvoie des colonnes plates (name/email),
+      //    que la route ré-emboîte ensuite sous users:{ name, email }.
+      .mockResolvedValueOnce({ rows: [{ user_id: 'u2', role: 'viewer', invited_at: '2026-01-01', name: 'Bob', email: 'bob@test.com' }], rowCount: 1 });
     const res = await auth(request(app).get(`/api/trips/${TRIP}/collaborators`));
     expect(res.status).toBe(200);
     expect(res.body.collaborators).toHaveLength(1);
     expect(res.body.collaborators[0].role).toBe('viewer');
+    expect(res.body.collaborators[0].users.email).toBe('bob@test.com');
   });
 });
 
@@ -106,37 +93,37 @@ describe('POST /api/trips/:id/collaborators', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'bob@test.com' });
     expect(res.status).toBe(404);
   });
 
   it('404 si l\'utilisateur invité n\'existe pas', async () => {
-    mockChain.single
-      .mockResolvedValueOnce({ data: { id: TRIP }, error: null })            // propriété OK
-      .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });   // user introuvable
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });            // 2) auth_user_by_email vide → 404
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'ghost@test.com' });
     expect(res.status).toBe(404);
   });
 
   it('400 si l\'on tente de s\'inviter soi-même', async () => {
-    mockChain.single
-      .mockResolvedValueOnce({ data: { id: TRIP }, error: null })                                       // propriété OK
-      .mockResolvedValueOnce({ data: { id: OWNER.id, name: OWNER.name, email: OWNER.email }, error: null }); // = soi-même
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })                                  // 1) propriété OK
+      .mockResolvedValueOnce({ rows: [{ id: OWNER.id, name: OWNER.name, email: OWNER.email }], rowCount: 1 }); // 2) cible = soi-même
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: OWNER.email });
     expect(res.status).toBe(400);
   });
 
   it('201 invite un collaborateur valide (rôle editor)', async () => {
-    mockChain.single
-      .mockResolvedValueOnce({ data: { id: TRIP }, error: null })                                            // propriété OK
-      .mockResolvedValueOnce({ data: { id: 'bob-uuid', name: 'Bob', email: 'bob@test.com' }, error: null })  // user trouvé
-      .mockResolvedValueOnce({ data: { trip_id: TRIP, user_id: 'bob-uuid', role: 'editor' }, error: null }); // upsert
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })                                          // 1) propriété OK
+      .mockResolvedValueOnce({ rows: [{ id: 'bob-uuid', name: 'Bob', email: 'bob@test.com' }], rowCount: 1 }) // 2) user trouvé
+      .mockResolvedValueOnce({ rows: [{ trip_id: TRIP, user_id: 'bob-uuid', role: 'editor' }], rowCount: 1 }); // 3) INSERT ON CONFLICT
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'bob@test.com', role: 'editor' });
     expect(res.status).toBe(201);
     expect(res.body.collaborator.role).toBe('editor');
     expect(res.body.user.email).toBe('bob@test.com');
-    expect(mockChain.upsert).toHaveBeenCalled();
+    expect(mockPgQuery).toHaveBeenCalled();
   });
 });
 
@@ -151,16 +138,18 @@ describe('DELETE /api/trips/:id/collaborators/:user_id', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
     const res = await auth(request(app).delete(`/api/trips/${TRIP}/collaborators/bob-uuid`));
     expect(res.status).toBe(404);
   });
 
   it('200 retire le collaborateur', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: { id: TRIP }, error: null }); // propriété OK
-    mockThen.mockImplementationOnce((cb: any) => cb({ error: null }));            // delete OK
+    // Transaction : propriété OK → DELETE du collaborateur
+    mockPgQuery
+      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });             // 2) DELETE trip_collaborators
     const res = await auth(request(app).delete(`/api/trips/${TRIP}/collaborators/bob-uuid`));
     expect(res.status).toBe(200);
-    expect(mockChain.delete).toHaveBeenCalled();
+    expect(mockPgQuery).toHaveBeenCalled();
   });
 });

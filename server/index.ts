@@ -10,9 +10,13 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
 
 // Middlewares persos
 import { globalErrorHandler, AppError } from './lib/AppError.js';
+
+// Spécification OpenAPI (interface Swagger sur /api/docs)
+import { openapiSpec } from './docs/openapi.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -64,6 +68,32 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// ---- Documentation interactive de l'API (Swagger UI) ----
+// Disponible sur http://localhost:3000/api/docs — on y lit ET teste chaque route.
+// CSP dédiée à cette route : le helmet() global interdit l'inline (anti-XSS), mais
+// Swagger UI injecte un <script>/<style> inline pour s'initialiser. On relâche donc
+// la CSP UNIQUEMENT ici (route de doc), sans toucher à la politique stricte du reste.
+const swaggerCsp = helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc:  ["'self'", "'unsafe-inline'"],
+    styleSrc:   ["'self'", "'unsafe-inline'"],
+    imgSrc:     ["'self'", 'data:', 'https:'],
+    fontSrc:    ["'self'", 'https:', 'data:'],
+  },
+});
+app.use(
+  '/api/docs',
+  swaggerCsp,
+  swaggerUi.serve,
+  swaggerUi.setup(openapiSpec, {
+    customSiteTitle: 'TripGenie API — Documentation',
+    swaggerOptions: { persistAuthorization: true, displayRequestDuration: true },
+  }),
+);
+// Spec brute (JSON) — utile pour Postman/Insomnia (Import → OpenAPI)
+app.get('/api/docs.json', (req, res) => res.json(openapiSpec));
+
 // ---- Gestion Frontend (Mode Production) ----
 if (process.env.NODE_ENV === 'production') {
   console.log('🌟 Serveur en mode PRODUCTION - Service des fichiers React statiques');
@@ -93,7 +123,7 @@ if (process.env.NODE_ENV !== 'test') {
   const server = app.listen(PORT, () => {
     console.log(`\n🚀 Serveur backend démarré sur http://localhost:${PORT}`);
     console.log(`🛠️  Environnement : ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔑 Supabase Configuré : ${process.env.SUPABASE_URL ? 'OUI' : 'NON'}`);
+    console.log(`🔑 PostgreSQL (RLS maison) : ${process.env.DATABASE_URL ? 'OUI' : 'NON'}`);
     console.log(`🧠 AI Provider: ${process.env.AI_PROVIDER || 'NON DÉFINI'}`);
   });
 

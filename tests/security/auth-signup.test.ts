@@ -24,22 +24,16 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// ---- Mock Supabase — vi.hoisted évite l'erreur de référence avant initialisation ----
-const { mockSingle, mockChain } = vi.hoisted(() => {
-  const mockSingle = vi.fn();
-  const mockChain = {
-    insert:  vi.fn().mockReturnThis(),
-    select:  vi.fn().mockReturnThis(),
-    update:  vi.fn().mockReturnThis(),
-    delete:  vi.fn().mockReturnThis(),
-    eq:      vi.fn().mockReturnThis(),
-    order:   vi.fn().mockReturnThis(),
-    single:  mockSingle
-  };
-  return { mockSingle, mockChain };
-});
-vi.mock('../../server/db/supabase.js', () => ({
-  default: { from: vi.fn().mockReturnValue(mockChain) }
+// (mock supabase retiré — signup tourne 100 % sur pg/RLS maison)
+
+// ---- Mock pg (RLS « maison ») ----
+// signup ne passe plus par supabase mais par des fonctions SECURITY DEFINER
+// appelées via query() : auth_user_by_email (vérif doublon) puis auth_create_user.
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
 }));
 
 // ---- Mock bcryptjs ----
@@ -51,7 +45,16 @@ vi.mock('bcryptjs', () => ({
   }
 }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Défaut routé par SQL : email libre (auth_user_by_email → []) puis création réussie
+  // (auth_create_user → 1 ligne). Chaque test peut surcharger via mockImplementationOnce.
+  mockPgQuery.mockImplementation((sql: string) => {
+    if (/auth_user_by_email/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 });
+    if (/auth_create_user/.test(sql))   return Promise.resolve({ rows: [{ id: 'new-uuid-123', email: 'new@test.com', name: 'Bob', created_at: new Date().toISOString() }], rowCount: 1 });
+    return Promise.resolve({ rows: [], rowCount: 0 });
+  });
+});
 
 // ============================================================
 // Champs requis
@@ -86,12 +89,9 @@ describe('POST /api/auth/signup — validation des champs requis', () => {
 // ============================================================
 describe('POST /api/auth/signup — doublon email', () => {
 
-  it('400 si email déjà utilisé', async () => {
-    // Premier appel : l'email existe déjà en base → la route renvoie 400 (pas 409)
-    mockSingle.mockResolvedValueOnce({
-      data:  { id: 'existing-uuid', email: 'alice@test.com', name: 'Alice' },
-      error: null
-    });
+  it('409 si email déjà utilisé', async () => {
+    // auth_user_by_email renvoie une ligne → email déjà pris → 409 Conflict
+    mockPgQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ id: 'existing-uuid' }], rowCount: 1 }));
     const res = await request(app).post('/api/auth/signup').send({ email: 'alice@test.com', password: 'Password1!', name: 'Alice' });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/email.*déjà.*utilisé/i);
@@ -102,17 +102,7 @@ describe('POST /api/auth/signup — doublon email', () => {
 // Création réussie
 // ============================================================
 describe('POST /api/auth/signup — création réussie', () => {
-
-  beforeEach(() => {
-    // 1) email libre → null
-    mockSingle
-      .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-    // 2) insert new user
-      .mockResolvedValueOnce({
-        data:  { id: 'new-uuid-123', email: 'new@test.com', name: 'Bob' },
-        error: null
-      });
-  });
+  // Le défaut mockPgQuery (beforeEach) gère déjà : email libre → création réussie.
 
   it('201 créé avec succès', async () => {
     const res = await request(app).post('/api/auth/signup').send({ email: 'new@test.com', password: 'SecurePass1!', name: 'Bob' });
@@ -120,9 +110,6 @@ describe('POST /api/auth/signup — création réussie', () => {
   });
 
   it('mot de passe JAMAIS retourné dans la réponse', async () => {
-    mockSingle
-      .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-      .mockResolvedValueOnce({ data: { id: 'new-uuid-123', email: 'new@test.com', name: 'Bob' }, error: null });
     const res = await request(app).post('/api/auth/signup').send({ email: 'new@test.com', password: 'SecurePass1!', name: 'Bob' });
     const body = JSON.stringify(res.body);
     expect(body).not.toContain('SecurePass1!');
@@ -131,9 +118,6 @@ describe('POST /api/auth/signup — création réussie', () => {
   });
 
   it('cookie JWT httpOnly présent dans la réponse', async () => {
-    mockSingle
-      .mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
-      .mockResolvedValueOnce({ data: { id: 'new-uuid-123', email: 'new@test.com', name: 'Bob' }, error: null });
     const res = await request(app).post('/api/auth/signup').send({ email: 'new@test.com', password: 'SecurePass1!', name: 'Bob' });
     const cookieHeader = res.headers['set-cookie'];
     if (cookieHeader) {

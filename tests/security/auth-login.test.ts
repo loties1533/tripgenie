@@ -24,23 +24,16 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// vi.hoisted() — évite l'erreur de référence avant initialisation due au hoisting de vi.mock
-const { mockSingle } = vi.hoisted(() => {
-  const mockSingle = vi.fn();
-  return { mockSingle };
-});
-vi.mock('../../server/db/supabase.js', () => ({
-  default: {
-    from: vi.fn().mockReturnValue({
-      insert:  vi.fn().mockReturnThis(),
-      select:  vi.fn().mockReturnThis(),
-      update:  vi.fn().mockReturnThis(),
-      delete:  vi.fn().mockReturnThis(),
-      eq:      vi.fn().mockReturnThis(),
-      order:   vi.fn().mockReturnThis(),
-      single:  mockSingle
-    })
-  }
+// (mock supabase retiré — login/logout/me tournent 100 % sur pg/RLS maison)
+
+// ---- Mock pg (RLS « maison ») ----
+// login lit l'utilisateur via query(auth_user_by_email) (fonction SECURITY DEFINER,
+// renvoie le hash pour bcrypt.compare). GET /me lit son propre profil via withUser().
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
 }));
 
 vi.mock('bcryptjs', () => ({
@@ -53,9 +46,13 @@ vi.mock('bcryptjs', () => ({
 
 import bcrypt from 'bcryptjs';
 
-beforeEach(() => vi.clearAllMocks());
-
 const FAKE_USER = { id: 'uuid-alice', email: 'alice@test.com', name: 'Alice', password: '$2b$12$hashed' };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Défaut fail-closed : aucune ligne. Chaque test fournit ses lignes via Once.
+  mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+});
 
 // ============================================================
 // Credentials invalides
@@ -63,20 +60,20 @@ const FAKE_USER = { id: 'uuid-alice', email: 'alice@test.com', name: 'Alice', pa
 describe('POST /api/auth/login — credentials invalides', () => {
 
   it('401 si email inconnu', async () => {
-    mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).post('/api/auth/login').send({ email: 'ghost@test.com', password: 'whatever' });
     expect(res.status).toBe(401);
   });
 
   it('401 si mauvais mot de passe', async () => {
-    mockSingle.mockResolvedValueOnce({ data: FAKE_USER, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
     vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as any);
     const res = await request(app).post('/api/auth/login').send({ email: 'alice@test.com', password: 'wrongpassword' });
     expect(res.status).toBe(401);
   });
 
   it('message d\'erreur générique (pas de détail "utilisateur non trouvé")', async () => {
-    mockSingle.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).post('/api/auth/login').send({ email: 'ghost@test.com', password: 'whatever' });
     // Ne doit pas révéler "email non trouvé" (énumération d'utilisateurs)
     expect(res.body.error).not.toMatch(/email.*non.*trouvé|utilisateur.*existe.*pas/i);
@@ -99,7 +96,7 @@ describe('POST /api/auth/login — credentials invalides', () => {
 describe('POST /api/auth/login — connexion réussie', () => {
 
   beforeEach(() => {
-    mockSingle.mockResolvedValueOnce({ data: FAKE_USER, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
     vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as any);
   });
 
@@ -173,7 +170,7 @@ describe('GET /api/auth/me', () => {
 
   it('200 avec token valide dans le header', async () => {
     const token = jwt.sign({ id: 'uuid-alice', email: 'alice@test.com' }, process.env.JWT_SECRET!, { expiresIn: '1h' });
-    mockSingle.mockResolvedValueOnce({ data: FAKE_USER, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
     const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
     expect([200, 404]).toContain(res.status); // 200 si user existe, 404 si pas en DB mockée
   });

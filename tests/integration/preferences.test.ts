@@ -23,21 +23,14 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// vi.hoisted() — la factory de vi.mock est hoistée au top, mockChain doit exister avant
-const { mockChain } = vi.hoisted(() => {
-  const mockChain = {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    upsert: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq:     vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: null, error: null })
-  };
-  return { mockChain };
-});
-vi.mock('../../server/db/supabase.js', () => ({
-  default: { from: vi.fn().mockReturnValue(mockChain) }
+// (mock supabase retiré — la route preferences tourne 100 % sur pg/RLS maison)
+
+// Mock pg (RLS « maison ») : GET/PUT préférences passent par withUser() + SQL direct.
+const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
+vi.mock('../../server/db/pg.js', () => ({
+  default:  {},
+  query:    (...args: any[]) => mockPgQuery(...args),
+  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
 }));
 
 const USER  = { id: 'user-uuid', email: 'u@test.com', name: 'User' };
@@ -46,14 +39,8 @@ const auth  = (r: any) => r.set('Authorization', `Bearer ${token}`);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // mockReset vide aussi la file "Once" (clearAllMocks ne la vide pas) → pas de fuite entre tests
-  mockChain.single.mockReset().mockResolvedValue({ data: null, error: null });
-  mockChain.insert.mockReturnThis();
-  mockChain.select.mockReturnThis();
-  mockChain.update.mockReturnThis();
-  mockChain.upsert.mockReturnThis();
-  mockChain.delete.mockReturnThis();
-  mockChain.eq.mockReturnThis();
+  // Défaut fail-closed : aucune ligne. Chaque test fournit ses lignes via Once.
+  mockPgQuery.mockReset().mockResolvedValue({ rows: [], rowCount: 0 });
 });
 
 // ============================================================
@@ -66,8 +53,8 @@ describe('GET /api/preferences', () => {
     expect(res.status).toBe(401);
   });
 
-  it('preferences = null si aucune ligne (PGRST116)', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } });
+  it('preferences = null si aucune ligne', async () => {
+    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await auth(request(app).get('/api/preferences'));
     expect(res.status).toBe(200);
     expect(res.body.preferences).toBeNull();
@@ -75,15 +62,16 @@ describe('GET /api/preferences', () => {
 
   it('retourne les préférences existantes', async () => {
     const prefs = { user_id: USER.id, default_mode: 'luxury', currency: 'EUR', home_city: 'Lyon', preferred_prefs: ['culture'] };
-    mockChain.single.mockResolvedValueOnce({ data: prefs, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [prefs], rowCount: 1 });
     const res = await auth(request(app).get('/api/preferences'));
     expect(res.status).toBe(200);
     expect(res.body.preferences.default_mode).toBe('luxury');
     expect(res.body.preferences.home_city).toBe('Lyon');
   });
 
-  it('500 si une vraie erreur DB (code != PGRST116)', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: null, error: { code: '42P01', message: 'table absente' } });
+  it('500 si une vraie erreur DB', async () => {
+    // La requête SQL rejette (ex: table absente) → next(err) → handler global 500
+    mockPgQuery.mockRejectedValueOnce(new Error('table absente'));
     const res = await auth(request(app).get('/api/preferences'));
     expect(res.status).toBe(500);
   });
@@ -117,16 +105,17 @@ describe('PUT /api/preferences', () => {
 
   it('200 + upsert avec des données valides', async () => {
     const prefs = { user_id: USER.id, default_mode: 'relax', currency: 'USD', home_city: 'Nice', preferred_prefs: ['plage', 'nature'] };
-    mockChain.single.mockResolvedValueOnce({ data: prefs, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [prefs], rowCount: 1 });
     const res = await auth(request(app).put('/api/preferences'))
       .send({ default_mode: 'relax', currency: 'USD', home_city: 'Nice', preferred_prefs: ['plage', 'nature'] });
     expect(res.status).toBe(200);
     expect(res.body.preferences.default_mode).toBe('relax');
-    expect(mockChain.upsert).toHaveBeenCalled();
+    // L'upsert est un INSERT ... ON CONFLICT (user_id) DO UPDATE en SQL paramétré
+    expect(String(mockPgQuery.mock.calls.at(-1)?.[0])).toMatch(/ON CONFLICT/i);
   });
 
   it('accepte un body partiel (tous les champs sont optionnels)', async () => {
-    mockChain.single.mockResolvedValueOnce({ data: { user_id: USER.id, home_city: 'Bordeaux' }, error: null });
+    mockPgQuery.mockResolvedValueOnce({ rows: [{ user_id: USER.id, home_city: 'Bordeaux' }], rowCount: 1 });
     const res = await auth(request(app).put('/api/preferences')).send({ home_city: 'Bordeaux' });
     expect(res.status).toBe(200);
     expect(res.body.preferences.home_city).toBe('Bordeaux');
