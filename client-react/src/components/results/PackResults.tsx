@@ -300,6 +300,20 @@ export default function PackResults() {
 
   const d = pack
 
+  // Bandeau Mode Survie — affiché quand toutes les IA ont échoué et que le pack
+  // est un fallback statique. Important pour la transparence envers l'utilisateur.
+  const MockBanner = d.isMock ? (
+    <div className="mx-4 mb-4 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+      <span className="text-xl flex-shrink-0">⚠️</span>
+      <div>
+        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">Données de démonstration</p>
+        <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+          Les services IA sont temporairement indisponibles. Ce pack est un exemple générique — réessayez dans quelques minutes pour un vrai résultat personnalisé.
+        </p>
+      </div>
+    </div>
+  ) : null
+
   // Function to center map on an item
   const handleLocate = async (name: string) => {
     setActiveTab('overview')
@@ -465,6 +479,9 @@ export default function PackResults() {
       data-mode={mode}
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}>
+
+      {/* Bandeau Mode Survie — visible uniquement quand isMock: true */}
+      {MockBanner}
 
       {/* Hero banner */}
       <div className="glass-premium rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-glow-gold min-h-[220px] sm:h-[260px] flex items-end">

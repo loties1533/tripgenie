@@ -332,6 +332,21 @@ router.post('/chat', aiChatLimiter, optionalAuth, async (req: Request, res: Resp
       return;
     }
 
+    // Validation de current_pack : il vient du client (non fiable).
+    // On limite la taille pour éviter l'injection de prompt et l'explosion de tokens.
+    // On vérifie que c'est bien un objet (pas un script malveillant sous forme de string).
+    if (current_pack !== undefined) {
+      if (typeof current_pack !== 'object' || Array.isArray(current_pack)) {
+        res.status(400).json({ error: 'current_pack invalide' });
+        return;
+      }
+      const packSize = JSON.stringify(current_pack).length;
+      if (packSize > 50_000) { // 50ko max — un pack normal fait ~5-10ko
+        res.status(400).json({ error: 'current_pack trop volumineux (max 50ko)' });
+        return;
+      }
+    }
+
     const result = await chatModify({
       currentPack: current_pack,
       userMessage: message,

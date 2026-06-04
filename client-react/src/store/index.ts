@@ -20,7 +20,7 @@ interface SearchState {
   packId: string | null;
   isLoading: boolean;
   error: string | null;
-  setField: (key: keyof SearchState, val: any) => void;
+  setField: (key: keyof SearchState, val: SearchState[keyof SearchState]) => void;
   setPack: (pack: Pack | null, tripId: string | null, packId?: string | null) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
@@ -76,7 +76,7 @@ export interface ChatMessage {
 
 interface ChatState {
   messages: ChatMessage[];
-  chatData: Record<string, any>;
+  chatData: Record<string, unknown>;
   isTyping: boolean;
   isReady: boolean;
   turnCount: number;
@@ -85,8 +85,8 @@ interface ChatState {
   quizStep: number;
   addMessage: (msg: ChatMessage) => void;
   setTyping: (v: boolean) => void;
-  mergeChatData: (data: Record<string, any>) => void;
-  seedChatData: (data: Record<string, any>) => void;
+  mergeChatData: (data: Record<string, unknown>) => void;
+  seedChatData: (data: Record<string, unknown>) => void;
   setReady: (v: boolean) => void;
   setMockMode: (v: boolean) => void;
   setQuizMode: (v: boolean) => void;

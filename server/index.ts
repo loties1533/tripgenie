@@ -28,6 +28,16 @@ import photosRoutes from './routes/photos.js';
 import preferencesRoutes from './routes/preferences.js';
 import collaboratorsRoutes from './routes/collaborators.js';
 
+// ---- Fail-fast : variables critiques obligatoires ----
+// Si JWT_SECRET est absent, jwt.sign/verify échouera silencieusement à l'exécution.
+// On préfère un crash immédiat au démarrage — plus honnête et plus sûr.
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET manquant — définissez-le dans .env avant de démarrer');
+}
+if (!process.env.DATABASE_URL) {
+  console.warn('⚠️  DATABASE_URL absent — aucun accès base de données possible');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

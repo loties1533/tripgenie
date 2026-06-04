@@ -179,8 +179,8 @@ function TripConcepts() {
     setLoading(true)
     addMessage({ role: 'assistant', text: `Excellent choix ! 🚀 Je génère ton pack VIP pour **${dest.city}**...` })
 
-    const dep = normalizeDate(chatData.departure) || new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10)
-    const ret = normalizeDate(chatData.return_date) || new Date(new Date(dep).getTime() + 86400000 * (chatData.duration || 7)).toISOString().slice(0, 10)
+    const dep = normalizeDate(chatData.departure as string) || new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10)
+    const ret = normalizeDate(chatData.return_date as string) || new Date(new Date(dep).getTime() + 86400000 * ((chatData.duration as number) || 7)).toISOString().slice(0, 10)
 
     try {
       const res = await fetch('/api/ai/generate', {
@@ -250,7 +250,7 @@ function TripConcepts() {
                   <p className="text-[10px] uppercase tracking-wider text-muted">Budget estimé</p>
                   <p className="text-gold font-bold text-base">
                     {c.budget_estimate || (chatData.budget && chatData.travelers
-                      ? `~${Math.round(chatData.budget / chatData.travelers).toLocaleString('fr-FR')}€/pers`
+                      ? `~${Math.round((chatData.budget as number) / (chatData.travelers as number)).toLocaleString('fr-FR')}€/pers`
                       : 'Sur devis')}
                   </p>
                 </div>

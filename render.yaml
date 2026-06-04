@@ -11,30 +11,35 @@ services:
         value: production
       - key: PORT
         value: 3000
-      # --- Supabase ---
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
+      # --- Base de données (rôle dédié tripgenie_app, sans BYPASSRLS) ---
+      - key: DATABASE_URL
+        sync: false  # à renseigner dans le dashboard Render
+
       # --- Auth ---
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
-      # --- IA ---
+
+      # --- LLM (au moins GEMINI_API_KEY requis — fallback automatique) ---
       - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
-      - key: AI_PROVIDER
-        value: gemini
-      # --- Services externes ---
+
+      # --- Services externes (optionnels — fallback IA si absent) ---
       - key: TAVILY_API_KEY
-        sync: false
-      - key: OPENWEATHER_API_KEY
         sync: false
       - key: UNSPLASH_ACCESS_KEY
         sync: false
+      - key: FOURSQUARE_API_KEY
+        sync: false
+      - key: PREDICTHQ_API_KEY
+        sync: false
+      # Open-Meteo : aucune clé requise
+
       # --- CORS ---
       - key: CLIENT_URL
         value: https://tripgenie.onrender.com
