@@ -1,66 +1,61 @@
-name: CI — Tests & Build
+name: CI
 
 on:
   push:
-    branches: [main, feat/postgres-rls]
+    branches:
+      - main
+      - feat/postgres-rls
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   test:
-    name: Tests & TypeScript
+    name: Tests et TypeScript
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Récupère le code
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Configure Node.js
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      # 3. Installe les dépendances backend
-      - name: Install dependencies
+      - name: Installer les dependances
         run: npm ci
 
-      # 4. Vérifie que TypeScript compile sans erreur
-      - name: TypeScript check
+      - name: Verifier TypeScript
         run: npx tsc --noEmit
 
-      # 5. Lance les tests (sans clés API — tout est mocké)
-      - name: Run tests
+      - name: Lancer les tests
         run: npm test
         env:
           NODE_ENV: test
-          JWT_SECRET: test-secret-for-ci-only
-          # Toutes les APIs sont mockées dans les tests — pas de vraie clé requise
+          JWT_SECRET: test-secret-ci
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: test  # lance le build seulement si les tests passent
+    needs: test
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install backend dependencies
+      - name: Installer les dependances backend
         run: npm ci
 
-      # Compile le TypeScript serveur → dist-server/
-      - name: Build server
+      - name: Build serveur TypeScript
         run: npx tsc
 
-      # Installe et build le frontend React
-      - name: Install & build client
+      - name: Build client React
         run: cd client-react && npm ci && npm run build
