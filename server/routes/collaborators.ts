@@ -1,11 +1,11 @@
 // =============================================
-// TRIPGENIE — server/routes/collaborators.ts
+// TRIPGENIE — server/routes/collaborators.ts  (Prisma)
 // Collaborateurs de voyage (relation many-to-many trips ↔ users)
 // =============================================
 
 import express from 'express';
 import { z } from 'zod';
-import { query, withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -17,34 +17,30 @@ const inviteSchema = z.object({
 });
 
 // ---- GET /api/trips/:trip_id/collaborators ----
-// Lister les collaborateurs d'un voyage (propriétaire uniquement)
 router.get('/:trip_id/collaborators', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const tripId = req.params.trip_id;
+    const tripId = String(req.params.trip_id);
 
     // 1. Propriété du voyage (404 si pas à l'utilisateur)
-    const { rows: owned } = await withUser(userId, (c) =>
-      c.query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [tripId, userId])
-    );
-    if (owned.length === 0) {
+    const owned = await prisma.trip.findFirst({ where: { id: tripId, user_id: userId }, select: { id: true } });
+    if (!owned) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    // 2. La table users est RLS-restreinte au seul appelant → un JOIN classique
-    //    masquerait les autres collaborateurs. On lit donc via une fonction
-    //    SECURITY DEFINER qui RE-VÉRIFIE la propriété (p_owner_id = userId du JWT).
-    const { rows } = await query<{ user_id: string; role: string; invited_at: string; name: string; email: string }>(
-      'SELECT * FROM trip_collaborators_for_owner($1, $2)',
-      [tripId, userId]
-    );
+    // 2. Collaborateurs + infos user (name/email) via la relation — JOIN propre.
+    const rows = await prisma.tripCollaborator.findMany({
+      where:   { trip_id: tripId },
+      select:  { user_id: true, role: true, invited_at: true, user: { select: { name: true, email: true } } },
+      orderBy: { invited_at: 'asc' },
+    });
 
     const collaborators = rows.map((r) => ({
       user_id:    r.user_id,
       role:       r.role,
       invited_at: r.invited_at,
-      users:      { name: r.name, email: r.email },
+      users:      { name: r.user.name, email: r.user.email },
     }));
 
     res.json({ collaborators });
@@ -55,7 +51,6 @@ router.get('/:trip_id/collaborators', requireAuth, async (req: Request, res: Res
 });
 
 // ---- POST /api/trips/:trip_id/collaborators ----
-// Inviter un utilisateur par email (propriétaire uniquement)
 router.post('/:trip_id/collaborators', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsed = inviteSchema.safeParse(req.body);
@@ -64,46 +59,37 @@ router.post('/:trip_id/collaborators', requireAuth, async (req: Request, res: Re
       return;
     }
     const userId = req.user!.id;
-    const tripId = req.params.trip_id;
+    const tripId = String(req.params.trip_id);
 
     // 1. Propriété du voyage
-    const { rows: owned } = await withUser(userId, (c) =>
-      c.query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [tripId, userId])
-    );
-    if (owned.length === 0) {
+    const owned = await prisma.trip.findFirst({ where: { id: tripId, user_id: userId }, select: { id: true } });
+    if (!owned) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    // 2. Trouver la cible par email — recherche cross-user → fonction SECURITY
-    //    DEFINER (la table users est RLS-restreinte). On ne lit PAS le hash.
-    const { rows: targets } = await query<{ id: string; name: string; email: string }>(
-      'SELECT id, name, email FROM auth_user_by_email($1)',
-      [parsed.data.email]
-    );
-    const targetUser = targets[0];
+    // 2. Trouver la cible par email (on ne lit PAS le hash)
+    const targetUser = await prisma.user.findUnique({
+      where:  { email: parsed.data.email },
+      select: { id: true, name: true, email: true },
+    });
     if (!targetUser) {
       res.status(404).json({ error: 'Utilisateur introuvable' });
       return;
     }
-
     if (targetUser.id === userId) {
       res.status(400).json({ error: 'Impossible de s\'inviter soi-même' });
       return;
     }
 
-    // 3. Upsert collaborateur (la policy collab_own_data exige un voyage possédé)
-    const { rows } = await withUser(userId, (c) =>
-      c.query(
-        `INSERT INTO trip_collaborators (trip_id, user_id, role, invited_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (trip_id, user_id) DO UPDATE SET role = EXCLUDED.role, invited_at = NOW()
-         RETURNING *`,
-        [tripId, targetUser.id, parsed.data.role]
-      )
-    );
+    // 3. Upsert collaborateur (PK composée trip_id + user_id)
+    const collaborator = await prisma.tripCollaborator.upsert({
+      where:  { trip_id_user_id: { trip_id: tripId, user_id: targetUser.id } },
+      create: { trip_id: tripId, user_id: targetUser.id, role: parsed.data.role },
+      update: { role: parsed.data.role, invited_at: new Date() },
+    });
 
-    res.status(201).json({ collaborator: rows[0], user: { name: targetUser.name, email: targetUser.email } });
+    res.status(201).json({ collaborator, user: { name: targetUser.name, email: targetUser.email } });
 
   } catch (err) {
     next(err);
@@ -111,24 +97,21 @@ router.post('/:trip_id/collaborators', requireAuth, async (req: Request, res: Re
 });
 
 // ---- DELETE /api/trips/:trip_id/collaborators/:user_id ----
-// Retirer un collaborateur (propriétaire uniquement)
 router.delete('/:trip_id/collaborators/:user_id', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const tripId = req.params.trip_id;
+    const tripId = String(req.params.trip_id);
 
-    // Propriété + suppression dans la même transaction (false = voyage non possédé)
-    const removed = await withUser(userId, async (c) => {
-      const owned = await c.query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [tripId, userId]);
-      if (owned.rows.length === 0) return false;
-      await c.query('DELETE FROM trip_collaborators WHERE trip_id = $1 AND user_id = $2', [tripId, req.params.user_id]);
-      return true;
-    });
-
-    if (!removed) {
+    // Propriété (404 si non possédé)
+    const owned = await prisma.trip.findFirst({ where: { id: tripId, user_id: userId }, select: { id: true } });
+    if (!owned) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
+
+    await prisma.tripCollaborator.deleteMany({
+      where: { trip_id: tripId, user_id: String(req.params.user_id) },
+    });
 
     res.status(200).json({ message: 'Collaborateur retiré' });
 

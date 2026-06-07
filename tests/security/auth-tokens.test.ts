@@ -24,17 +24,12 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// (mock supabase retiré — les routes /api/trips tournent 100 % sur pg/RLS maison)
-
-// Mock pg : les routes /api/trips migrées passent par withUser() (RLS maison).
-// withUser exécute le callback de la route contre un faux client dont query()
-// renvoie des lignes contrôlées par mockPgQuery (par défaut : [] → fail-closed / 404).
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// Mock Prisma : GET /api/trips → findMany ([]), GET /api/trips/:id → findFirst (null).
+// Défauts fail-closed → liste vide / 404, ce qui suffit aux tests de tokens.
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: { trip: { findMany: vi.fn(), findFirst: vi.fn() } } as any,
 }));
+vi.mock('../../server/db/prisma.js', () => ({ default: prismaMock }));
 
 const USER_A = { id: 'user-a-uuid', email: 'a@test.com', name: 'User A' };
 const USER_B = { id: 'user-b-uuid', email: 'b@test.com', name: 'User B' };
@@ -46,7 +41,8 @@ function makeToken(payload: object, secret = process.env.JWT_SECRET!, options: j
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 }); // défaut : aucune ligne (fail-closed)
+  prismaMock.trip.findMany.mockResolvedValue([]);
+  prismaMock.trip.findFirst.mockResolvedValue(null); // défauts fail-closed
 });
 
 // ============================================================
@@ -103,7 +99,6 @@ describe('JWT — extraction depuis cookie et header', () => {
 
   it('accepte le token depuis le header Authorization Bearer', async () => {
     const token = makeToken(USER_A);
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${token}`);
     // 200 ou 404 — pas 401
     expect(res.status).not.toBe(401);
@@ -111,7 +106,6 @@ describe('JWT — extraction depuis cookie et header', () => {
 
   it('accepte le token depuis le cookie tg_token', async () => {
     const token = makeToken(USER_A);
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Cookie', `tg_token=${token}`);
     expect(res.status).not.toBe(401);
   });
@@ -126,7 +120,6 @@ describe('JWT — isolation des données entre utilisateurs', () => {
     const tokenA = makeToken(USER_A);
     // GET /:id migré : withUser() + RLS PostgreSQL + filtre WHERE user_id = $2
     // → 0 ligne pour le voyage d'un autre utilisateur.
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app)
       .get(`/api/trips/${TRIP_B}`)
       .set('Authorization', `Bearer ${tokenA}`);
@@ -153,7 +146,6 @@ describe('JWT — claims requis', () => {
   it('token sans "id" → rejeté ou accès refusé', async () => {
     const noId = makeToken({ email: 'alice@test.com' }); // pas de id
     // GET /trips passe par pg/withUser → liste vide (fail-closed)
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${noId}`);
     // Sans id, le serveur peut renvoyer 200 (liste vide) ou 401 — pas de crash 500
     expect([200, 401]).toContain(res.status);
@@ -161,7 +153,6 @@ describe('JWT — claims requis', () => {
 
   it('token avec id null → rejeté', async () => {
     const nullId = makeToken({ id: null, email: 'alice@test.com' });
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).get('/api/trips').set('Authorization', `Bearer ${nullId}`);
     expect([200, 401]).toContain(res.status);
   });

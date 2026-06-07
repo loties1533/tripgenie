@@ -24,17 +24,13 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// (mock supabase retiré — login/logout/me tournent 100 % sur pg/RLS maison)
-
-// ---- Mock pg (RLS « maison ») ----
-// login lit l'utilisateur via query(auth_user_by_email) (fonction SECURITY DEFINER,
-// renvoie le hash pour bcrypt.compare). GET /me lit son propre profil via withUser().
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// ---- Mock Prisma ----
+// login lit l'utilisateur via prisma.user.findUnique({where:{email}}) (renvoie le hash
+// pour bcrypt.compare). GET /me lit son propre profil via findUnique({where:{id}}).
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: { user: { findUnique: vi.fn(), create: vi.fn() } } as any,
 }));
+vi.mock('../../server/db/prisma.js', () => ({ default: prismaMock }));
 
 vi.mock('bcryptjs', () => ({
   default: {
@@ -50,8 +46,8 @@ const FAKE_USER = { id: 'uuid-alice', email: 'alice@test.com', name: 'Alice', pa
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Défaut fail-closed : aucune ligne. Chaque test fournit ses lignes via Once.
-  mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+  // Défaut fail-closed : aucun user. Chaque test fournit son user via Once.
+  prismaMock.user.findUnique.mockResolvedValue(null);
 });
 
 // ============================================================
@@ -60,20 +56,20 @@ beforeEach(() => {
 describe('POST /api/auth/login — credentials invalides', () => {
 
   it('401 si email inconnu', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
     const res = await request(app).post('/api/auth/login').send({ email: 'ghost@test.com', password: 'whatever' });
     expect(res.status).toBe(401);
   });
 
   it('401 si mauvais mot de passe', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
+    prismaMock.user.findUnique.mockResolvedValueOnce(FAKE_USER as any);
     vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as any);
     const res = await request(app).post('/api/auth/login').send({ email: 'alice@test.com', password: 'wrongpassword' });
     expect(res.status).toBe(401);
   });
 
   it('message d\'erreur générique (pas de détail "utilisateur non trouvé")', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
     const res = await request(app).post('/api/auth/login').send({ email: 'ghost@test.com', password: 'whatever' });
     // Ne doit pas révéler "email non trouvé" (énumération d'utilisateurs)
     expect(res.body.error).not.toMatch(/email.*non.*trouvé|utilisateur.*existe.*pas/i);
@@ -96,7 +92,7 @@ describe('POST /api/auth/login — credentials invalides', () => {
 describe('POST /api/auth/login — connexion réussie', () => {
 
   beforeEach(() => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
+    prismaMock.user.findUnique.mockResolvedValueOnce(FAKE_USER as any);
     vi.mocked(bcrypt.compare).mockResolvedValueOnce(true as any);
   });
 
@@ -170,7 +166,7 @@ describe('GET /api/auth/me', () => {
 
   it('200 avec token valide dans le header', async () => {
     const token = jwt.sign({ id: 'uuid-alice', email: 'alice@test.com' }, process.env.JWT_SECRET!, { expiresIn: '1h' });
-    mockPgQuery.mockResolvedValueOnce({ rows: [FAKE_USER], rowCount: 1 });
+    prismaMock.user.findUnique.mockResolvedValueOnce(FAKE_USER as any);
     const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
     expect([200, 404]).toContain(res.status); // 200 si user existe, 404 si pas en DB mockée
   });

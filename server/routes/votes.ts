@@ -6,7 +6,7 @@
 import express from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import { query } from '../db/pg.js';
+import prisma from '../db/prisma.js';
 import type { Request, Response, NextFunction } from 'express';
 
 const voteSchema = z.object({
@@ -40,17 +40,12 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const { pack_id, item_id, voter_name, vote_type } = parsed.data;
 
-    // trip_votes est PUBLIC (policies RLS votes_insert_all/votes_select_all = true) :
-    // les amis votent via le lien de partage, sans compte. Pas de contexte
-    // utilisateur → query() simple (le RLS autorise l'insert).
-    const { rows } = await query(
-      `INSERT INTO trip_votes (pack_id, item_id, voter_name, vote_type)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [pack_id, item_id, voter_name || 'Anonyme', vote_type]
-    );
+    // trip_votes est PUBLIC : les amis votent via le lien de partage, sans compte.
+    const vote = await prisma.tripVote.create({
+      data: { pack_id, item_id, voter_name: voter_name || 'Anonyme', vote_type },
+    });
 
-    res.status(201).json({ message: 'Vote enregistré !', vote: rows[0] });
+    res.status(201).json({ message: 'Vote enregistré !', vote });
 
   } catch (err) {
     console.error('Vote error:', err);
@@ -62,12 +57,12 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
 // Récupérer tous les votes pour un pack donné
 router.get('/:pack_id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { rows } = await query(
-      `SELECT * FROM trip_votes WHERE pack_id = $1 ORDER BY created_at`,
-      [req.params.pack_id]
-    );
+    const votes = await prisma.tripVote.findMany({
+      where:   { pack_id: String(req.params.pack_id) },
+      orderBy: { created_at: 'asc' },
+    });
 
-    res.json({ votes: rows });
+    res.json({ votes });
 
   } catch (err) {
     console.error('Fetch votes error:', err);

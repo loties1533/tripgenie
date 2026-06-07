@@ -24,17 +24,17 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// (mock supabase retiré — la route collaborators tourne 100 % sur pg/RLS maison)
-
-// Mock pg (RLS « maison ») : propriété vérifiée via withUser(), recherche cross-user
-// (auth_user_by_email) et JOIN collaborateurs (trip_collaborators_for_owner) via query().
-// Toutes les requêtes de la route traversent mockPgQuery, dans l'ordre.
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// Mock Prisma : propriété via trip.findFirst, recherche cible via user.findUnique,
+// liste/ajout/retrait via tripCollaborator.{findMany,upsert,deleteMany}.
+// findMany renvoie le user imbriqué (relation), ré-emboîté en users:{} par la route.
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: {
+    trip: { findFirst: vi.fn() },
+    user: { findUnique: vi.fn() },
+    tripCollaborator: { findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+  } as any,
 }));
+vi.mock('../../server/db/prisma.js', () => ({ default: prismaMock }));
 
 const OWNER = { id: 'owner-uuid', email: 'owner@test.com', name: 'Owner' };
 const token = jwt.sign(OWNER, process.env.JWT_SECRET!, { expiresIn: '1d' });
@@ -43,8 +43,8 @@ const TRIP  = 'trip-123';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Défaut fail-closed : aucune ligne (→ 404). Chaque test fournit ses lignes via Once.
-  mockPgQuery.mockReset().mockResolvedValue({ rows: [], rowCount: 0 });
+  // Défaut fail-closed : voyage non possédé (→ 404). Chaque test fournit ses données via Once.
+  prismaMock.trip.findFirst.mockResolvedValue(null);
 });
 
 // ============================================================
@@ -58,17 +58,17 @@ describe('GET /api/trips/:id/collaborators', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
+    prismaMock.trip.findFirst.mockResolvedValueOnce(null); // propriété : null → 404
     const res = await auth(request(app).get(`/api/trips/${TRIP}/collaborators`));
     expect(res.status).toBe(404);
   });
 
   it('liste les collaborateurs du voyage', async () => {
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK (withUser)
-      // 2) trip_collaborators_for_owner renvoie des colonnes plates (name/email),
-      //    que la route ré-emboîte ensuite sous users:{ name, email }.
-      .mockResolvedValueOnce({ rows: [{ user_id: 'u2', role: 'viewer', invited_at: '2026-01-01', name: 'Bob', email: 'bob@test.com' }], rowCount: 1 });
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);  // 1) propriété OK
+    // 2) findMany renvoie le user imbriqué (relation Prisma), ré-emboîté sous users:{}
+    prismaMock.tripCollaborator.findMany.mockResolvedValueOnce([
+      { user_id: 'u2', role: 'viewer', invited_at: '2026-01-01', user: { name: 'Bob', email: 'bob@test.com' } },
+    ] as any);
     const res = await auth(request(app).get(`/api/trips/${TRIP}/collaborators`));
     expect(res.status).toBe(200);
     expect(res.body.collaborators).toHaveLength(1);
@@ -93,37 +93,34 @@ describe('POST /api/trips/:id/collaborators', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
+    prismaMock.trip.findFirst.mockResolvedValueOnce(null); // propriété : null → 404
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'bob@test.com' });
     expect(res.status).toBe(404);
   });
 
   it('404 si l\'utilisateur invité n\'existe pas', async () => {
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 });            // 2) auth_user_by_email vide → 404
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);  // 1) propriété OK
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);               // 2) cible inexistante → 404
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'ghost@test.com' });
     expect(res.status).toBe(404);
   });
 
   it('400 si l\'on tente de s\'inviter soi-même', async () => {
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })                                  // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [{ id: OWNER.id, name: OWNER.name, email: OWNER.email }], rowCount: 1 }); // 2) cible = soi-même
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);                                       // 1) propriété OK
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: OWNER.id, name: OWNER.name, email: OWNER.email } as any); // 2) cible = soi-même
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: OWNER.email });
     expect(res.status).toBe(400);
   });
 
   it('201 invite un collaborateur valide (rôle editor)', async () => {
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })                                          // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [{ id: 'bob-uuid', name: 'Bob', email: 'bob@test.com' }], rowCount: 1 }) // 2) user trouvé
-      .mockResolvedValueOnce({ rows: [{ trip_id: TRIP, user_id: 'bob-uuid', role: 'editor' }], rowCount: 1 }); // 3) INSERT ON CONFLICT
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);                                            // 1) propriété OK
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: 'bob-uuid', name: 'Bob', email: 'bob@test.com' } as any); // 2) user trouvé
+    prismaMock.tripCollaborator.upsert.mockResolvedValueOnce({ trip_id: TRIP, user_id: 'bob-uuid', role: 'editor' } as any); // 3) upsert
     const res = await auth(request(app).post(`/api/trips/${TRIP}/collaborators`)).send({ email: 'bob@test.com', role: 'editor' });
     expect(res.status).toBe(201);
     expect(res.body.collaborator.role).toBe('editor');
     expect(res.body.user.email).toBe('bob@test.com');
-    expect(mockPgQuery).toHaveBeenCalled();
+    expect(prismaMock.tripCollaborator.upsert).toHaveBeenCalled();
   });
 });
 
@@ -138,18 +135,17 @@ describe('DELETE /api/trips/:id/collaborators/:user_id', () => {
   });
 
   it('404 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 404
+    prismaMock.trip.findFirst.mockResolvedValueOnce(null); // propriété : null → 404
     const res = await auth(request(app).delete(`/api/trips/${TRIP}/collaborators/bob-uuid`));
     expect(res.status).toBe(404);
   });
 
   it('200 retire le collaborateur', async () => {
     // Transaction : propriété OK → DELETE du collaborateur
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 });             // 2) DELETE trip_collaborators
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);   // 1) propriété OK
+    prismaMock.tripCollaborator.deleteMany.mockResolvedValueOnce({ count: 1 } as any); // 2) DELETE
     const res = await auth(request(app).delete(`/api/trips/${TRIP}/collaborators/bob-uuid`));
     expect(res.status).toBe(200);
-    expect(mockPgQuery).toHaveBeenCalled();
+    expect(prismaMock.tripCollaborator.deleteMany).toHaveBeenCalled();
   });
 });

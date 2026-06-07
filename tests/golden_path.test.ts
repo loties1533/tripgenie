@@ -110,21 +110,18 @@ vi.mock('../server/services/photo.js', () => ({
   getDestinationPhoto: vi.fn().mockResolvedValue('https://example.com/photo.jpg')
 }));
 
-// (mock supabase retiré — votes/generate tournent 100 % sur pg/RLS maison)
-
-// Mock pg (RLS « maison ») : /api/votes passe par query() (table trip_votes publique),
-// et la sauvegarde de /generate par withUser(). Ici les requêtes /generate sont
-// envoyées SANS token → req.user absent → aucune écriture DB. Seuls les votes touchent pg.
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// Mock Prisma : /api/votes utilise prisma.tripVote.create (table publique).
+// /generate est envoyé SANS token → req.user absent → aucune écriture trip/pack.
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: {
+    tripVote: { create: vi.fn(), findMany: vi.fn() },
+    trip:     { create: vi.fn(), findMany: vi.fn() },
+    pack:     { create: vi.fn() },
+  } as any,
 }));
-mockPgQuery.mockResolvedValue({
-  rows: [{ id: 'vote-uuid', pack_id: '550e8400-e29b-41d4-a716-446655440000', item_id: 'x', voter_name: 'Alice', vote_type: true }],
-  rowCount: 1,
-});
+vi.mock('../server/db/prisma.js', () => ({ default: prismaMock }));
+prismaMock.tripVote.create.mockResolvedValue({ id: 'vote-uuid', pack_id: '550e8400-e29b-41d4-a716-446655440000', item_id: 'x', voter_name: 'Alice', vote_type: true, created_at: new Date() });
+prismaMock.tripVote.findMany.mockResolvedValue([]);
 
 // ============================================================
 // 1 — ROUTE POST /api/ai/generate

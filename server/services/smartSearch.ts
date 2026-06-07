@@ -35,7 +35,8 @@ function hotelLinks(hotelName: string, city: string): HotelLinks {
 
 function activityLinks(activityName: string, city: string): ActivityLinks {
   return {
-    viator:       `https://www.viator.com/search?q=${encode(activityName + ' ' + city)}`,
+    // Google Search : fiable pour n'importe quel événement, jamais de 404
+    viator:       `https://www.google.com/search?q=${encode(activityName + ' ' + city + ' tickets')}`,
     getyourguide: `https://www.getyourguide.fr/s/?q=${encode(activityName + ' ' + city)}`,
     airbnb:       `https://www.airbnb.fr/experiences/search?q=${encode(city)}`,
   };

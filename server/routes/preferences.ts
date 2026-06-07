@@ -1,11 +1,11 @@
 // =============================================
-// TRIPGENIE — server/routes/preferences.ts
+// TRIPGENIE — server/routes/preferences.ts  (Prisma)
 // Préférences utilisateur (relation 1-1 avec users)
 // =============================================
 
 import express from 'express';
 import { z } from 'zod';
-import { withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -19,27 +19,21 @@ const prefsSchema = z.object({
 });
 
 // ---- GET /api/preferences ----
-// Récupérer les préférences de l'utilisateur connecté
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user!.id;
 
-    // RLS maison : la policy prefs_own_data (user_id = app.current_user_id) filtre déjà,
-    // et on garde le WHERE applicatif user_id = $1 (défense en profondeur).
-    const { rows } = await withUser(userId, (c) =>
-      c.query('SELECT * FROM user_preferences WHERE user_id = $1', [userId])
-    );
+    const preferences = await prisma.userPreference.findUnique({ where: { user_id: userId } });
 
     // Aucune ligne → préférences pas encore créées
-    res.json({ preferences: rows[0] ?? null });
+    res.json({ preferences: preferences ?? null });
 
   } catch (err) {
     next(err);
   }
 });
 
-// ---- PUT /api/preferences ----
-// Créer ou mettre à jour les préférences (upsert)
+// ---- PUT /api/preferences ----  (créer ou mettre à jour)
 router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsed = prefsSchema.safeParse(req.body);
@@ -49,34 +43,21 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     }
     const userId = req.user!.id;
 
-    // Upsert paramétré : on n'écrit QUE les colonnes fournies (allowlist), jamais
-    // une clé venue du client interpolée dans le SQL. user_id est la PK → ON CONFLICT.
-    const ALLOWED = ['default_mode', 'preferred_prefs', 'home_city', 'currency'] as const;
-    const cols: string[]         = ['user_id'];
-    const placeholders: string[] = ['$1'];
-    const params: unknown[]      = [userId];
+    // Allowlist : on n'écrit QUE les colonnes fournies.
+    const data: Record<string, unknown> = {};
+    if (parsed.data.default_mode    !== undefined) data.default_mode    = parsed.data.default_mode;
+    if (parsed.data.preferred_prefs !== undefined) data.preferred_prefs = parsed.data.preferred_prefs;
+    if (parsed.data.home_city       !== undefined) data.home_city       = parsed.data.home_city;
+    if (parsed.data.currency        !== undefined) data.currency        = parsed.data.currency;
 
-    for (const key of ALLOWED) {
-      if (!(key in parsed.data)) continue;
-      params.push((parsed.data as Record<string, unknown>)[key]);
-      cols.push(key);
-      placeholders.push(`$${params.length}`);
-    }
-    cols.push('updated_at');
-    placeholders.push('NOW()');
+    // upsert natif Prisma : crée si absent (user_id = PK), met à jour sinon.
+    const preferences = await prisma.userPreference.upsert({
+      where:  { user_id: userId },
+      create: { user_id: userId, ...data },
+      update: data,
+    });
 
-    const updates = cols
-      .filter((c) => c !== 'user_id')
-      .map((c) => (c === 'updated_at' ? 'updated_at = NOW()' : `${c} = EXCLUDED.${c}`));
-
-    const sql = `INSERT INTO user_preferences (${cols.join(', ')})
-                 VALUES (${placeholders.join(', ')})
-                 ON CONFLICT (user_id) DO UPDATE SET ${updates.join(', ')}
-                 RETURNING *`;
-
-    const { rows } = await withUser(userId, (c) => c.query(sql, params));
-
-    res.json({ preferences: rows[0] });
+    res.json({ preferences });
 
   } catch (err) {
     next(err);

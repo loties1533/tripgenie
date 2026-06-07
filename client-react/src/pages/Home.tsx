@@ -6,7 +6,7 @@ import ChatWidget from '../components/chat/ChatWidget'
 import PackResults from '../components/results/PackResults'
 import { GenerationLoader } from '../components/ui'
 import { useSearchStore, useChatStore, useAuthStore } from '../store'
-import { getCityPhoto, getPreferences } from '../lib/api'
+import { getCityPhoto, getPreferences, generatePack } from '../lib/api'
 
 const FALLBACK_PHOTOS = [
   'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80',
@@ -183,36 +183,28 @@ function TripConcepts() {
     const ret = normalizeDate(chatData.return_date as string) || new Date(new Date(dep).getTime() + 86400000 * ((chatData.duration as number) || 7)).toISOString().slice(0, 10)
 
     try {
-      const res = await fetch('/api/ai/generate', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          destination: dest.city,
-          origin:      chatData.origin || 'Paris',
-          departure:   dep,
-          return_date: ret,
-          budget:      chatData.budget   || 5000,
-          travelers:   chatData.travelers || 2,
-          mode:        chatData.mode     || 'party',
-        }),
+      // FIX 10 : generatePack() passe par api.ts qui respecte VITE_API_URL
+      // et throw automatiquement si !res.ok avec le message d'erreur serveur
+      const data = await generatePack({
+        destination: dest.city,
+        origin:      chatData.origin    || 'Paris',
+        departure:   dep,
+        return_date: ret,
+        budget:      chatData.budget    || 5000,
+        travelers:   chatData.travelers || 2,
+        mode:        chatData.mode      || 'party',
       })
-      const data = await res.json()
-      if (data.pack) {
-        setPack(data.pack, data.trip_id, data.pack_id)
-        if (data.trip_id) {
-          navigate(`/trip/${data.trip_id}`)
-        } else {
-          setTimeout(() => {
-            document.getElementById('pack-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }, 300)
-        }
+      setPack(data.pack, data.trip_id, data.pack_id)
+      if (data.trip_id) {
+        navigate(`/trip/${data.trip_id}`)
       } else {
-        throw new Error('No pack data')
+        setTimeout(() => {
+          document.getElementById('pack-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 300)
       }
-    } catch {
+    } catch (err: any) {
       setLoading(false)
-      addMessage({ role: 'bot', text: 'Erreur lors de la création du pack. Réessaie !' })
+      addMessage({ role: 'bot', text: err?.message || 'Erreur lors de la création du pack. Réessaie !' })
     }
   }
 

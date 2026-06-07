@@ -1,12 +1,13 @@
 // =============================================
-// TRIPGENIE — server/routes/packs.ts
+// TRIPGENIE — server/routes/packs.ts  (Prisma)
 // GET  /api/packs/:trip_id     → packs d'un voyage
 // POST /api/packs/:trip_id/select/:pack_id → choisir un pack
 // =============================================
 
 import express from 'express';
 import type { Request, Response } from 'express';
-import { withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
+import type { Prisma } from '@prisma/client';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -20,19 +21,20 @@ router.get('/:trip_id', async (req: Request, res: Response): Promise<void> => {
     }
     const userId = req.user.id;
 
-    // Vérif propriété + lecture des packs dans la MÊME transaction (même contexte RLS).
-    // null = voyage non possédé (la policy packs_own_data filtre déjà, on double avec le WHERE).
-    const packs = await withUser(userId, async (c) => {
-      const owned = await c.query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [req.params.trip_id, userId]);
-      if (owned.rows.length === 0) return null;
-      const { rows } = await c.query('SELECT * FROM packs WHERE trip_id = $1 ORDER BY rank', [req.params.trip_id]);
-      return rows;
+    // Vérif propriété AVANT de lire les packs (isolation par user_id)
+    const owned = await prisma.trip.findFirst({
+      where:  { id: String(req.params.trip_id), user_id: userId },
+      select: { id: true },
     });
-
-    if (packs === null) {
+    if (!owned) {
       res.status(403).json({ error: 'Accès non autorisé' });
       return;
     }
+
+    const packs = await prisma.pack.findMany({
+      where:   { trip_id: String(req.params.trip_id) },
+      orderBy: { rank: 'asc' },
+    });
 
     res.json({ packs });
   } catch (err) {
@@ -51,29 +53,28 @@ router.post('/:trip_id/select/:pack_id', async (req: Request, res: Response): Pr
 
     // Tout dans UNE transaction atomique : propriété → existence pack → bascule
     // selected → MAJ du trip. Si une étape échoue, ROLLBACK (pas d'état incohérent).
-    const outcome = await withUser(userId, async (c): Promise<
+    const outcome = await prisma.$transaction(async (tx): Promise<
       { status: 403 } | { status: 404 } | { status: 200; pack: unknown }
     > => {
-      const owned = await c.query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [req.params.trip_id, userId]);
-      if (owned.rows.length === 0) return { status: 403 };
+      const owned = await tx.trip.findFirst({
+        where: { id: String(req.params.trip_id), user_id: userId }, select: { id: true },
+      });
+      if (!owned) return { status: 403 };
 
-      const exists = await c.query('SELECT id FROM packs WHERE id = $1 AND trip_id = $2', [req.params.pack_id, req.params.trip_id]);
-      if (exists.rows.length === 0) return { status: 404 };
+      const exists = await tx.pack.findFirst({
+        where: { id: String(req.params.pack_id), trip_id: String(req.params.trip_id) }, select: { id: true },
+      });
+      if (!exists) return { status: 404 };
 
       // Désélectionne tous les packs du trip, puis sélectionne le choisi
-      await c.query('UPDATE packs SET selected = false WHERE trip_id = $1', [req.params.trip_id]);
-      const { rows } = await c.query(
-        'UPDATE packs SET selected = true WHERE id = $1 AND trip_id = $2 RETURNING *',
-        [req.params.pack_id, req.params.trip_id]
-      );
-      const pack = rows[0];
+      await tx.pack.updateMany({ where: { trip_id: String(req.params.trip_id) }, data: { selected: false } });
+      const pack = await tx.pack.update({ where: { id: String(req.params.pack_id) }, data: { selected: true } });
 
       // Met à jour le statut du voyage + snapshot du pack sélectionné
-      await c.query(
-        `UPDATE trips SET status = 'confirmed', pack_data = $1, updated_at = NOW()
-         WHERE id = $2 AND user_id = $3`,
-        [pack, req.params.trip_id, userId]
-      );
+      await tx.trip.updateMany({
+        where: { id: String(req.params.trip_id), user_id: userId },
+        data:  { status: 'confirmed', pack_data: pack as unknown as Prisma.InputJsonValue },
+      });
 
       return { status: 200, pack };
     });

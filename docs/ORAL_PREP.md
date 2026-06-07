@@ -1,6 +1,7 @@
 # TripGenie — Script Oral RNCP5 DWWM (30 min)
 
-> **Mode d'emploi :** Lis ce document à voix haute plusieurs fois. Ce n'est pas un texte à réciter mot pour mot — c'est une base pour que les idées deviennent naturelles. Les parties entre crochets [comme ça] sont des indications de posture, pas à dire.
+> **Mis à jour : juin 2026 — branche feat/postgres-rls**
+> **Mode d'emploi :** Lis à voix haute plusieurs fois. Les parties [comme ça] sont des indications de posture.
 
 ---
 
@@ -10,34 +11,32 @@
 
 TripGenie, c'est une application web de génération de voyages personnalisés pilotée par intelligence artificielle. Le principe est simple : l'utilisateur décrit son voyage en langage naturel — destination, budget, style — et l'application lui génère un pack complet clé en main : vols, hôtels, itinéraire jour par jour, météo en temps réel et budget ventilé.
 
-Le problème que je résous : les sites de voyage classiques comme Booking, Kayak ou TripAdvisor sont des agrégateurs. Ils retournent 300 résultats bruts et l'utilisateur doit choisir seul. TripGenie fait la synthèse à sa place via un pipeline IA et un algorithme de scoring multi-critères adapté au style de voyage.
+Le problème que je résous : les sites de voyage classiques comme Booking, Kayak ou TripAdvisor sont des agrégateurs. Ils retournent 300 résultats bruts et l'utilisateur doit choisir seul. TripGenie fait la synthèse à sa place via un pipeline IA orchestré et un algorithme de scoring multi-critères adapté au style de voyage.
 
 J'ai identifié trois profils utilisateurs principaux :
 - Sophie, cadre marketing parisienne, qui veut voyager en mode luxe sans passer des heures à planifier
 - Lucas, étudiant avec 500€ de budget max, qui cherche des adresses authentiques et gratuites
 - Maxime, développeur freelance qui organise des week-ends entre amis en mode party
 
-Ces trois personas correspondent directement aux modes de voyage que j'ai implémentés dans l'application."
+Ces trois personas correspondent directement aux modes de voyage implémentés."
 
 ---
 
 ## PARTIE 2 — DÉMONSTRATION / PARCOURS UTILISATEUR (4-5 min)
 
-[Si tu as une démo live, la faire ici. Sinon décrire le flux]
-
 "Je vais vous décrire le parcours utilisateur de A à Z.
 
-L'utilisateur arrive sur la page d'accueil. Un chatbot conversationnel lui pose des questions en langage naturel : où veux-tu aller, quel budget, combien de personnes, quelles dates. En coulisse, c'est un LLM qui extrait les informations structurées depuis le texte libre — destination, budget, mode, durée — via l'endpoint POST /api/ai/onboarding.
+L'utilisateur arrive sur la page d'accueil. Un chatbot conversationnel lui pose des questions en langage naturel : où veux-tu aller, quel budget, combien de personnes, quelles dates. En coulisse, un LLM extrait les informations structurées depuis le texte libre via POST /api/ai/onboarding.
 
-Ensuite, l'application suggère 3 destinations scorées via POST /api/ai/destinations. L'utilisateur choisit, et là démarre le pipeline de génération.
+L'application suggère ensuite 3 destinations scorées via POST /api/ai/destinations. L'utilisateur choisit, et démarre le pipeline de génération.
 
-La génération dure en moyenne 10 à 15 secondes. À la fin, l'utilisateur reçoit un pack complet : vols avec compagnies et prix, hôtels avec étoiles et tarifs, itinéraire jour par jour, activités, météo actuelle de la destination, et un score de qualité entre 0 et 1.
+La génération dure en moyenne 15 à 30 secondes. À la fin, l'utilisateur reçoit un pack complet : vols avec compagnies et prix, hôtels avec étoiles et tarifs, restaurants réels (Foursquare), événements locaux (PredictHQ), météo actuelle (Open-Meteo), et un score de qualité entre 0 et 1.
 
-Si l'utilisateur est connecté, le pack est automatiquement sauvegardé en base. Il peut ensuite le retrouver dans 'Mes voyages' et le modifier via le chat conversationnel.
+Si toutes les APIs IA sont indisponibles, un bandeau orange s'affiche : 'Données de démonstration — les services IA sont temporairement indisponibles'. La transparence envers l'utilisateur est intentionnelle.
 
-Il y a aussi une fonctionnalité collaborative. Maxime génère son week-end à Barcelone, il copie le lien de partage et l'envoie sur le WhatsApp du groupe. Chaque ami clique, voit le pack, vote pour ou contre les options — sans créer de compte. Maxime voit le consensus en temps réel.
+Si l'utilisateur est connecté, le pack est automatiquement sauvegardé. Il peut ensuite le retrouver dans 'Mes voyages' et le modifier via le chat conversationnel.
 
-Ce n'est pas un hasard que ça fonctionne sans compte : la route GET /api/trips/share/:id est publique, il n'y a pas de middleware d'authentification dessus. C'est une décision de conception assumée — le partage doit être accessible à n'importe qui avec le lien. Les votes sont anonymes par défaut. À l'inverse, GET /api/trips — la liste des voyages personnels — est protégée par requireAuth. La distinction public/protégé est réfléchie route par route."
+Il y a aussi une fonctionnalité collaborative. Maxime génère son week-end à Barcelone, partage le lien. Chaque ami voit le pack et vote sans créer de compte. La route GET /api/trips/share/:id est publique via une fonction PostgreSQL SECURITY DEFINER — elle n'expose aucune donnée utilisateur. À l'inverse, GET /api/trips est protégée par requireAuth. La distinction public/protégé est réfléchie route par route."
 
 ---
 
@@ -47,94 +46,87 @@ Ce n'est pas un hasard que ça fonctionne sans compte : la route GET /api/trips/
 
 ### Architecture 3 couches
 
-TripGenie suit une architecture client-serveur classique en 3 couches séparées.
+TripGenie suit une architecture client-serveur en 3 couches séparées.
 
-La couche présentation, c'est le frontend en React 18 avec Vite. J'ai choisi React pour son écosystème mature et son virtual DOM. Vite parce qu'il est natif ESM et que son HMR est ultra-rapide en développement. Pour l'état global j'utilise Zustand — beaucoup plus simple que Redux, API minimaliste. Pour les requêtes HTTP et le cache, React Query v5 qui gère automatiquement les états loading, error et le cache des données.
+La couche présentation : React 18 avec Vite. Pour l'état global : Zustand — beaucoup plus simple que Redux. Pour les requêtes HTTP et le cache : React Query v5.
 
-La couche logique métier, c'est le backend Node.js avec Express 4. J'ai fait le choix du full-stack JavaScript pour avoir un seul langage du frontend au backend, un seul runtime, un seul déploiement. La validation des inputs est faite avec Zod v4 — schémas déclaratifs, messages d'erreur précis, TypeScript-ready.
+La couche logique métier : Node.js avec Express 4 en TypeScript strict. La validation des inputs est faite avec Zod v4 — schémas déclaratifs, types TypeScript inférés depuis les schémas.
 
-La couche persistance, c'est PostgreSQL hébergé sur Supabase. J'utilise Supabase uniquement comme hébergeur PostgreSQL — ni Supabase Auth, ni le Row Level Security. La base de données est entièrement gérée côté applicatif.
+La couche persistance : PostgreSQL hébergé sur Supabase, accès via le **driver natif `pg`** (node-postgres). J'utilise Supabase uniquement comme hébergeur PostgreSQL — ni Supabase Auth, ni leur API PostgREST. Je gère moi-même le RLS.
 
-### Stack technique complète — Frontend
+### Stack Backend — points clés
 
-**TypeScript** — J'ai migré le backend de JavaScript vers TypeScript en cours de projet. Ça a détecté 8 bugs dans du code qui tournait en production sans erreur visible : accès à des propriétés inexistantes sur des objets retournés par l'IA, mauvais types de retour dans le scoring. TypeScript ne ralentit pas l'exécution — c'est un outil de compilation uniquement. En runtime c'est du JavaScript pur.
+**`pg` natif et pas d'ORM** — Le driver `pg` donne un contrôle total sur les transactions. C'est ce qui m'a permis d'implémenter un RLS PostgreSQL maison — impossible proprement avec Prisma. Le code SQL est paramétré (`$1`, `$2`...) — zéro injection possible.
 
-**React Router v6** — Routage côté client, navigation sans rechargement de page. C'est ce qui fait que TripGenie est une SPA — Single Page Application. L'URL change mais le serveur ne ressert pas le HTML complet à chaque fois.
+**cookie-parser** — Middleware qui parse les cookies HTTP. Sans lui, `req.cookies` est undefined. C'est ce qui permet à mon middleware auth de lire `req.cookies.tg_token`.
 
-**Framer Motion** — Animations déclaratives. Les transitions entre les pages et les apparitions de cartes sont définies dans le JSX directement, pas dans des fichiers CSS séparés. Ça garde la logique d'animation au même endroit que le composant.
+**Morgan** — Logger HTTP. Méthode, route, status code, temps de réponse. Couleurs selon le status en mode dev.
 
-**Sonner** — Bibliothèque de toasts, les notifications non-bloquantes en bas de l'écran. "Pack généré avec succès", "Erreur de connexion". C'est du feedback utilisateur immédiat sans bloquer l'interface.
+**TypeScript strict** — A détecté plusieurs bugs dans du code qui tournait sans erreur visible : accès à des propriétés inexistantes sur des objets retournés par l'IA.
 
-**Recharts** — Graphiques React pour le budget breakdown. L'utilisateur voit un camembert ventilé : vol / hôtel / activités / divers. Construit sur D3, wrappé en composants React.
+Côté sécurité middleware : Helmet pour les headers HTTP. CORS avec whitelist explicite. express-rate-limit global et par route.
 
-**Leaflet** — Carte interactive pour afficher les activités géolocalisées sur la destination. Leaflet est open source, aucune clé API requise contrairement à Google Maps.
+**6 tables PostgreSQL** : users, trips, packs, trip_votes, user_preferences, trip_collaborators. Conçues manuellement, pas d'ORM.
 
-**Tailwind CSS** — Framework CSS utilitaire. Les classes sont directement dans le HTML : `className="flex items-center gap-4 bg-white rounded-xl"`. Pas de fichiers CSS séparés à maintenir. Le build final purge toutes les classes non utilisées — le CSS livré est minimal.
-
-### Stack technique complète — Backend
-
-**cookie-parser** — Middleware Express qui parse les cookies HTTP entrants. Sans lui, `req.cookies` est undefined. C'est ce qui permet à mon middleware auth de lire `req.cookies.tg_token` pour extraire le JWT.
-
-**Morgan** — Logger HTTP. Il affiche chaque requête dans le terminal : méthode, route, status code, temps de réponse. En mode `dev`, les couleurs changent selon le status — vert pour 2xx, jaune pour 4xx, rouge pour 5xx. Indispensable en développement pour voir ce qui se passe.
-
-**nodemon + tsx** — Outils de développement uniquement. nodemon redémarre le serveur automatiquement à chaque modification de fichier. tsx compile TypeScript à la volée sans étape de build. En production, c'est `tsc` qui compile et `node` qui exécute.
-
-Côté sécurité middleware : Helmet pour les headers HTTP — X-Frame-Options, CSP, HSTS en un seul appel. CORS avec whitelist explicite. express-rate-limit global et par route.
-
-Côté base de données : 6 tables PostgreSQL que j'ai conçues manuellement — users, trips, packs, trip_votes, user_preferences, trip_collaborators. Pas d'ORM. Le client Supabase JS génère des requêtes paramétrées sécurisées, c'est suffisant à mon échelle.
-
-Côté IA et services externes : Google Gemini comme LLM principal, OpenRouter en fallback, Claude API en dernier recours. Tavily pour la recherche web temps réel — vols, hôtels, événements. OpenWeatherMap pour la météo. Unsplash via un proxy backend pour les photos de destination."
+**Services externes** : Gemini 2.0 Flash comme LLM principal, Claude Haiku en secondaire, OpenRouter en dernier recours. Tavily pour la recherche web temps réel. PredictHQ pour les événements structurés. Foursquare pour les restaurants (1000/jour gratuit), Yelp en fallback. **Open-Meteo pour la météo — sans clé API**. Unsplash via un proxy backend."
 
 ---
 
 ## PARTIE 4 — LE PIPELINE IA ORCHESTRÉ (5-6 min)
 
-"C'est le cœur technique du projet, et je veux être précis sur ce point.
+"C'est le cœur technique du projet.
 
-TripGenie repose sur un **pipeline IA orchestré côté serveur**. Ce n'est pas un agent autonome. La différence est importante : un agent autonome décide lui-même quels outils appeler et dans quel ordre. Ici, les étapes sont prédéfinies et s'enchaînent toujours dans le même ordre. C'est un pipeline fixe.
+TripGenie repose sur un **pipeline IA orchestré côté serveur**. Ce n'est pas un agent autonome. Un agent autonome décide lui-même quels outils appeler et dans quel ordre. Ici, les étapes sont prédéfinies et s'enchaînent toujours dans le même ordre.
 
-Le pipeline de génération sur POST /api/ai/generate se déroule en 6 étapes :
+**Étape 1 — Validation Zod.** Destination, budget, mode, dates validés avant de toucher à quoi que ce soit.
 
-**Étape 1 — Validation Zod.** Destination, budget, mode, dates sont validés avant de toucher à quoi que ce soit.
-
-**Étape 2 — Recherche web parallèle.** C'est là que j'ai fait un choix technique important. Je lance 5 recherches en parallèle avec Promise.allSettled :
-- smartFlightSearch via Tavily pour les vols réels
-- smartEventsSearch via Tavily pour les événements locaux
-- smartHotelSearch via Tavily pour les hôtels
-- getRealWeather via OpenWeatherMap
+**Étape 2 — Recherche web parallèle avec Promise.allSettled :**
+- smartFlightSearch via Tavily : vols réels
+- smartEventsSearch via PredictHQ → Tavily fallback : événements
+- smartHotelSearch via Tavily : hôtels
+- getRealWeather via Open-Meteo (sans clé API)
 - getDestinationPhoto via Unsplash
+- foursquareSearch → yelpSearch fallback : restaurants
 
-J'ai utilisé Promise.allSettled et non Promise.all. La différence : Promise.all s'arrête si une seule promesse échoue. Si l'API météo est en panne, toute la génération s'arrête. Promise.allSettled attend toutes les promesses quelle que soit leur issue — le pack est généré avec les données disponibles, avec fallback IA si une source externe échoue. Il y a aussi un timeout global de 15 secondes sur ce bloc.
+J'ai utilisé Promise.allSettled et non Promise.all. Si l'API météo est en panne, toute la génération ne s'arrête pas — le pack est généré avec les données disponibles.
 
-**Étape 3 — assemblePack.** Le LLM — Gemini en priorité — reçoit toutes les données réelles injectées dans son prompt et génère le pack JSON structuré. Le prompt engineering est adapté au mode : pour luxury, le prompt demande des expériences dignes d'un guide Condé Nast. Pour student, des adresses locales et des activités gratuites.
+**Étape 3 — assemblePack.** Ici j'ai refactorisé une fonction de 330 lignes en **6 fonctions pures testables** :
+- `calcNights()` — calcul du nombre de nuits
+- `buildPackPrompt()` — construction du prompt LLM adapté au mode
+- `callAI()` — cascade Gemini → Claude → OpenRouter → Mocks
+- `parsePackResponse()` — parsing JSON avec 5 stratégies de récupération
+- `mapFlights()` + `mapActivities()` — mapping vers les types Pack
+- `calcBudgetBreakdown()` — répartition selon BUDGET_RATIOS
 
-**Étape 4 — scorepack.** L'algorithme de scoring déterministe. Zéro IA à cette étape — c'est une fonction pure qui calcule un score entre 0 et 1 selon des poids définis par mode.
+**Étape 4 — scorepack.** Algorithme de scoring déterministe. Zéro IA.
 
-**Étape 5 — Sauvegarde conditionnelle.** Si l'utilisateur est connecté, INSERT dans trips avec le pack complet en JSONB.
+**Étape 5 — Sauvegarde transactionnelle.** Si l'utilisateur est connecté : INSERT trip + pack dans une seule transaction `withUser()`. Si le pack échoue, ROLLBACK — jamais de trip orphelin.
 
-**Étape 6 — Réponse JSON.** { pack, score, trip_id, flights_found, events_found }
+**Étape 6 — Réponse JSON.** { pack, score, trip_id, isMock? }
 
-La seule partie vraiment agentique du projet, c'est le chat de modification sur POST /api/ai/chat. Là, le LLM reçoit le pack actuel et le message de l'utilisateur, et décide librement quels éléments modifier — sans étapes prédéfinies. C'est lui qui choisit."
+La seule partie vraiment agentique : POST /api/ai/chat. Le LLM reçoit le pack actuel + le message et décide librement quoi modifier."
 
 ---
 
 ## PARTIE 5 — ALGORITHME DE SCORING (3 min)
 
-"L'algorithme de scoring est entièrement déterministe — aucun LLM n'est impliqué.
+"L'algorithme de scoring est entièrement déterministe — aucun LLM.
 
-Il calcule un score entre 0 et 1 basé sur 5 critères pondérés différemment selon le mode de voyage :
+Score entre 0 et 1, pondération différente selon le mode :
 
-| Mode | Hôtel | Activités | Vols | Prix | Événements |
-|------|-------|-----------|------|------|------------|
-| luxury | 40% | 30% | 20% | 10% | — |
-| party | 20% | — | 10% | 30% | 40% |
-| student | 15% | 25% free | — | 50% | 10% |
-| group | 35% | 30% | 15% | 20% | — |
-| relax | 30% | 25% | — | 10% | — |
+| Mode | Hôtel | Prix | Événements | Activités | Vol | Calme |
+|------|-------|------|------------|-----------|-----|-------|
+| luxury | 40% | 10% | — | 30% | 20% | — |
+| party | 20% | 30% | 40% | — | 10% | — |
+| student | 15% | 50% | 10% | 25%* | — | — |
+| group | 35% | 20% | — | 30% | 15% | — |
+| relax | 30% | 10% | — | 25% | — | 35% |
 
-Exemple en mode luxury : l'hôtel pèse 40% du score. Un 5 étoiles donne le score maximal sur ce critère. Le prix ne pèse que 10% — le budget n'est pas pénalisant en mode luxe. Les événements ne comptent pas.
+*activités gratuites uniquement
 
-Le résultat retourné est un objet avec total et details : { total: 0.78, details: { vol: 0.82, hotel: 0.90, events: 0.30, activities: 0.75, prix: 0.50 } }"
+Exemple en mode luxury : l'hôtel pèse 40%. Un 5 étoiles donne le score maximal. Le prix ne pèse que 10% — le budget n'est pas pénalisant.
+
+Chaque critère est normalisé entre 0 et 1 via `normalise(value, min, max)` avant d'être combiné."
 
 ---
 
@@ -142,209 +134,167 @@ Le résultat retourné est un objet avec total et details : { total: 0.78, detai
 
 "L'authentification est entièrement custom — je n'utilise pas Supabase Auth.
 
-Le flux : l'utilisateur envoie son email et mot de passe. Côté serveur, bcryptjs.compare vérifie le mot de passe contre le hash en base. Si correct, jwt.sign crée un token signé avec JWT_SECRET, expiration 7 jours. Ce token est envoyé dans un cookie httpOnly.
+Flux signup : Zod valide email/password → `auth_create_user($1,$2,$3)` (fonction SECURITY DEFINER) → bcrypt.genSalt(10) + bcrypt.hash → jwt.sign 7j → cookie httpOnly.
 
-Pourquoi httpOnly et pas localStorage ? localStorage est accessible via JavaScript. Une injection de script XSS peut voler le token. Un cookie httpOnly est inaccessible depuis JS navigateur — le token ne peut pas être volé même en cas d'injection.
+Pourquoi httpOnly et pas localStorage ? localStorage est accessible via JavaScript — XSS peut voler le token. Cookie httpOnly : inaccessible depuis JS navigateur. token ne peut pas être volé même en cas d'injection.
 
-Le cookie a aussi sameSite strict — protection CSRF — et secure en production — HTTPS uniquement.
+Cookie avec sameSite strict (protection CSRF) et secure en production.
 
-J'ai deux middlewares d'authentification :
-- requireAuth : bloque la requête si token absent ou invalide, retourne 401. Utilisé sur /api/trips.
-- optionalAuth : ne bloque jamais. Si le token est valide, req.user est renseigné. Utilisé sur /api/ai pour sauvegarder le pack si l'utilisateur est connecté.
+Deux middlewares : requireAuth bloque si token absent/invalide (401). optionalAuth ne bloque jamais — utilisé sur /api/ai pour sauvegarder le pack si connecté.
 
-Le middleware supporte deux sources de token : le cookie httpOnly en production, et le header Authorization Bearer en fallback — ce qui permet à Supertest de tester sans navigateur."
+Anti-énumération au login : même message si email inconnu ou mauvais mdp — impossible de savoir quels emails existent."
 
 ---
 
 ## PARTIE 7 — SÉCURITÉ GLOBALE (2 min)
 
-"J'ai adressé 8 vecteurs d'attaque :
+"J'ai adressé 13 vecteurs d'attaque :
 
 - Vol de token JWT → cookie httpOnly + sameSite strict
-- XSS → token inaccessible JS, Helmet headers
-- CSRF → sameSite strict sur le cookie
-- Exposition de clé API → proxy backend pour Unsplash, variables d'env serveur uniquement
-- Spam / DDoS → express-rate-limit global 100 req/15min/IP, routes IA 10 req/heure/IP
-- Injection SQL → client Supabase avec requêtes paramétrées
-- Inputs malveillants → validation Zod sur tous les endpoints
-- Accès données inter-utilisateurs → .eq('user_id', req.user.id) sur chaque requête SQL"
+- XSS → token inaccessible JS, Helmet CSP
+- CSRF → sameSite strict
+- Exposition de clé API → proxy backend Unsplash, variables d'env serveur
+- Spam / DDoS → rate-limit 10/h/IP sur IA, 10/15min/IP sur auth
+- Injection SQL → requêtes paramétrées `$1, $2...` partout via `pg`
+- Injection de colonnes SQL → allowlist de colonnes sur PUT/UPSERT
+- Inputs malveillants → Zod sur tous les endpoints
+- IDOR → 404 si ressource non possédée (pas 403 qui confirmerait l'existence)
+- Accès inter-utilisateurs → **double barrière** : WHERE user_id=$1 + RLS PostgreSQL
+- Injection de prompt → sanitizeInput() 300 chars + validation current_pack 50ko
+- Headers HTTP dangereux → Helmet
+- Démarrage sans JWT_SECRET → fail-fast au boot (throw si absent)"
 
 ---
 
-## PARTIE 8 — BASE DE DONNÉES (2 min)
+## PARTIE 8 — BASE DE DONNÉES ET RLS (3 min)
 
-"Le schéma PostgreSQL comprend 6 tables que j'ai conçues manuellement, MCD et MLD réalisés à la main.
+"Le schéma PostgreSQL comprend 6 tables conçues manuellement.
 
-La table centrale est trips. Elle contient les clés étrangères vers users, le champ mode qui détermine le scoring et le prompt engineering, pack_data en JSONB pour stocker le pack complet sérialisé, et score en NUMERIC entre 0 et 1.
+Pourquoi JSONB pour pack_data ? Le pack varie selon le mode : un pack party a des clubs, un pack luxury a des yachts. JSONB stocke la structure complète flexible + les métadonnées en colonnes typées.
 
-Pourquoi JSONB ? Le pack voyage est une structure complexe et variable — vols, hôtels, itinéraire, activités — qui évolue à chaque génération. JSONB permet de stocker cette structure sans avoir à créer 15 tables normalisées pour chaque sous-élément. Et PostgreSQL permet des requêtes à l'intérieur du JSONB si nécessaire.
+**Le point le plus fort du projet : le RLS 'maison'.**
 
-Point important sur la sécurité : le Row Level Security de Supabase ne fonctionne qu'avec Supabase Auth. Comme j'utilise un JWT custom, les policies RLS sont inactives. C'est un compromis documenté et assumé — la sécurité est appliquée au niveau applicatif avec .eq('user_id', req.user.id) sur chaque requête."
+Le RLS Supabase natif ne fonctionnait pas — les policies utilisaient `auth.uid()` (Supabase Auth qu'on n'utilise pas), et la connexion via SERVICE_KEY a l'attribut BYPASSRLS — le RLS était ignoré.
+
+J'ai recréé un RLS que je gère moi-même :
+1. Rôle PostgreSQL dédié `tripgenie_app` SANS BYPASSRLS
+2. `withUser(userId, fn)` ouvre une transaction et pose `set_config('app.current_user_id', userId, true)`
+3. Les policies PostgreSQL lisent `current_setting('app.current_user_id')` pour filtrer
+4. **Fail-closed** : sans variable posée → aucune ligne renvoyée
+
+Pourquoi `set_config` et pas `SET LOCAL` ? SET LOCAL n'accepte pas de paramètre lié `$1` — il faudrait concaténer l'UUID (risque injection). `set_config` est transaction-local — meurt au COMMIT/ROLLBACK, ne fuite pas vers les autres connexions du pool.
+
+J'ai **deux barrières** : filtre applicatif `WHERE user_id = $1` ET RLS PostgreSQL. Défense en profondeur."
 
 ---
 
 ## PARTIE 9 — TESTS (2 min)
 
-"J'ai 77 tests automatisés en 4 fichiers, qui s'exécutent en 0.4 secondes.
+"J'ai **254 tests automatisés en 15 fichiers**, qui s'exécutent en 2.2 secondes.
 
-J'ai choisi Vitest plutôt que Jest parce que Vitest est natif ESM, compatible avec la configuration Vite et ES modules du projet. Jest nécessiterait une configuration de transpilation supplémentaire.
+Organisation en 4 couches :
+- Unit (27 tests) : scoring, fonctions pures de pack.ts — sans I/O
+- Services (42 tests) : Foursquare, Yelp, PredictHQ — fetch mocké
+- Sécurité (52 tests) : JWT (expiration, alg:none attack, IDOR), inscription, connexion, Zod
+- Intégration (133 tests) : pipeline complet via Supertest HTTP
 
-Les 4 fichiers :
-- api.test.ts : 40 tests — toutes les routes HTTP, auth, trips, votes, rate limiting, CORS
-- golden_path.test.ts : 15 tests — les flux critiques end-to-end, generate, chat, healthcheck
-- scoring.test.ts : 14 tests — l'algorithme de scoring, tous les modes, edge cases
-- middleware.test.ts : 8 tests — requireAuth et optionalAuth, tokens valides, expirés, malformés
+Tous les services externes sont mockés : LLM, pg/withUser, Tavily, Open-Meteo, rate limiters. Pourquoi ? Déterminisme, vitesse, coût.
 
-Tous les services externes sont mockés : LLM, Supabase, Tavily, météo, rate limiters. Pourquoi mocker ? Déterminisme — un LLM varie à chaque appel, impossible d'écrire des assertions fiables. Vitesse — 0.4s avec mocks vs plusieurs minutes avec de vraies APIs. Coût — chaque appel LLM consomme des tokens."
-
----
-
-## PARTIE 10 — DÉPLOIEMENT (1 min)
-
-"Le déploiement est configuré sur Render via un fichier render.yaml déclaratif. Build : npm install && npm run build. Start : npm start. La branche de production est main, la branche de livraison finale est final. Le déploiement est prévu début juillet."
+Honnêteté sur les limites : `vi.mock('../server/db/pg.js')` remplace `withUser` par un faux client. Les tests prouvent que la route appelle la bonne requête SQL, pas que PostgreSQL refuse l'accès inter-utilisateurs. La vraie preuve d'isolation est `scripts/test-rls.ts` qui tourne contre la vraie base."
 
 ---
 
-## PARTIE 11 — BILAN & APPRENTISSAGES (1-2 min)
+## PARTIE 10 — CI/CD ET DÉPLOIEMENT (1-2 min)
 
-"Ce projet m'a permis de mettre en pratique des concepts vus en formation dans un contexte réel :
+"CI/CD en deux parties :
 
-La migration TypeScript a détecté 8 bugs dans du code qui tournait en production sans erreur visible — accès à des propriétés inexistantes, mauvais types de retour. Ça justifie le coût de la migration.
+**CI (GitHub Actions)** : à chaque push sur feat/postgres-rls ou main, une machine Ubuntu s'allume, lance `npm ci`, `npx tsc --noEmit`, `npm run test:all` (254 tests). Si tout est vert → job build compile le serveur et le client React.
 
-La gestion des APIs externes avec Promise.allSettled m'a appris que la robustesse d'un système, c'est sa capacité à fonctionner en mode dégradé — pas juste quand tout va bien.
+**CD (Render)** : héberge l'app 24/7. Quand on merge vers main, Render détecte le commit, exécute `npm install && npx tsc && npm run client:build` puis `npm start`. L'app tourne sur https://tripgenie.onrender.com.
 
-Et l'algorithme de scoring m'a montré qu'on n'a pas toujours besoin d'IA pour produire de la valeur. Un algorithme déterministe bien pensé est plus rapide, plus prévisible, et plus testable qu'un LLM."
+La différence CI/CD : CI = machine temporaire qui vérifie. CD = serveur permanent qui fait tourner."
 
 ---
 
-## PARTIE 12 — FLUX DES FICHIERS : COMMENT UNE REQUÊTE TRAVERSE L'APP (3-4 min)
+## PARTIE 11 — FLUX DES FICHIERS (2-3 min)
 
-> Cette section répond à la question jury : *"Décris-moi ce qui se passe côté code quand l'utilisateur clique sur Générer."*
-
-### Côté frontend — de la page au serveur
+> Réponse à : *"Décris ce qui se passe quand l'utilisateur clique sur Générer."*
 
 ```
-client-react/src/pages/Home.jsx
-  └─ appelle api.js → fetch POST /api/ai/generate { destination, mode, budget... }
-       └─ avec credentials: 'include' pour envoyer le cookie automatiquement
-```
-
-`Home.jsx` est la page d'accueil. Elle gère le formulaire d'onboarding et appelle les fonctions centralisées dans `client-react/src/lib/api.js`. Toutes les requêtes HTTP partent de ce fichier unique — c'est le seul endroit qui connaît l'URL du backend.
-
-L'état global (utilisateur connecté, trip courant) est dans `client-react/src/store/index.js` avec Zustand. Les composants lisent et écrivent dans ce store sans se passer des props manuellement.
-
-### Côté backend — de la requête à la réponse
-
-**1. `server/index.ts` — point d'entrée**
-C'est ici que l'app Express est configurée. Il enregistre dans l'ordre : cookie-parser, Morgan, Helmet, CORS, les rate limiters globaux, puis toutes les routes. L'ordre est important — les middlewares s'exécutent dans l'ordre où ils sont déclarés.
-
-**2. `server/routes/ai.ts` — routeur IA**
-La requête arrive sur `POST /api/ai/generate`. Express la fait passer par le middleware `optionalAuth` qui tente de décoder le cookie JWT. Si l'utilisateur est connecté, `req.user` est renseigné. Sinon, ça continue quand même.
-
-**3. `server/middleware/auth.ts` — middleware d'authentification**
-Contient `requireAuth` et `optionalAuth`. Lit d'abord `req.cookies.tg_token`, puis `req.headers.authorization` en fallback. Vérifie la signature JWT avec `jwt.verify()`. En cas d'erreur, soit bloque (requireAuth) soit continue silencieusement (optionalAuth).
-
-**4. `server/routes/ai.ts` — validation Zod**
-Avant de faire quoi que ce soit, le schéma Zod valide tous les champs. Si `destination` est absent ou `budget` est négatif, on retourne immédiatement un 400 avec un message précis. Rien ne touche la base de données ni les APIs sans validation.
-
-**5. `server/services/scoring.ts` + `server/services/claude/index.ts` — logique métier**
-Le routeur délègue à des services. Il ne contient pas de logique métier — juste de l'orchestration. `assemblePack()` est dans `server/services/claude/pack.ts`. `scorepack()` est dans `server/services/scoring.ts`. Chaque fichier a une responsabilité unique.
-
-**6. `server/services/claude/core.ts` — appel LLM multi-provider**
-C'est ici que le fallback Gemini → OpenRouter → Claude est implémenté. `callAI()` essaie chaque provider dans l'ordre. Si Gemini retourne une erreur, il passe à OpenRouter. Cette logique est encapsulée ici — le reste de l'app appelle juste `callAI()` sans savoir quel LLM répond réellement.
-
-**7. `server/db/supabase.ts` — client base de données**
-Singleton. Exporté une fois, importé partout. Contient l'instance Supabase initialisée avec `SUPABASE_URL` et `SUPABASE_KEY` depuis les variables d'environnement. Jamais instancié deux fois.
-
-**8. `server/lib/AppError.ts` — gestion des erreurs**
-Toutes les erreurs passent par `next(new AppError(message, statusCode))`. Le handler global en bas de `index.ts` les intercepte et retourne `{ error: message }` avec le bon status HTTP. Ça évite les `try/catch` qui retournent `res.status(500)` partout dans le code.
-
-### Résumé du flux complet
-
-```
-Home.jsx → api.js → POST /api/ai/generate
+Home.tsx → lib/api.ts → POST /api/ai/generate
   → index.ts (cookie-parser, Morgan, Helmet, CORS)
-  → limiter.js (rate limit IA)
-  → auth.ts (optionalAuth : décode JWT si présent)
+  → middleware/limiter.ts (rate limit IA : 10/h)
+  → middleware/auth.ts (optionalAuth : décode JWT si présent)
   → routes/ai.ts (validation Zod)
-  → Promise.allSettled([smartSearch, météo, photo])
-  → services/claude/pack.ts (assemblePack → callAI → Gemini)
-  → services/scoring.ts (scorepack → score 0-1)
-  → db/supabase.ts (INSERT trips si connecté)
-  → res.json({ pack, score, trip_id })
-→ api.js reçoit la réponse
-→ store/index.js met à jour l'état global
-→ Home.jsx re-render avec le pack affiché
+  → Promise.allSettled([smartFlightSearch, smartEventsSearch, smartHotelSearch])
+  → foursquareSearch() → yelpSearch() fallback
+  → getRealWeather() (Open-Meteo)
+  → getDestinationPhoto() (Unsplash proxy)
+  → services/claude/pack.ts : assemblePack()
+      calcNights() → buildPackPrompt() → callAI() → parsePackResponse()
+      Gemini → Claude → OpenRouter → Mocks
+      mapFlights() + mapActivities() + calcBudgetBreakdown()
+  → services/scoring.ts : scorepack() → score 0-1
+  → db/pg.ts : withUser() → INSERT trip + pack (1 transaction RLS)
+  → res.json({ pack, score, trip_id, isMock? })
+→ lib/api.ts reçoit la réponse
+→ store/index.ts met à jour l'état Zustand
+→ PackResults.tsx affiche le pack (bandeau orange si isMock)
 ```
+
+**Fichiers clés :**
+- `server/index.ts` — point d'entrée, fail-fast JWT_SECRET, montage routes + Swagger
+- `server/routes/ai.ts` — orchestration pipeline
+- `server/services/claude/pack.ts` — 6 fonctions pures + assemblePack
+- `server/services/claude/core.ts` — callAI() cascade LLM + parseJSON() 5 stratégies
+- `server/db/pg.ts` — pool pg natif, query(), withUser() RLS
+- `server/docs/openapi.ts` — spec OpenAPI 3.0.3 (27 endpoints, /api/docs)
 
 ---
 
 ## QUESTIONS JURY — RÉPONSES PRÉPARÉES
 
-### Architecture & Choix techniques
-
 **"Pourquoi JavaScript côté serveur et pas Python/Flask ?"**
-Full-stack JS = un seul langage, un seul runtime, une seule configuration de tests, un seul déploiement. Flask aurait nécessité un déploiement séparé et une communication inter-services supplémentaire.
+Full-stack JS = un seul langage, un seul runtime, un seul déploiement.
 
-**"Pourquoi pas un ORM comme Prisma ?"**
-Le client Supabase JS génère des requêtes paramétrées sécurisées. Prisma aurait ajouté de la complexité — migrations déclaratives, génération de client, schéma Prisma en plus du schéma SQL — sans bénéfice réel à mon échelle.
+**"Pourquoi pas un ORM ?"**
+Le driver `pg` natif donne un contrôle total sur les transactions — indispensable pour le RLS avec `set_config` transaction-local. Prisma ne sait pas faire ça proprement.
 
 **"C'est quoi un pipeline IA orchestré ?"**
-Un pipeline où les étapes sont prédéfinies et s'enchaînent dans un ordre fixe. Différent d'un agent autonome qui décide lui-même. Chez moi : validation → recherche web parallèle → assemblePack → scorepack → sauvegarde. Toujours dans cet ordre, toujours ces étapes.
+Étapes prédéfinies dans un ordre fixe. Différent d'un agent autonome qui choisit ses outils. La seule partie agentique : le chat de modification.
 
-**"Pourquoi Promise.allSettled et pas Promise.all ?"**
-Promise.all échoue si une seule promesse échoue. Si l'API météo est en panne, toute la génération s'arrête. Promise.allSettled attend toutes les promesses quelle que soit leur issue — le pack est généré avec les données disponibles.
+**"Pourquoi Promise.allSettled ?"**
+Promise.all s'arrête si une seule promesse échoue. allSettled continue avec les données disponibles.
 
-### Sécurité
+**"Pourquoi httpOnly ?"**
+localStorage accessible via JS → vol par XSS. Cookie httpOnly inaccessible depuis le navigateur.
 
-**"Pourquoi httpOnly et pas localStorage ?"**
-localStorage est accessible via JavaScript — une injection XSS peut voler le token. Un cookie httpOnly est inaccessible depuis le navigateur JS. Le token ne peut pas être volé même en cas d'injection de script.
+**"Votre RLS est activé ?"**
+Oui — RLS maison. Les policies Supabase utilisaient auth.uid() qu'on n'utilise pas, et la SERVICE_KEY a BYPASSRLS. J'ai créé un rôle sans BYPASSRLS + variable de session transaction-locale via withUser(). Fail-closed : sans contexte, zéro ligne renvoyée.
 
-**"Comment tu protèges les données utilisateurs ?"**
-Trois niveaux : JWT en cookie httpOnly (vol de token impossible par XSS), validation Zod sur chaque input (injection impossible), filtrage par user_id sur chaque requête SQL (isolation inter-utilisateurs).
+**"Pourquoi set_config et pas SET LOCAL ?"**
+SET LOCAL n'accepte pas de paramètre lié $1 → injection SQL possible. set_config est transaction-local — meurt au COMMIT/ROLLBACK.
 
-**"Ton RLS Supabase est activé ?"**
-Non, et c'est un compromis documenté. Le RLS ne fonctionne qu'avec Supabase Auth. Comme j'utilise un JWT custom, la sécurité est gérée au niveau applicatif avec des filtres SQL systématiques. En production à grande échelle, je passerais à Supabase Auth + RLS pour une défense en profondeur.
+**"Vos tests prouvent que le RLS isole ?"**
+Honnêtement : vi.mock remplace withUser. Les tests prouvent la plomberie HTTP, pas l'isolation BDD. La vraie preuve : scripts/test-rls.ts contre la vraie base.
 
-### Base de données
+**"Pourquoi Vitest ?"**
+Natif ESM, compatible Vite/ES modules. Jest nécessiterait une transpilation supplémentaire.
 
-**"Pourquoi JSONB pour pack_data ?"**
-Le pack voyage est une structure complexe et variable. Créer 15 tables normalisées pour chaque sous-élément (vols, hôtels, activités, météo) aurait ajouté de la complexité sans bénéfice. JSONB permet de stocker la structure complète et PostgreSQL permet des requêtes à l'intérieur du JSONB.
+**"Ton code est en .js ou .ts ?"**
+Tout TypeScript strict côté serveur (target ES2022, NodeNext). Vite transpile automatiquement côté client. En runtime c'est du JavaScript pur.
 
-**"JSONB ou JSON, quelle différence ?"**
-JSON stocke le texte brut et le reparse à chaque lecture. JSONB stocke une représentation binaire indexable — plus rapide en lecture, supporte les index GIN pour des requêtes dans la structure.
+---
 
-### IA & Scoring
+## FORMULATIONS CLÉS À RETENIR
 
-**"Pourquoi un algorithme de scoring et pas le LLM qui note ?"**
-Le scoring déterministe est prévisible, testable et instantané. Un LLM donnerait des scores différents à chaque appel — impossible d'écrire des assertions fiables et d'assurer la cohérence.
-
-**"C'est quoi la différence entre ton pipeline et un agent IA ?"**
-Un agent autonome choisit ses outils, leur ordre, peut itérer. Mon pipeline est fixe : les étapes sont codées en dur dans l'ordre. La seule partie agentique est le chat de modification où le LLM décide librement ce qu'il modifie dans le pack.
-
-**"Qu'est-ce qui se passe si Gemini est en panne ?"**
-La fonction callAI() essaie Gemini en premier. En cas d'erreur, elle bascule sur OpenRouter, puis sur Claude API, puis sur des données statiques hardcodées. L'application ne retourne jamais d'erreur 500 pour une panne LLM.
-
-### Tests
-
-**"Pourquoi Vitest et pas Jest ?"**
-Vitest est natif ESM, compatible avec la configuration Vite/ES modules du projet. Jest nécessiterait une configuration de transpilation supplémentaire. Et Vitest est significativement plus rapide — 77 tests en 0.4 secondes.
-
-**"Pourquoi tu mockes tout ?"**
-Déterminisme — un LLM varie à chaque appel. Vitesse — 0.4s avec mocks. Coût — chaque appel LLM consomme des tokens. Isolation — pas besoin de fichier .env avec de vraies clés en CI.
-
-**"T'as testé quoi exactement ?"**
-Routes HTTP auth, trips, votes. Flux critiques end-to-end : génération, chat, photos, healthcheck. Algorithme de scoring sur tous les modes et les edge cases. Middleware auth : token absent, expiré, malformé, mauvais secret, valide.
-
-### Formation Holberton
-
-**"Quel lien avec les exercices Holberton ?"**
-- SQL → tables PostgreSQL, clés primaires UUID, clés étrangères CASCADE
-- ES6 Promises → Promise.allSettled pour les 5 recherches parallèles
-- RESTful API → routes Express avec status codes HTTP corrects
-- Authentication → JWT + bcryptjs, mêmes principes que Basic_authentication et Session_authentication
-- HBnB Part 4 → JS vanilla + JWT cookie + Fetch API, directement transposé en React + cookie httpOnly
-- TDD → Vitest + Supertest, mocks, golden path, edge cases
+- *"TripGenie repose sur un pipeline IA orchestré côté serveur, avec une composante conversationnelle agentique pour la modification post-génération."*
+- *"Promise.allSettled garantit que la panne d'un service externe ne bloque pas toute la génération."*
+- *"Le scoring est déterministe — aucun LLM. Même entrée = même sortie. Testable unitairement."*
+- *"Le cookie httpOnly est inaccessible depuis JavaScript — immunisé contre le XSS."*
+- *"Le RLS est actif — rôle sans BYPASSRLS, variable de session transaction-locale, fail-closed par défaut."*
+- *"254 tests en 15 fichiers, 2.2 secondes — tous les services externes sont mockés."*
+- *"assemblePack était une god function de 330 lignes — refactorisée en 6 fonctions pures testables."*
 
 ---
 
@@ -359,21 +309,8 @@ Routes HTTP auth, trips, votes. Flux critiques end-to-end : génération, chat, 
 | Scoring | 3 min |
 | Auth JWT | 3 min |
 | Sécurité | 2 min |
-| BDD | 2 min |
+| BDD + RLS | 3 min |
 | Tests | 2 min |
-| Déploiement + bilan | 2-3 min |
+| CI/CD + déploiement | 1-2 min |
 | **Total présentation** | **~30 min** |
 | Questions jury | 5-10 min |
-
----
-
-## FORMULATIONS CLÉS À RETENIR
-
-Ces phrases doivent sortir naturellement — apprends-les :
-
-- *"TripGenie repose sur un **pipeline IA orchestré côté serveur**, avec une composante conversationnelle agentique pour la modification post-génération."*
-- *"J'ai utilisé Promise.allSettled et non Promise.all pour que l'échec d'un service externe ne bloque pas toute la génération."*
-- *"Le scoring est déterministe — aucun LLM n'est impliqué. C'est une fonction pure avec des poids définis par mode de voyage."*
-- *"Le cookie httpOnly est inaccessible depuis JavaScript navigateur — le token ne peut pas être volé par XSS."*
-- *"Le RLS Supabase est inactif — c'est un compromis documenté et assumé, pas un oubli."*
-- *"77 tests automatisés en 0.4 secondes — tous les services externes sont mockés."*

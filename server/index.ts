@@ -133,7 +133,7 @@ if (process.env.NODE_ENV !== 'test') {
   const server = app.listen(PORT, () => {
     console.log(`\n🚀 Serveur backend démarré sur http://localhost:${PORT}`);
     console.log(`🛠️  Environnement : ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔑 PostgreSQL (RLS maison) : ${process.env.DATABASE_URL ? 'OUI' : 'NON'}`);
+    console.log(`🔑 PostgreSQL (Prisma ORM) : ${process.env.DATABASE_URL ? 'OUI' : 'NON'}`);
     console.log(`🧠 AI Provider: ${process.env.AI_PROVIDER || 'NON DÉFINI'}`);
   });
 

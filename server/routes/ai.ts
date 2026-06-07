@@ -15,7 +15,8 @@ import { yelpRestaurantSearch } from '../services/yelp.js';
 import { foursquareRestaurantSearch } from '../services/foursquare.js';
 import { getRealWeather } from '../services/weather.js';
 import { getDestinationPhoto } from '../services/photo.js';
-import { withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
+import type { Prisma } from '@prisma/client';
 import { MODES, DEFAULT_VALUES } from '../lib/constants.js';
 import { AppError } from '../lib/AppError.js';
 import type { TravelMode } from '../lib/types.js';
@@ -250,41 +251,35 @@ router.post('/generate', aiGenerateLimiter, optionalAuth, async (req: Request, r
       score: scoreResult
     };
 
-    // Sauvegarde si user connecté — trip + pack dans UNE transaction (même contexte RLS
-    // via withUser). Si l'insert du pack échoue, ROLLBACK : pas de trip orphelin sans pack.
+    // Sauvegarde si user connecté — trip + pack dans UNE transaction.
+    // Si l'insert du pack échoue, ROLLBACK : pas de trip orphelin sans pack.
     let tripId: string | null = null;
     let packId: string | null = null;
     if (req.user) {
-      const saved = await withUser(req.user.id, async (c) => {
-        const { rows: tripRows } = await c.query<{ id: string }>(
-          `INSERT INTO trips
-             (user_id, title, destination, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft')
-           RETURNING id`,
-          [
-            req.user!.id,
-            `Voyage à ${destination}`,
+      const saved = await prisma.$transaction(async (tx) => {
+        const trip = await tx.trip.create({
+          data: {
+            user_id:     req.user!.id,
+            title:       `Voyage à ${destination}`,
             destination,
             origin,
-            departure,
-            return_date ?? null,
+            departure:   new Date(departure),
+            return_date: return_date ? new Date(return_date) : null,
             travelers,
-            String(budget),
+            budget:      String(budget),
             mode,
-            scoredPack,          // objet → jsonb (node-pg sérialise automatiquement)
-            scoreResult.total
-          ]
-        );
-        const newTripId = tripRows[0]?.id ?? null;
-        if (!newTripId) return { tripId: null as string | null, packId: null as string | null };
-
-        const { rows: packRows } = await c.query<{ id: string }>(
-          `INSERT INTO packs (trip_id, rank, score, pack_data, selected)
-           VALUES ($1, 1, $2, $3, true)
-           RETURNING id`,
-          [newTripId, scoreResult.total, scoredPack]
-        );
-        return { tripId: newTripId, packId: packRows[0]?.id ?? null };
+            status:      'draft',
+            // cast structurel : le pack est JSON-sérialisable (champs optionnels → InputJsonValue)
+            pack_data:   scoredPack as unknown as Prisma.InputJsonValue,
+            score:       scoreResult.total,
+          },
+          select: { id: true },
+        });
+        const pack = await tx.pack.create({
+          data: { trip_id: trip.id, rank: 1, score: scoreResult.total, pack_data: scoredPack as unknown as Prisma.InputJsonValue, selected: true },
+          select: { id: true },
+        });
+        return { tripId: trip.id, packId: pack.id };
       });
       tripId = saved.tripId;
       packId = saved.packId;
@@ -353,13 +348,13 @@ router.post('/chat', aiChatLimiter, optionalAuth, async (req: Request, res: Resp
       mode: mode as TravelMode
     });
 
-    // MAJ DB si user connecté et trip existant — withUser pose le contexte RLS,
-    // et on garde le double filtre id + user_id (défense en profondeur).
+    // MAJ DB si user connecté et trip existant — updateMany scopé par user_id
+    // garantit qu'on ne modifie jamais le voyage d'un autre (isolation).
     if (req.user && trip_id && result.modifications) {
-      await withUser(req.user.id, (c) => c.query(
-        'UPDATE trips SET pack_data = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3',
-        [{ ...current_pack, ...result.modifications }, trip_id, req.user!.id]
-      ));
+      await prisma.trip.updateMany({
+        where: { id: trip_id, user_id: req.user.id },
+        data:  { pack_data: { ...current_pack, ...result.modifications } as Prisma.InputJsonValue },
+      });
     }
 
     res.json(result);

@@ -41,22 +41,46 @@ vi.mock('bcryptjs', () => ({
   }
 }));
 
-// (mock supabase retiré — toutes les routes tournent 100 % sur pg/RLS maison)
-
-// ---- Mock pg (RLS « maison ») ----
-// Les routes /api/trips migrées n'appellent plus supabase mais withUser() + SQL direct (driver pg).
-// On simule withUser : il exécute le callback de la route contre un faux client dont query()
-// renvoie des lignes contrôlées par mockPgQuery (équivalent du mock supabase ci-dessus).
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
-}));
-mockPgQuery.mockResolvedValue({
-  rows: [{ id: '550e8400-e29b-41d4-a716-446655440000', destination: 'Tokyo', country: 'Japon', mode: 'party', score: 0.8, departure: '2025-06-01', budget: '2000', status: 'confirmed' }],
-  rowCount: 1,
+// ---- Mock Prisma ----
+// Mock multi-modèles : chaque méthode est un vi.fn() avec un défaut sensé.
+// $transaction exécute son callback contre le mock lui-même (tx = prismaMock).
+const { prismaMock } = vi.hoisted(() => {
+  const model = () => ({
+    findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(),
+    create: vi.fn(), update: vi.fn(), updateMany: vi.fn(),
+    delete: vi.fn(), deleteMany: vi.fn(), upsert: vi.fn(),
+  });
+  const prismaMock: any = {
+    user: model(), trip: model(), pack: model(),
+    tripVote: model(), userPreference: model(), tripCollaborator: model(),
+  };
+  prismaMock.$transaction = vi.fn(async (fn: any) => fn(prismaMock));
+  return { prismaMock };
 });
+vi.mock('../server/db/prisma.js', () => ({ default: prismaMock }));
+
+const TRIP_ROW = {
+  id: TEST_TRIP_ID, user_id: TEST_USER.id, title: 'Tokyo', destination: 'Tokyo',
+  country: 'Japon', origin: null, departure: new Date('2025-06-01'), return_date: null,
+  travelers: 2, budget: '2000', mode: 'party', status: 'confirmed', score: 0.8,
+  pack_data: {}, created_at: new Date(), updated_at: new Date(),
+};
+const USER_ROW = {
+  id: TEST_USER.id, email: TEST_USER.email, name: TEST_USER.name,
+  password: '$2b$hashed_password', avatar_url: null, created_at: new Date(), updated_at: new Date(),
+};
+
+// Défauts (clearAllMocks ne réinitialise PAS les implémentations → ils tiennent).
+prismaMock.user.findUnique.mockResolvedValue(USER_ROW);
+prismaMock.user.create.mockResolvedValue({ id: USER_ROW.id, email: USER_ROW.email, name: USER_ROW.name, avatar_url: null, created_at: new Date() });
+prismaMock.trip.findMany.mockResolvedValue([TRIP_ROW]);
+prismaMock.trip.findFirst.mockResolvedValue(TRIP_ROW);
+prismaMock.trip.findUnique.mockResolvedValue(TRIP_ROW);
+prismaMock.trip.create.mockResolvedValue(TRIP_ROW);
+prismaMock.trip.updateMany.mockResolvedValue({ count: 1 });
+prismaMock.trip.deleteMany.mockResolvedValue({ count: 1 });
+prismaMock.tripVote.create.mockResolvedValue({ id: 'vote-1', pack_id: TEST_TRIP_ID, item_id: 'hotel-ritz', voter_name: 'Alice', vote_type: true, created_at: new Date() });
+prismaMock.tripVote.findMany.mockResolvedValue([]);
 
 vi.mock('../server/services/claude/index.js', () => ({
   chatIntake:          vi.fn().mockResolvedValue({ response: 'Bonjour !', chips: ['Paris', 'Tokyo'], extractedData: {}, isReady: false }),
@@ -120,10 +144,8 @@ describe('🔐 Auth — Validation des inputs', () => {
   });
 
   it('POST /register — 201 avec utilisateur créé (mock)', async () => {
-    // signup migré → pg : auth_user_by_email (email libre) puis auth_create_user (créé)
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })  // email non pris
-      .mockResolvedValueOnce({ rows: [{ id: TEST_TRIP_ID, email: 'pilot@tripgenie.test', name: 'Test Pilot', created_at: new Date().toISOString() }], rowCount: 1 }); // utilisateur créé
+    // signup : findUnique → null (email libre), create utilise le défaut
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
 
     const res = await request(app)
       .post('/api/auth/signup')
@@ -153,8 +175,8 @@ describe('🔐 Auth — Validation des inputs', () => {
   });
 
   it('GET /me — 200 avec Bearer token valide', async () => {
-    // /me migré → pg : SELECT ... FROM users WHERE id = $1 (via withUser)
-    mockPgQuery.mockResolvedValueOnce({ rows: [{ id: TEST_USER.id, email: TEST_USER.email, name: TEST_USER.name, avatar_url: null, created_at: new Date().toISOString() }], rowCount: 1 });
+    // /me : findUnique({where:{id}})
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: TEST_USER.id, email: TEST_USER.email, name: TEST_USER.name, avatar_url: null, created_at: new Date() } as any);
     const res = await request(app)
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${TEST_TOKEN}`);
@@ -224,8 +246,8 @@ describe('🗺️ Trips — Validation Zod', () => {
   });
 
   it('GET /share/:id — 200 accès public', async () => {
-    // /share migré → pg : SELECT public_shared_trip($1) AS trip (fonction SECURITY DEFINER)
-    mockPgQuery.mockResolvedValueOnce({ rows: [{ trip: { id: TEST_TRIP_ID, title: 'Tokyo', destination: 'Tokyo', country: 'Japon', pack_data: {}, score: 0.8, mode: 'party', departure: '2025-06-01', return_date: null, travelers: 2, budget: '2000', packs: [{ id: 'pack-1', rank: 1, selected: true }] } }], rowCount: 1 });
+    // /share : trip.findUnique avec select (packs inclus)
+    prismaMock.trip.findUnique.mockResolvedValueOnce({ id: TEST_TRIP_ID, title: 'Tokyo', destination: 'Tokyo', country: 'Japon', pack_data: {}, score: 0.8, mode: 'party', departure: new Date('2025-06-01'), return_date: null, travelers: 2, budget: '2000', packs: [{ id: 'pack-1', rank: 1, selected: true }] } as any);
     const res = await request(app).get(`/api/trips/share/${TEST_TRIP_ID}`);
     expect(res.status).toBe(200);
     expect(res.body.trip).toBeDefined();
@@ -423,8 +445,8 @@ describe('🔐 Auth — cas limites', () => {
   });
 
   it('POST /signup — 409 si email déjà utilisé', async () => {
-    // auth_user_by_email renvoie une ligne → email déjà pris → 409 Conflict
-    mockPgQuery.mockResolvedValueOnce({ rows: [{ id: 'existing-id' }], rowCount: 1 });
+    // findUnique renvoie un user → email déjà pris → 409 Conflict
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: 'existing-id' } as any);
 
     const res = await request(app)
       .post('/api/auth/signup')

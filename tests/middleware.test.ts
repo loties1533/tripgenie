@@ -25,17 +25,13 @@ vi.mock('../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: passthrough, aiChatLimiter: passthrough, authLimiter: passthrough };
 });
 
-// (mock supabase retiré — la couche DB est 100 % pg/RLS maison)
-
-// Mock pg : GET /api/trips est migré vers withUser() (RLS maison). On simule
-// withUser pour qu'il exécute le callback contre un faux client renvoyant [].
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// Mock Prisma : GET /api/trips utilise prisma.trip.findMany.
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: { trip: { findMany: vi.fn(), findFirst: vi.fn() } } as any,
 }));
-mockPgQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+vi.mock('../server/db/prisma.js', () => ({ default: prismaMock }));
+prismaMock.trip.findMany.mockResolvedValue([]);
+prismaMock.trip.findFirst.mockResolvedValue(null);
 
 // ============================================================
 // requireAuth — routes protégées (/api/trips nécessite auth)

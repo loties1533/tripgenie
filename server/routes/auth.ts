@@ -8,7 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { query, withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
 import { authLimiter } from '../middleware/limiter.js';
 
 // Schemas de validation
@@ -43,10 +43,9 @@ router.post('/signup', authLimiter, async (req: Request, res: Response, next: Ne
     }
     const { email, password, name } = parsed.data;
 
-    // 1. Email déjà pris ? Lecture PRÉ-AUTH (pas encore d'utilisateur identifié)
-    //    → fonction SECURITY DEFINER au périmètre minimal (cf. migration 0002).
-    const { rows: existing } = await query('SELECT id FROM auth_user_by_email($1)', [email]);
-    if (existing.length > 0) {
+    // 1. Email déjà pris ?
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) {
       res.status(409).json({ error: 'Cet email est déjà utilisé' });
       return;
     }
@@ -55,13 +54,11 @@ router.post('/signup', authLimiter, async (req: Request, res: Response, next: Ne
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // 3. Insérer l'utilisateur — insertion PRÉ-AUTH → fonction SECURITY DEFINER
-    const { rows } = await query<{ id: string; email: string; name: string | null; created_at: string }>(
-      'SELECT * FROM auth_create_user($1, $2, $3)',
-      [email, password_hash, name ?? null]
-    );
-    const user = rows[0];
-    if (!user) throw new Error('Échec de la création de l\'utilisateur');
+    // 3. Insérer l'utilisateur (select explicite → le hash n'est jamais renvoyé)
+    const user = await prisma.user.create({
+      data:   { email, password: password_hash, name: name ?? null },
+      select: { id: true, email: true, name: true, avatar_url: true, created_at: true },
+    });
 
     // 4. Générer le JWT
     const token = jwt.sign(
@@ -92,13 +89,9 @@ router.post('/login', authLimiter, async (req: Request, res: Response, next: Nex
     }
     const { email, password } = parsed.data;
 
-    // 1. Chercher l'utilisateur (avec son hash) — lecture PRÉ-AUTH → SECURITY DEFINER.
+    // 1. Chercher l'utilisateur (avec son hash, nécessaire pour bcrypt.compare).
     //    Même message d'erreur pour email inconnu ET mauvais mot de passe (anti-énumération).
-    const { rows } = await query<{ id: string; email: string; name: string | null; password: string; created_at: string }>(
-      'SELECT * FROM auth_user_by_email($1)',
-      [email]
-    );
-    const user = rows[0];
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       return;
@@ -149,12 +142,10 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction): Promi
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
 
     // Lecture de SON PROPRE profil : l'id vient du JWT déjà vérifié.
-    // withUser pose app.current_user_id → la policy users (id = app.current_user_id)
-    // autorise la lecture de cette seule ligne (fail-closed sur toutes les autres).
-    const { rows } = await withUser(decoded.id as string, (c) =>
-      c.query('SELECT id, email, name, avatar_url, created_at FROM users WHERE id = $1', [decoded.id])
-    );
-    const user = rows[0];
+    const user = await prisma.user.findUnique({
+      where:  { id: decoded.id as string },
+      select: { id: true, email: true, name: true, avatar_url: true, created_at: true },
+    });
     if (!user) {
       res.status(401).json({ error: 'Utilisateur introuvable' });
       return;

@@ -1,11 +1,11 @@
 // =============================================
-// TRIPGENIE — server/routes/trips.ts
+// TRIPGENIE — server/routes/trips.ts  (Prisma)
 // =============================================
 
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { query, withUser } from '../db/pg.js';
+import prisma from '../db/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { MODES_LIST, TRIP_STATUS_LIST } from '../lib/constants.js';
 import type { TravelMode } from '../lib/types.js';
@@ -35,33 +35,24 @@ const updateTripSchema = z.object({
 
 const router = express.Router();
 
-// ---- GET /api/trips/share/:id (Public) ----
-type SharedTrip = {
-  id: string;
-  title: string | null;
-  destination: string;
-  country: string | null;
-  pack_data: unknown;
-  score: number | null;
-  mode: string;
-  departure: string | null;
-  return_date: string | null;
-  travelers: number | null;
-  budget: string | null;
-  packs: Array<{ id: string; rank: number; selected: boolean }>;
-};
+// Parse une date "YYYY-MM-DD" en Date (colonne @db.Date) ou null
+const toDate = (s?: string | null): Date | null => (s ? new Date(s) : null);
 
+// ---- GET /api/trips/share/:id (Public) ----
 router.get('/share/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Lecture PUBLIQUE (aucun utilisateur connecté) : trips/packs sont RLS fail-closed,
-    // une lecture directe via le rôle applicatif ne renverrait donc rien. On passe par
-    // une fonction SECURITY DEFINER au périmètre minimal — elle n'expose AUCUNE donnée
-    // utilisateur (ni email ni hash), juste le voyage et l'id de ses packs.
-    const { rows } = await query<{ trip: SharedTrip | null }>(
-      'SELECT public_shared_trip($1) AS trip',
-      [req.params.id]
-    );
-    const trip = rows[0]?.trip ?? null;
+    // Lecture PUBLIQUE : on sélectionne EXPLICITEMENT les champs partageables.
+    // Aucune donnée utilisateur n'est exposée (ni user_id, ni email, ni hash) —
+    // le select agit comme un périmètre de sécurité minimal.
+    const trip = await prisma.trip.findUnique({
+      where:  { id: String(req.params.id) },
+      select: {
+        id: true, title: true, destination: true, country: true,
+        pack_data: true, score: true, mode: true,
+        departure: true, return_date: true, travelers: true, budget: true,
+        packs: { select: { id: true, rank: true, selected: true } },
+      },
+    });
 
     if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
@@ -92,28 +83,20 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     const userId = req.user.id;
 
     const { mode, status } = req.query;
+    const limit  = Math.min(Math.max(parseInt((req.query.limit as string) || '20', 10), 1), 50);
+    const offset = Math.max(parseInt((req.query.offset as string) || '0', 10), 0);
 
-    // Cap à 50 max, défaut 20, minimum 1
-    const limit  = Math.min(Math.max(parseInt((req.query.limit as string) || '20'), 1), 50);
-    const offset = Math.max(parseInt((req.query.offset as string) || '0'), 0);
-
-    // Défense en profondeur : filtre applicatif user_id = $1 (1re barrière)
-    // ET RLS PostgreSQL via withUser() (2e barrière). On ne s'appuie pas que sur le RLS.
-    const conditions = ['user_id = $1'];
-    const params: unknown[] = [userId];
-
-    if (mode && typeof mode === 'string')     { params.push(mode);   conditions.push(`mode = $${params.length}`); }
-    if (status && typeof status === 'string') { params.push(status); conditions.push(`status = $${params.length}`); }
-
-    params.push(limit);  const limitIdx  = params.length;
-    params.push(offset); const offsetIdx = params.length;
-
-    const sql = `SELECT * FROM trips
-                 WHERE ${conditions.join(' AND ')}
-                 ORDER BY created_at DESC
-                 LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
-
-    const { rows: trips } = await withUser(userId, (c) => c.query(sql, params));
+    // Isolation des données : filtre applicatif user_id systématique.
+    const trips = await prisma.trip.findMany({
+      where: {
+        user_id: userId,
+        ...(typeof mode === 'string'   ? { mode }   : {}),
+        ...(typeof status === 'string' ? { status } : {}),
+      },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      skip: offset,
+    });
 
     res.json({ trips, count: trips.length, limit, offset });
 
@@ -139,28 +122,25 @@ router.post('/', async (req: Request, res: Response, next: NextFunction): Promis
     }
     const userId = req.user.id;
 
-    const { rows } = await withUser(userId, (c) => c.query(
-      `INSERT INTO trips
-         (user_id, title, destination, country, origin, departure, return_date, travelers, budget, mode, pack_data, score, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'draft')
-       RETURNING *`,
-      [
-        userId,
-        title || `Voyage à ${destination}`,
+    const trip = await prisma.trip.create({
+      data: {
+        user_id:     userId,
+        title:       title || `Voyage à ${destination}`,
         destination,
-        country     ?? null,
-        origin      ?? null,
-        departure   ?? null,
-        return_date ?? null,
-        travelers || 1,
-        budget != null ? String(budget) : null,
+        country:     country ?? null,
+        origin:      origin ?? null,
+        departure:   toDate(departure),
+        return_date: toDate(return_date),
+        travelers:   travelers || 1,
+        budget:      budget != null ? String(budget) : null,
         mode,
-        pack_data ?? null,
-        score     ?? null
-      ]
-    ));
+        status:      'draft',
+        pack_data:   pack_data ?? undefined,
+        score:       score ?? null,
+      },
+    });
 
-    res.status(201).json({ trip: rows[0] });
+    res.status(201).json({ trip });
 
   } catch (err) {
     console.error('POST trip error:', err);
@@ -177,24 +157,18 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
     }
     const userId = req.user.id;
 
-    // LEFT JOIN + json_agg reconstruit l'agrégat `trip + packs` en une requête.
-    // FILTER (WHERE p.id IS NOT NULL) → [] si le voyage n'a aucun pack (et non [null]).
-    const { rows } = await withUser(userId, (c) => c.query(
-      `SELECT t.*,
-              COALESCE(json_agg(p ORDER BY p.rank) FILTER (WHERE p.id IS NOT NULL), '[]'::json) AS packs
-       FROM trips t
-       LEFT JOIN packs p ON p.trip_id = t.id
-       WHERE t.id = $1 AND t.user_id = $2
-       GROUP BY t.id`,
-      [req.params.id, userId]
-    ));
+    // findFirst scopé par id ET user_id → 404 si non possédé (isolation)
+    const trip = await prisma.trip.findFirst({
+      where:   { id: String(req.params.id), user_id: userId },
+      include: { packs: { orderBy: { rank: 'asc' } } },
+    });
 
-    if (rows.length === 0) {
+    if (!trip) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    res.json({ trip: rows[0] });
+    res.json({ trip });
 
   } catch (err) {
     console.error('GET trip error:', err);
@@ -216,37 +190,29 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction): Prom
     }
     const userId = req.user.id;
 
-    // SET dynamique avec allowlist de colonnes : on n'interpole jamais une clé venue du
-    // client dans le SQL, uniquement des noms de colonnes validés ici → pas d'injection.
-    const ALLOWED = ['title', 'status', 'pack_data', 'score', 'travelers', 'budget'] as const;
-    const setParts: string[] = [];
-    const params: unknown[] = [];
+    // Allowlist : on ne construit `data` qu'avec les colonnes fournies et validées.
+    const data: Record<string, unknown> = {};
+    if (parsed.data.title     !== undefined) data.title     = parsed.data.title;
+    if (parsed.data.status    !== undefined) data.status    = parsed.data.status;
+    if (parsed.data.pack_data !== undefined) data.pack_data = parsed.data.pack_data;
+    if (parsed.data.score     !== undefined) data.score     = parsed.data.score;
+    if (parsed.data.travelers !== undefined) data.travelers = parsed.data.travelers;
+    if (parsed.data.budget    !== undefined) data.budget    = parsed.data.budget != null ? String(parsed.data.budget) : null;
+    // updated_at est géré automatiquement par @updatedAt
 
-    for (const key of ALLOWED) {
-      if (!(key in parsed.data)) continue;
-      let value: unknown = (parsed.data as Record<string, unknown>)[key];
-      if (key === 'budget' && value != null) value = String(value);
-      params.push(value ?? null);
-      setParts.push(`${key} = $${params.length}`);
-    }
+    // updateMany scopé par user_id → impossible de modifier le voyage d'un autre.
+    const updated = await prisma.trip.updateMany({
+      where: { id: String(req.params.id), user_id: userId },
+      data,
+    });
 
-    setParts.push('updated_at = NOW()');
-
-    params.push(req.params.id); const idIdx   = params.length;
-    params.push(userId);        const userIdx = params.length;
-
-    const sql = `UPDATE trips SET ${setParts.join(', ')}
-                 WHERE id = $${idIdx} AND user_id = $${userIdx}
-                 RETURNING *`;
-
-    const { rows } = await withUser(userId, (c) => c.query(sql, params));
-
-    if (rows.length === 0) {
+    if (updated.count === 0) {
       res.status(404).json({ error: 'Voyage introuvable' });
       return;
     }
 
-    res.json({ trip: rows[0] });
+    const trip = await prisma.trip.findUnique({ where: { id: String(req.params.id) } });
+    res.json({ trip });
 
   } catch (err) {
     console.error('PUT trip error:', err);
@@ -263,10 +229,8 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
     }
     const userId = req.user.id;
 
-    await withUser(userId, (c) => c.query(
-      'DELETE FROM trips WHERE id = $1 AND user_id = $2',
-      [req.params.id, userId]
-    ));
+    // deleteMany scopé par user_id (les packs partent en cascade)
+    await prisma.trip.deleteMany({ where: { id: String(req.params.id), user_id: userId } });
 
     res.json({ message: 'Voyage supprimé' });
 

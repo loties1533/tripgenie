@@ -24,17 +24,12 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// (mock supabase retiré — signup tourne 100 % sur pg/RLS maison)
-
-// ---- Mock pg (RLS « maison ») ----
-// signup ne passe plus par supabase mais par des fonctions SECURITY DEFINER
-// appelées via query() : auth_user_by_email (vérif doublon) puis auth_create_user.
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
+// ---- Mock Prisma ----
+// signup : findUnique (vérif doublon email) puis create (insertion).
+const { prismaMock } = vi.hoisted(() => ({
+  prismaMock: { user: { findUnique: vi.fn(), create: vi.fn() } } as any,
 }));
+vi.mock('../../server/db/prisma.js', () => ({ default: prismaMock }));
 
 // ---- Mock bcryptjs ----
 vi.mock('bcryptjs', () => ({
@@ -47,12 +42,11 @@ vi.mock('bcryptjs', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Défaut routé par SQL : email libre (auth_user_by_email → []) puis création réussie
-  // (auth_create_user → 1 ligne). Chaque test peut surcharger via mockImplementationOnce.
-  mockPgQuery.mockImplementation((sql: string) => {
-    if (/auth_user_by_email/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 });
-    if (/auth_create_user/.test(sql))   return Promise.resolve({ rows: [{ id: 'new-uuid-123', email: 'new@test.com', name: 'Bob', created_at: new Date().toISOString() }], rowCount: 1 });
-    return Promise.resolve({ rows: [], rowCount: 0 });
+  // Défaut : email libre (findUnique → null) puis création réussie.
+  // Chaque test peut surcharger via mockResolvedValueOnce.
+  prismaMock.user.findUnique.mockResolvedValue(null);
+  prismaMock.user.create.mockResolvedValue({
+    id: 'new-uuid-123', email: 'new@test.com', name: 'Bob', avatar_url: null, created_at: new Date(),
   });
 });
 
@@ -90,8 +84,8 @@ describe('POST /api/auth/signup — validation des champs requis', () => {
 describe('POST /api/auth/signup — doublon email', () => {
 
   it('409 si email déjà utilisé', async () => {
-    // auth_user_by_email renvoie une ligne → email déjà pris → 409 Conflict
-    mockPgQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ id: 'existing-uuid' }], rowCount: 1 }));
+    // findUnique renvoie un user → email déjà pris → 409 Conflict
+    prismaMock.user.findUnique.mockResolvedValueOnce({ id: 'existing-uuid' } as any);
     const res = await request(app).post('/api/auth/signup').send({ email: 'alice@test.com', password: 'Password1!', name: 'Alice' });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/email.*déjà.*utilisé/i);

@@ -24,16 +24,18 @@ vi.mock('../../server/middleware/limiter.js', () => {
   return { aiGenerateLimiter: p, aiChatLimiter: p, authLimiter: p };
 });
 
-// (mock supabase retiré — la route packs tourne 100 % sur pg/RLS maison)
-
-// Mock pg (RLS « maison ») : packs passe par withUser() — propriété + lecture/maj
-// dans une même transaction. Toutes les requêtes de la route traversent mockPgQuery.
-const { mockPgQuery } = vi.hoisted(() => ({ mockPgQuery: vi.fn() }));
-vi.mock('../../server/db/pg.js', () => ({
-  default:  {},
-  query:    (...args: any[]) => mockPgQuery(...args),
-  withUser: vi.fn(async (_userId: string, fn: (c: any) => any) => fn({ query: mockPgQuery })),
-}));
+// Mock Prisma : GET → trip.findFirst (propriété) + pack.findMany.
+// POST select → $transaction (propriété → existence → désélection → sélection → MAJ trip).
+// $transaction exécute son callback contre le mock lui-même (tx = prismaMock).
+const { prismaMock } = vi.hoisted(() => {
+  const prismaMock: any = {
+    trip: { findFirst: vi.fn(), updateMany: vi.fn() },
+    pack: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+  };
+  prismaMock.$transaction = vi.fn(async (fn: any) => fn(prismaMock));
+  return { prismaMock };
+});
+vi.mock('../../server/db/prisma.js', () => ({ default: prismaMock }));
 
 const OWNER = { id: 'owner-uuid', email: 'owner@test.com', name: 'Owner' };
 const token = jwt.sign(OWNER, process.env.JWT_SECRET!, { expiresIn: '1d' });
@@ -43,8 +45,9 @@ const PACK  = 'pack-456';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Défaut fail-closed : aucune ligne (→ 403/404). Chaque test fournit ses lignes via Once.
-  mockPgQuery.mockReset().mockResolvedValue({ rows: [], rowCount: 0 });
+  // $transaction garde son implémentation (tx = prismaMock) ; défaut fail-closed.
+  prismaMock.$transaction.mockImplementation(async (fn: any) => fn(prismaMock));
+  prismaMock.trip.findFirst.mockResolvedValue(null);
 });
 
 // ============================================================
@@ -58,18 +61,17 @@ describe('GET /api/packs/:trip_id', () => {
   });
 
   it('403 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → null → 403
+    prismaMock.trip.findFirst.mockResolvedValueOnce(null); // propriété : null → 403
     const res = await auth(request(app).get(`/api/packs/${TRIP}`));
     expect(res.status).toBe(403);
   });
 
   it('liste les packs du voyage triés par rang', async () => {
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })  // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [                               // 2) packs triés
-        { id: 'p1', rank: 1, selected: true },
-        { id: 'p2', rank: 2, selected: false }
-      ], rowCount: 2 });
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);     // 1) propriété OK
+    prismaMock.pack.findMany.mockResolvedValueOnce([                          // 2) packs triés
+      { id: 'p1', rank: 1, selected: true },
+      { id: 'p2', rank: 2, selected: false },
+    ] as any);
     const res = await auth(request(app).get(`/api/packs/${TRIP}`));
     expect(res.status).toBe(200);
     expect(res.body.packs).toHaveLength(2);
@@ -88,23 +90,22 @@ describe('POST /api/packs/:trip_id/select/:pack_id', () => {
   });
 
   it('403 si le voyage n\'appartient pas à l\'utilisateur', async () => {
-    mockPgQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 }); // propriété : 0 ligne → 403
+    prismaMock.trip.findFirst.mockResolvedValueOnce(null); // propriété : null → 403
     const res = await auth(request(app).post(`/api/packs/${TRIP}/select/${PACK}`));
     expect(res.status).toBe(403);
   });
 
   it('sélectionne le pack choisi et renvoie le pack', async () => {
     // Transaction atomique : propriété → existence pack → désélection → sélection → MAJ trip
-    mockPgQuery
-      .mockResolvedValueOnce({ rows: [{ id: TRIP }], rowCount: 1 })                  // 1) propriété OK
-      .mockResolvedValueOnce({ rows: [{ id: PACK }], rowCount: 1 })                  // 2) pack existe
-      .mockResolvedValueOnce({ rows: [], rowCount: 2 })                              // 3) UPDATE selected=false
-      .mockResolvedValueOnce({ rows: [{ id: PACK, selected: true }], rowCount: 1 }) // 4) UPDATE selected=true RETURNING
-      .mockResolvedValueOnce({ rows: [], rowCount: 1 });                            // 5) UPDATE trips
+    prismaMock.trip.findFirst.mockResolvedValueOnce({ id: TRIP } as any);                  // 1) propriété OK
+    prismaMock.pack.findFirst.mockResolvedValueOnce({ id: PACK } as any);                  // 2) pack existe
+    prismaMock.pack.updateMany.mockResolvedValueOnce({ count: 2 } as any);                 // 3) désélection
+    prismaMock.pack.update.mockResolvedValueOnce({ id: PACK, selected: true } as any);     // 4) sélection
+    prismaMock.trip.updateMany.mockResolvedValueOnce({ count: 1 } as any);                 // 5) MAJ trip
     const res = await auth(request(app).post(`/api/packs/${TRIP}/select/${PACK}`));
     expect(res.status).toBe(200);
     expect(res.body.pack.id).toBe(PACK);
     expect(res.body.pack.selected).toBe(true);
-    expect(mockPgQuery).toHaveBeenCalled();
+    expect(prismaMock.pack.update).toHaveBeenCalled();
   });
 });
