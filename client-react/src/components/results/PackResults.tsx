@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { RadialBarChart, RadialBar, Cell, ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
@@ -538,17 +537,6 @@ export default function PackResults() {
                   <span className="text-gold font-bold text-base font-display">{d.summary?.total_budget}</span>
                   <span className="text-[10px] text-muted uppercase tracking-tighter">budget</span>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    toast.success('Impression / Enregistrer en PDF → Ctrl+P ou ⌘+P')
-                    setTimeout(() => window.print(), 400)
-                  }}
-                  className="bg-white/10 hover:bg-white/20 text-ink dark:text-parchment px-3 py-2 rounded-xl text-xs font-bold border border-gold/20 transition-all flex items-center gap-1"
-                >
-                  <span>📄</span> <span className="hidden sm:inline">PDF</span>
-                </button>
               </div>
             </div>
           </div>
