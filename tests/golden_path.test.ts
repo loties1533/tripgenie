@@ -110,6 +110,15 @@ vi.mock('../server/services/photo.js', () => ({
   getDestinationPhoto: vi.fn().mockResolvedValue('https://example.com/photo.jpg')
 }));
 
+// Restaurants : sans ces mocks, /generate fait de VRAIS appels réseau Foursquare/Yelp
+// → latence aléatoire → timeout du test. On renvoie [] (dégradation gracieuse testée ailleurs).
+vi.mock('../server/services/foursquare.js', () => ({
+  foursquareRestaurantSearch: vi.fn().mockResolvedValue([])
+}));
+vi.mock('../server/services/yelp.js', () => ({
+  yelpRestaurantSearch: vi.fn().mockResolvedValue([])
+}));
+
 // Mock Prisma : /api/votes utilise prisma.tripVote.create (table publique).
 // /generate est envoyé SANS token → req.user absent → aucune écriture trip/pack.
 const { prismaMock } = vi.hoisted(() => ({
