@@ -11,6 +11,7 @@ Documentation de référence pour l'oral RNCP5 DWWM / Holberton Demo Day.
 | 05 | [Concepts clés](./05_CONCEPTS_CLES.md) | camelCase/snake_case, transactions, JWT, bcrypt, ORM |
 | 06 | [Questions jury + réponses](./06_QUESTIONS_JURY.md) | **Banque exhaustive** Q&A (12 catégories) |
 | 🎴 | [Fiche oral](./FICHE_ORAL.md) | Antisèche dense à imprimer/trier |
+| 📕 | [**Dossier projet RNCP**](./DOSSIER_PROJET_RNCP.md) | **Le rapport 30-50 p à exporter en PDF** (structure officielle DWWM) |
 
 ### Démarrage rapide
 Voir [`../README_DEMODAY.md`](../README_DEMODAY.md) — setup en 3 commandes.
